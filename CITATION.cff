@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+title: autotesteR
+message: "If you use this software, please cite it as below."
+type: software
+
+authors:
+  - family-names: Cardoso Garcia
+    given-names: Luiz Fernando
+    affiliation: Universidade Federal do Paraná
+
+version: 0.0.1
+date-released: 2025-10-21
+
+abstract: >
+  Designed to streamline RNA-seq data analysis, this package provides tools
+  for data import, validation, normalization, quality control, exploratory
+  analysis, differential expression, enrichment, and visualization. It is
+  optimized for pairwise group comparisons but can be extended to more
+  complex experimental designs.
+
+
+license: MIT
