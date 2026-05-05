@@ -1,3 +1,35 @@
-^autornaR\.Rproj$
+# -------------------------------
+# R Package Build Ignore
+# -------------------------------
+
+# RStudio project files
+\.Rproj$
+^\.Rproj\.user$
+
+# Version control / Git
+^\\.git$
+^\\.gitignore$
+
+# Documentation / Markdown / Notes
+^README\\.md$
+^LICENSE\\.md$
+^NEWS\\.md$
+^docs/
+^vignettes/
+
+# Cache / temporary / output
+^\\.Rhistory$
+^\\.RData$
+^\\.Ruserdata$
+^\\.Rplots\\.pdf$
+^\\.Rproj\\.user/
+^__pycache__/
+^.*\\.tmp$
+^.*\\.log$
+
+# OS-specific
+^\\.DS_Store$
+^Thumbs\\.db$
 ^\.Rproj\.user$
 ^LICENSE\.md$
+^\.*\\.Rproj$$
