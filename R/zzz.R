@@ -1,12 +1,11 @@
 # R/zzz.R
 
-.onAttach <- function(libname, pkgname) {
-  packageStartupMessage(
+.onAttach <- function(libname, pkgname) {packageStartupMessage(
     "\n",
-    crayon::green("autornaR "), "loaded successfully!\n",
+    crayon::green("autornaR v.",utils::packageVersion("autornaR")), " loaded successfully!\n",
     "--------------------------------------------------\n",
     "A package for streamlined RNA-seq data analysis.\n",
-    "Use ", crayon::green("?autornaR"), " for general help.\n",
-    "--------------------------------------------------\n"
+    "GitHub: https://github.com/Luiz-Garcia-R/autornaR\n"
   )
 }
+

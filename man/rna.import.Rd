@@ -5,70 +5,122 @@
 \title{Import RNA-seq count data from multiple formats}
 \usage{
 rna.import(
-  df,
+  project,
+  raw_data,
   metadata = NULL,
   format = c("clean", "hisat2", "star", "featureCounts", "tximport"),
-  sample.names = NULL,
-  gene.col = "Geneid",
-  strict = TRUE,
+  rename_samples = NULL,
+  gene_col = NULL,
+  group_col = NULL,
+  gene_id_type = c("auto", "ENSEMBL", "SYMBOL", "ENTREZ"),
+  organism = c("auto", "mouse", "human", "zebrafish"),
   clean_names = TRUE,
-  assign_result = TRUE,
-  assign_name = "imp_data",
+  strict = TRUE,
+  save = TRUE,
   envir = parent.frame()
 )
 }
 \arguments{
-\item{df}{Data frame containing raw counts and gene identifiers.}
+\item{project}{\code{rna_project} object created by \code{rna.project()}.}
 
-\item{metadata}{Optional data frame with sample information (must include a column named \code{Sample}).}
+\item{raw_data}{Data frame containing raw counts and gene identifiers.}
 
-\item{format}{Character. Count file format: \code{"clean"}, \code{"hisat2"}, \code{"star"}, \code{"featureCounts"}, or \code{"tximport"}.}
+\item{metadata}{Optional data frame with sample information. The sample
+column is automatically detected based on column names or matching values
+with the count matrix. If detection fails, the function will return an error
+(in strict mode).}
 
-\item{sample.names}{Optional vector of custom sample names.}
+\item{format}{Character. Input format: \code{"clean"}, \code{"hisat2"},
+\code{"star"}, \code{"featureCounts"}, or \code{"tximport"}.}
 
-\item{gene.col}{Character. Column containing gene identifiers (default \code{"Geneid"}).}
+\item{rename_samples}{Optional character vector to rename sample columns.
+Must have the same length and order as the detected sample columns.}
 
-\item{strict}{Logical. If \code{TRUE}, stops execution on validation errors (default \code{TRUE}).}
+\item{gene_col}{Optional character specifying the column containing gene
+identifiers. If \code{NULL} (default), the function will attempt to detect
+the gene column automatically. If no suitable column is found, row names
+will be used when possible.}
 
-\item{clean_names}{Logical. If \code{TRUE}, automatically cleans sample names by removing paths,
-prefixes (e.g., \code{hisat2_bams.}), and extensions (e.g., \code{.bam}, \code{.counts}) (default \code{TRUE}).}
+\item{group_col}{Optional character specifying the column containing sample
+groups. If \code{NULL} (default).}
 
-\item{assign_result}{Logical. If \code{TRUE}, assigns the imported object to the environment (default \code{TRUE}).}
+\item{gene_id_type}{Character. Gene identifier type:
+\code{"auto"}, \code{"ENSEMBL"}, \code{"SYMBOL"}, \code{"ENTREZ"}.
+Default is \code{"auto"}.}
 
-\item{assign_name}{Character. Name of the assigned object (default \code{"imp_data"}).}
+\item{organism}{Character. Organism name:
+\code{"auto"}, \code{"mouse"}, \code{"human"}, or \code{"zebrafish"}.}
+
+\item{clean_names}{Logical. If \code{TRUE}, automatically cleans sample names
+by removing file extensions and special characters.}
+
+\item{strict}{Logical. If \code{TRUE}, stops execution on validation errors.}
+
+\item{save}{Logical. Whether to store results in the active \code{rna_project}.}
 
 \item{envir}{Environment where to assign the object.}
 }
 \value{
-An object of class \code{"imp_data"} containing:
+An object of class \code{"imp_data"}, containing:
 \itemize{
-\item \code{data}: standardized count matrix
-\item \code{metadata}: optional metadata
-\item \code{warnings}: collected warnings and errors
-\item \code{n_genes}: number of genes
-\item \code{n_samples}: number of samples
-\item \code{detected_format}: format detected/used
+\item \code{data}: Processed count matrix.
+\item \code{metadata}: Metadata table (if provided).
+\item \code{n_genes}: Number of genes.
+\item \code{n_samples}: Number of samples.
+\item \code{gene_id_type}: Detected or specified gene ID type.
+\item \code{organism}: Organism used.
+\item \code{warnings}: Validation warnings generated during import.
+\item \code{groups}: (optional) Named list with group sizes if a
+\code{Group} column is present in metadata.
+\item \code{gene_annotation}: Matrix with annotation of all possible genes
+of the provided data set.
+\item \code{warnings}: Validation warnings generated during import,
+including automatic detection steps.
 }
 }
 \description{
 Imports and standardizes RNA-seq count matrices from common formats
-(HISAT2, STAR, featureCounts, tximport, or clean matrices). Automatically
-detects sample columns, handles metadata, and validates structure.
+(HISAT2, STAR, featureCounts, tximport, or pre-cleaned matrices).
+
+The function automatically detects gene identifiers (either as a column
+or row names), sample columns, and gene ID types. It performs basic
+validation and cleaning steps to ensure compatibility with downstream
+analysis.
+
+When ENSEMBL identifiers are detected, version numbers are removed and
+duplicated IDs are collapsed by summation. Sample names can be optionally
+cleaned or manually renamed.
+
+If metadata is provided, the function automatically detects the sample
+identifier column and validates its correspondence with the count matrix.
+Summary information (e.g., group sizes) is reported when available.
+}
+\details{
+This function serves as the entry point of the RNA-seq analysis workflow.
+It is designed to handle heterogeneous input formats with minimal user
+intervention by automatically detecting key structural components such as
+gene identifiers and sample labels.
+
+The function does not perform normalization or transformation of counts.
 }
 \examples{
-counts <- data.frame(
-  Geneid = paste0("Gene", 1:5),
-  Sample1 = c(100, 50, 300, 0, 120),
-  Sample2 = c(80, 60, 250, 5, 100),
-  Sample3 = c(90, 55, 280, 2, 110)
-)
+\dontrun{
+# Basic import with metadata
+  rna.import(project = my_project,
+             raw_data = counts_df,
+             metadata = meta_df)
 
-meta <- data.frame(
-  Sample = c("Sample1", "Sample2", "Sample3"),
-  Group = c("Control", "Control", "Treatment")
-)
+# Import with metadata and specifying an organism
+  rna.import(my_project,
+             raw_data = counts_df,
+             metadata = meta_df,
+             organism = "mouse")
 
-imp <- rna.import(df = counts, format = "featureCounts", metadata = meta)
-print(imp)
+# Import with a specific format
+  rna.import(my_project,
+             raw_data = counts_df,
+             metadata = meta_df,
+             format = "star")
+ }
 
 }

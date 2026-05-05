@@ -1,76 +1,174 @@
-#' Normalize RNA-seq count data
+#' Normalize RNA-seq count data with integrated QC and filtering
 #'
 #' @description
-#' Normalizes raw RNA-seq counts from an `imp_data` object created by [rna.import()].
-#' Supports multiple normalization methods, low-expression filtering, and optional
-#' outlier removal at both sample and gene levels.
+#' Performs normalization of raw RNA-seq count data stored in the active
+#' \code{rna_project} object (created with \code{rna.project()} and populated
+#' via \code{rna.import()}). The function integrates gene filtering,
+#' outlier detection, and multiple normalization strategies into a single,
+#' reproducible workflow.
 #'
-#' @param imp_data An object of class `"imp_data"` as returned by [rna.import()].
-#' @param method Normalization method. One of:
-#'   `"none"`, `"log2"`, `"cpm"`, `"tpm"`, `"rlog"`, `"vst"`, `"quantile"`, or `"upper-quartile"`.
-#' @param filter_low Logical; if `TRUE`, removes genes with low expression (default `TRUE`).
-#' @param min_expr Numeric; minimum count threshold (default `10`).
-#' @param filter_min_prop Numeric; minimum proportion of samples expressing at least
-#'   `min_expr` counts (default `0.1`).
-#' @param remove_outlier_samples Logical; if `TRUE`, detects and removes outlier samples (default `TRUE`).
-#' @param remove_outlier_genes Logical; if `TRUE`, detects and removes outlier genes (default `TRUE`).
-#' @param outlier_method Character; method for outlier detection, either `"iqr"` or `"zscore"`.
-#' @param assign_result Logical; if `TRUE`, assigns the normalized object in the calling environment (default `TRUE`).
-#' @param assign_name Character; name to assign the normalized object (default `"normalized_data"`).
-#' @param envir Environment where to assign the object.
-#' @param help Logical; if `TRUE`, prints short help information and exits.
+#' The resulting normalized dataset is stored internally and used as the
+#' standardized input for downstream analyses (e.g., differential expression,
+#' clustering, and pathway analysis).
 #'
-#' @details
-#' The function performs a sequence of cleaning and normalization steps:
-#' 1. Optionally filters out genes expressed in fewer than `filter_min_prop`
-#'    of samples at a level below `min_expr`.
-#' 2. Detects and optionally removes outlier samples or genes using either
-#'    IQR or z-score thresholds.
-#' 3. Applies the specified normalization method.
-#' 4. Returns a clean, normalized expression matrix ready for downstream analyses.
-#'
-#' TPM normalization requires a `gene_length` column in `imp_data$annotation`.
-#'
-#' @return
-#' An object of class `"normalized_data"` containing:
-#' \describe{
-#'   \item{expr_matrix}{Normalized expression matrix.}
-#'   \item{metadata}{Sample metadata, realigned with the matrix.}
-#'   \item{method}{Normalization method used.}
-#'   \item{removed_genes}{Number of genes removed.}
-#'   \item{removed_samples}{Number of samples removed.}
-#'   \item{QC_metrics}{Basic quality control metrics.}
+#' @param project \code{rna_project} object created by \code{rna.project()}.
+#' @param method Character. Normalization method to apply:
+#' \itemize{
+#'   \item \code{"none"}: No normalization (raw counts retained)
+#'   \item \code{"log2"}: Log2 transformation (\code{log2(count + 1)})
+#'   \item \code{"cpm"}: Counts per million (library size normalization)
+#'   \item \code{"tpm"}: Transcripts per million (length-normalized expression)
+#'   \item \code{"rlog"}: Regularized log transformation (DESeq2)
+#'   \item \code{"vst"}: Variance stabilizing transformation (DESeq2)
+#'   \item \code{"quantile"}: Quantile normalization (limma)
+#'   \item \code{"upper-quartile"}: Upper-quartile normalization
 #' }
 #'
+#' @param filter_low Logical. If \code{TRUE}, removes lowly expressed genes
+#'   prior to normalization (default: \code{TRUE}).
+#' @param min_expr Numeric. Minimum count threshold used to define expression
+#'   (default: \code{10}).
+#' @param filter_min_prop Numeric. Minimum proportion of samples in which a gene
+#'   must be expressed (above \code{min_expr}) to be retained (default: \code{0.1}).
+#' @param remove_outlier_samples Logical. If \code{TRUE}, detects and removes
+#'   samples with abnormal library sizes (default: \code{TRUE}).
+#' @param remove_outlier_genes Logical. If \code{TRUE}, removes genes with extreme
+#'   variance profiles (default: \code{TRUE}).
+#' @param outlier_method Character. Method for outlier detection:
+#'   \code{"iqr"} (robust, default) or \code{"zscore"}.
+#' @param clean_gene_versions Logical. If \code{TRUE}, removes version suffixes
+#'   from gene identifiers (e.g., \code{ENSG000001.5 -> ENSG000001}) when using
+#'   Ensembl IDs (default: \code{TRUE}).
+#' @param gene_id_sep Character. Regular expression defining the separator used
+#'   for gene version removal (default: \code{"\\."}).
+#' @param save Logical. Whether to store the normalized data inside the active
+#'   \code{rna_project} (default: \code{TRUE}).
+#'
+#' @return
+#' Invisibly returns an object of class \code{"normalized_data"} containing:
+#' \describe{
+#'   \item{expr_matrix}{Normalized expression matrix (genes × samples).}
+#'   \item{metadata}{Aligned sample metadata.}
+#'   \item{method}{Normalization method used.}
+#'   \item{removed_genes}{Number of genes removed during filtering/outlier steps.}
+#'   \item{removed_samples}{Number of samples removed as outliers.}
+#'   \item{QC_metrics}{Data frame with per-sample QC metrics (library size and detected genes).}
+#'   \item{gene_id_version_cleaned}{Logical indicating whether gene IDs were cleaned.}
+#'   \item{gene_id_type}{Original gene identifier type (e.g., ENSEMBL, SYMBOL).}
+#' }
+#'
+#' @examples
+#' \dontrun{
+#'
+#' # Example 1: basic normalization (recommended starting point. \code{"None"} as default.)
+#' my_project <- rna.normalize(project = my_project)
+#'
+#' # Example 2: log2 transformation only (quick exploratory analysis)
+#' my_project <- rna.normalize(project = my_project,
+#'                             method = "log2")
+#'
+#' # Example 3: CPM normalization without filtering
+#' my_project <- rna.normalize(project = my_project,
+#'                             method = "cpm",
+#'                             filter_low = FALSE)
+#' }
+#'
+#' @details
+#' The normalization workflow is structured into sequential steps:
+#'
+#' \strong{1. Gene filtering} \cr
+#' Genes with insufficient expression are removed based on the proportion
+#' of samples exceeding \code{min_expr}. This reduces noise and improves
+#' statistical stability in downstream analyses.
+#'
+#' \strong{2. Outlier detection} \cr
+#' Outlier samples are identified based on library size distributions, while
+#' outlier genes are detected using variance-based criteria. Two strategies
+#' are available:
+#' \itemize{
+#'   \item \code{"iqr"}: Robust, recommended for most datasets
+#'   \item \code{"zscore"}: Sensitive to extreme deviations
+#' }
+#'
+#' \strong{3. Normalization} \cr
+#' The selected normalization method is applied. Methods differ in their
+#' assumptions:
+#' \itemize{
+#'   \item Count-based scaling (\code{cpm}, \code{upper-quartile})
+#'   \item Length-aware normalization (\code{tpm})
+#'   \item Variance stabilization (\code{vst}, \code{rlog})
+#'   \item Distribution alignment (\code{quantile})
+#' }
+#'
+#' \strong{4. Quality control metrics} \cr
+#' Basic QC metrics are computed, including library size and number of
+#' detected genes per sample, enabling rapid inspection of data quality.
+#'
+#' \strong{5. Gene ID harmonization} \cr
+#' When Ensembl IDs include version suffixes, they are optionally removed
+#' to ensure compatibility with annotation databases and downstream tools.
+#' If duplicates arise after cleaning, counts are aggregated by gene.
+#'
+#' \strong{TPM requirement} \cr
+#' TPM normalization requires a \code{gene_length} column in
+#' \code{rna_project$input$imp_data$annotation}.
+#'
+#' @seealso
+#' \code{\link{rna.import}}, \code{\link{rna.project}},  \code{\link{rna.qc}}
+#'
+#' @examples
+#' \dontrun{
+#' # Basic normalization
+#'   rna.normalize(project = my_project)
+#'
+#' # Choosing a specific normalization/transformation method
+#'   rna.normalize(my_project, method = "vst")
+#'
+#' # Adjust outliers
+#'   rna.normalize(my_project,
+#'                 remove_outlier_samples = FALSE,
+#'                 remove_outlier_genes = FALSE
+#'   )
+#'  }
+#'
+#'
 #' @importFrom stats quantile sd
+#'
 #' @export
 
-rna.normalize <- function(imp_data,
-                          method = c("none", "log2", "cpm", "tpm", "rlog", "vst",
-                                     "quantile", "upper-quartile"),
+rna.normalize <- function(project,
+                          method = c("none", "log2", "cpm", "tpm", "rlog", "vst", "quantile", "upper-quartile"),
                           filter_low = TRUE,
                           min_expr = 10,
                           filter_min_prop = 0.1,
                           remove_outlier_samples = TRUE,
                           remove_outlier_genes = TRUE,
                           outlier_method = c("iqr", "zscore"),
-                          assign_result = TRUE,
-                          assign_name = "normalized_data",
-                          envir = parent.frame(),
-                          help = FALSE) {
+                          clean_gene_versions = TRUE,
+                          gene_id_sep = "\\.",
+                          save = TRUE
+) {
 
-  # --- Help shortcut ---
-  if (help || missing(imp_data)) {
-    message("rna.normalize(): normalize RNA-seq count data from an 'imp_data' object.\n",
-            "Use rna.import() first to create the input object.")
-    return(invisible(NULL))
+  # ---------------------------
+  # 1) Get active project
+  # ---------------------------
+  proj <- project
+
+  # ---------------------------
+  # 2) Validate input
+  # ---------------------------
+  if (is.null(proj$input$imp_data)) {
+    stop("No imported data found. Run rna.import() first.")
   }
 
-  # --- Validation ---
-  if (!inherits(imp_data, "imp_data")) {
-    stop("Input must be an object of class 'imp_data'.\n",
-         "Use rna.import() first, e.g.: imp <- rna.import(df, metadata, format = 'hisat2')")
+  # --- Access last imp_data ---
+  imp_container <- proj$input$imp_data
+
+  if (is.null(imp_container$last)) {
+    stop("No active import found in 'imp_data$last'")
   }
+
+  imp_data <- imp_container[[imp_container$last]]
 
   method <- match.arg(method)
   outlier_method <- match.arg(outlier_method)
@@ -82,10 +180,36 @@ rna.normalize <- function(imp_data,
 
   gene_ids <- data_df[[gene_col]]
   counts <- data_df[, setdiff(colnames(data_df), gene_col), drop = FALSE]
+  counts <- data.frame(
+    lapply(counts, function(col) as.numeric(col)),
+    check.names = FALSE
+  )
   rownames(counts) <- gene_ids
-  metadata <- as.data.frame(imp_data$metadata)
 
-  # --- 1. Filter low-expressed genes ---
+  if (!is.null(proj$data) && !is.null(proj$data$normalized_data)) {
+    warning("Overwriting existing normalized data.")
+  }
+
+  # --- Gene ID version cleanup ---
+  if (clean_gene_versions && imp_data$gene_id_type == "ENSEMBL") {
+    gene_ids_clean <- sub(paste0(gene_id_sep, ".*$"), "", rownames(counts))
+
+    if (anyDuplicated(gene_ids_clean)) {
+      message("Gene ID version removal produced duplicated IDs. Aggregating counts by gene.")
+
+      # --- Aggregation by sum ---
+      counts <- rowsum(counts, group = gene_ids_clean)
+    } else {
+      rownames(counts) <- gene_ids_clean
+    }
+  }
+
+  metadata <- as.data.frame(imp_data$metadata)
+  metadata <- metadata[match(colnames(counts), metadata$Sample), , drop = FALSE]
+
+  # ---------------------------
+  # 3) Filter low-expressed genes
+  # ---------------------------
   removed_genes <- 0
   if (filter_low) {
     prop_expr <- rowMeans(counts >= min_expr, na.rm = TRUE)
@@ -98,7 +222,9 @@ rna.normalize <- function(imp_data,
     }
   }
 
-  # --- 2. Outlier detection ---
+  # ---------------------------
+  # 4) Outlier detection
+  # ---------------------------
   outliers_s <- integer(0)
   if (remove_outlier_samples) {
     lib_sizes <- colSums(counts)
@@ -136,7 +262,9 @@ rna.normalize <- function(imp_data,
     }
   }
 
-  # --- 3. Normalization ---
+  # ---------------------------
+  # 5) Normalization
+  # ---------------------------
   norm_counts <- counts
   if (method == "log2") {
     norm_counts <- log2(norm_counts + 1)
@@ -148,7 +276,13 @@ rna.normalize <- function(imp_data,
         !"gene_length" %in% colnames(imp_data$annotation)) {
       stop("TPM normalization requires a 'gene_length' column in imp_data$annotation.")
     }
-    rpk <- counts / (imp_data$annotation$gene_length / 1000)
+
+    ann <- imp_data$annotation
+    ann <- ann[match(rownames(counts), ann$gene_id), ]
+    if (any(is.na(ann$gene_length))) {
+      stop("Gene length missing for some genes.")
+    }
+    rpk <- counts / (ann$gene_length / 1000)
     norm_counts <- t(t(rpk) / colSums(rpk) * 1e6)
   } else if (method == "quantile") {
     if (!requireNamespace("limma", quietly = TRUE))
@@ -163,7 +297,7 @@ rna.normalize <- function(imp_data,
 
     counts <- round(counts)
 
-    # Create object DESeq2
+    # --- Create object DESeq2 ---
     dds <- DESeq2::DESeqDataSetFromMatrix(
       countData = counts,
       colData = metadata,
@@ -179,7 +313,9 @@ rna.normalize <- function(imp_data,
     }
   }
 
-  # --- 4. Quality metrics ---
+  # ---------------------------
+  # 6) Quality metrics
+  # ---------------------------
   QC_metrics <- data.frame(
     Sample = colnames(norm_counts),
     Library_size = colSums(norm_counts),
@@ -187,42 +323,67 @@ rna.normalize <- function(imp_data,
     row.names = NULL
   )
 
-  # --- 5. Metadata alignment ---
+  # ---------------------------
+  # 7) Metadata alignment
+  # ---------------------------
   metadata <- metadata[match(colnames(norm_counts), metadata$Sample), , drop = FALSE]
   if (!all(metadata$Sample == colnames(norm_counts))) {
     warning("Metadata and expression matrix were realigned to match sample order.")
   }
 
-  # --- 6. Final object ---
+  # ---------------------------
+  # 8) Final object
+  # ---------------------------
   obj <- list(
+    timestamp = Sys.time(),
     expr_matrix = norm_counts,
     metadata = metadata,
     method = method,
     removed_genes = removed_genes,
     removed_samples = length(outliers_s),
-    QC_metrics = QC_metrics
+    QC_metrics = QC_metrics,
+    gene_id_version_cleaned = clean_gene_versions,
+    gene_id_type = imp_data$gene_id_type
   )
   class(obj) <- "normalized_data"
 
-  if (assign_result) {
-    assign(assign_name, obj, envir = envir)
-    print(obj)
-    invisible(obj)
-  } else {
-    return(obj)
-  }
+  # ---------------------------
+  # 9) Attach to project
+  # ---------------------------
+  if (save) {
+
+  proj <- .attach_to_project(
+    proj,
+    obj,
+    slot = "data",
+    subtype = "normalized_data",
+    prefix = "norm",
+    log = list(
+      method = method,
+      n_genes = nrow(obj$expr_matrix),
+      n_samples = ncol(obj$expr_matrix),
+      removed_genes = removed_genes,
+      removed_samples = length(outliers_s)
+    )
+  )
 }
 
-#' @export
-print.normalized_data <- function(x, ...) {
-  message("================================")
-  message("Object of class 'normalized_data'")
-  message("================================")
-  message("Samples: ", ncol(x$expr_matrix))
-  message("Genes:   ", nrow(x$expr_matrix))
-  message("Method:  ", x$method)
-  message("Removed genes: ", x$removed_genes)
-  message("Removed samples: ", x$removed_samples)
-  message("================================")
-  invisible(x)
+  # ---------------------------
+  # 10) Return
+  # ---------------------------
+  .print_header("RNA Normalization")
+
+  .print_block("Summary", function() {
+    cat("Method:            ", method, "\n")
+    cat("Samples:           ", ncol(obj$expr_matrix), "\n")
+    cat("Genes:             ", nrow(obj$expr_matrix), "\n")
+    cat("Removed genes:     ", removed_genes, "\n")
+    cat("Removed samples:   ", length(outliers_s), "\n")
+  })
+
+  .print_block("QC Metrics (first 5 samples)", function() {
+    print(utils::head(obj$QC_metrics, 5))
+  })
+
+  return(invisible(proj))
 }

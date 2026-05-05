@@ -5,43 +5,138 @@
 \title{RNA-seq Quality Control (QC)}
 \usage{
 rna.qc(
-  normalized_data,
+  project,
   group_col = "Group",
+  display_corr_values = FALSE,
+  highlight_outliers = TRUE,
   cluster_rows = FALSE,
   cluster_cols = FALSE,
-  angle_col = 45,
-  display_corr_values = FALSE,
-  highlight_outliers = TRUE
+  plot = TRUE,
+  save = TRUE
 )
 }
 \arguments{
-\item{normalized_data}{An object returned by \code{\link[=rna.normalize]{rna.normalize()}}, containing \code{expr_matrix} and \code{metadata}.}
+\item{project}{\code{rna_project} object created by \code{rna.project()}.}
 
-\item{group_col}{Character; column in \code{metadata} indicating group assignment (default \code{"Group"}).}
+\item{group_col}{Character. Column in metadata indicating biological groups
+(default: \code{"Group"}).}
 
-\item{cluster_rows}{Logical; whether to cluster rows in the correlation heatmap (default \code{FALSE}).}
+\item{display_corr_values}{Logical. If \code{TRUE}, overlays correlation coefficients
+on the heatmap (default: \code{FALSE}).}
 
-\item{cluster_cols}{Logical; whether to cluster columns in the correlation heatmap (default \code{FALSE}).}
+\item{highlight_outliers}{Logical. If \code{TRUE}, detects and highlights outlier samples
+based on library size (default: \code{TRUE}).}
 
-\item{angle_col}{Numeric; rotation angle for x-axis labels in plots (default \code{45}).}
+\item{cluster_rows}{Logical. Whether to cluster rows in the sample correlation
+heatmap (default: \code{FALSE}).}
 
-\item{display_corr_values}{Logical; if \code{TRUE}, displays correlation coefficients on the heatmap (default \code{FALSE}).}
+\item{cluster_cols}{Logical. Whether to cluster columns in the sample correlation
+heatmap (default: \code{FALSE}).}
 
-\item{highlight_outliers}{Logical; if \code{TRUE}, identifies and marks library size outliers (default \code{TRUE}).}
+\item{plot}{Logical. If \code{TRUE}, generates diagnostic plots (default: \code{TRUE}).}
+
+\item{save}{Logical. Whether to store results in the active \code{rna_project}
+(default: \code{TRUE}).}
 }
 \value{
-Returns an object of class \code{"rnaQC"} containing:
+An object of class \code{"rna_QC"} containing:
 \describe{
 \item{data_ready}{Expression matrix used for QC.}
-\item{corr_matrix_samples}{Correlation matrix of samples.}
-\item{plot_density}{Density plot object.}
-\item{plot_expr_boxplot}{Expression boxplot object.}
-\item{plot_lib_boxplot}{Library size boxplot object.}
-\item{summary}{List with library size, genes detected, outliers, and percent genes detected per group.}
+\item{corr_matrix_samples}{Sample-wise correlation matrix.}
+\item{plot_density}{Density plot of expression values (if \code{plot = TRUE}).}
+\item{plot_expr_boxplot}{Boxplot of expression distributions per sample.}
+\item{plot_lib_boxplot}{Barplot of library sizes per sample.}
+\item{summary}{List with basic QC metrics such as library size, genes detected,
+and identified outliers.}
+\item{qc_metrics}{Detailed QC metrics including library variation,
+correlation structure, and classification of dataset quality.}
 }
 }
 \description{
-Perform basic quality control on normalized RNA-seq data.
-Generates library size barplots, expression boxplots, density plots,
-and sample correlation heatmaps. Highlights potential outlier samples.
+Performs comprehensive quality control (QC) on normalized RNA-seq data
+stored in the active \code{rna_project}. This function provides a structured
+overview of sample quality, expression distributions, and overall dataset
+consistency, helping identify technical artifacts and potential outliers
+before downstream analyses.
+}
+\details{
+This function evaluates RNA-seq data quality through multiple complementary perspectives:
+
+\strong{1. Library size assessment}
+\itemize{
+\item Computes total counts per sample
+\item Identifies outliers using IQR-based thresholds
+\item Calculates coefficient of variation (CV) across samples
+}
+
+\strong{2. Expression distribution}
+\itemize{
+\item Boxplots reveal global expression differences between samples
+\item Density plots highlight distribution shifts across groups
+}
+
+\strong{3. Sample correlation structure}
+\itemize{
+\item Computes pairwise Pearson correlation between samples
+\item Identifies low-correlation samples
+\item Compares intra-group vs inter-group similarity
+}
+
+\strong{4. Biological signal evaluation}
+\itemize{
+\item Estimates whether group structure is preserved in the data
+\item Stronger intra-group than inter-group correlation suggests biological signal
+}
+
+\strong{5. Automated QC classification}
+\itemize{
+\item Library quality (based on CV)
+\item Correlation consistency
+\item Overall dataset assessment with diagnostic flags
+}
+
+These metrics are summarized into an interpretable QC report, helping guide
+decisions such as removing samples, revisiting normalization, or proceeding
+with downstream analyses.
+}
+\section{Interpretation guide}{
+
+\itemize{
+\item \strong{High-quality data}: low library CV, high sample correlation, clear group structure
+\item \strong{Potential issues}:
+\itemize{
+\item High library size variation -> technical variability
+\item Low correlation samples -> possible outliers or batch effects
+\item Weak group separation -> low biological signal or noisy data
+}
+}
+
+QC should always be interpreted in context: biological heterogeneity,
+experimental design, and normalization method can all influence these metrics.
+}
+
+\section{Pipeline context}{
+
+This function is typically used after \code{rna.normalize()}.
+}
+
+\examples{
+\dontrun{
+# Basic QC
+rna.qc(project = my_project)
+
+# QC with custom grouping
+rna.qc(my_project,
+       group_col = "Condition")
+
+# Display correlation values and highlight structure
+rna.qc(my_project,
+       display_corr_values = TRUE)
+
+# Disable plotting (metrics only)
+rna.qc(my_project,
+       plot = FALSE)
+
+}
+
 }

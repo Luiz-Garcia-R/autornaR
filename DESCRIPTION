@@ -1,7 +1,7 @@
 Package: autornaR
 Type: Package
 Title: Comprehensive RNAseq Data Analysis and Visualization
-Version: 0.0.1
+Version: 0.2.0
 Authors@R: 
     person("Luiz", "Garcia", 
            email = "luiz.cardoso@ufpr.br", 
@@ -15,37 +15,17 @@ Description: Designed to streamline the analysis of RNA-seq data.
     for pairwise group comparisons but can be applied to more complex experimental designs.
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
-Imports:
-    stats,
-    graphics,
-    utils,
-    ggplot2,
-    dplyr,
-    tidyr,
-    pheatmap,
-    pROC,
-    biomaRt,
-    patchwork,
-    ComplexUpset,
-    ggrepel,
-    DESeq2,
-    SummarizedExperiment
-Suggests:
-    crayon,
-    RColorBrewer,
-    tibble,
-    rlang,
-    stringr,
-    clusterProfiler,
-    enrichplot,
-    limma,
-    Rtsne,
-    umap,
-    org.Hs.eg.db,
-    org.Mm.eg.db,
-    knitr
-Depends: 
-    R (>= 3.5)
+Imports: stats, graphics, utils, ggplot2, dplyr, tidyr, data.table,
+        pheatmap, pROC, biomaRt, patchwork, ComplexUpset, BiocParallel,
+        ggrepel, DESeq2, limma, msigdbr, edgeR, SummarizedExperiment,
+        fgsea, AnnotationDbi, igraph, ggraph, tidygraph, scales, umap
+Suggests: crayon, RColorBrewer, tibble, rlang, stringr,
+        clusterProfiler, enrichplot, Rtsne, org.Hs.eg.db, org.Mm.eg.db,
+        org.Dr.eg.db, knitr, FNN
+Depends: R (>= 3.5)
+NeedsCompilation: no
+Packaged: 2026-05-05 14:18:07 UTC; Seu Computador
+Author: Luiz Garcia [aut, cre] (<https://orcid.org/0000-0002-9616-0927>, UFPR)
+Maintainer: Luiz Garcia <luiz.cardoso@ufpr.br>

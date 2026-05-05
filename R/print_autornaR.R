@@ -13,6 +13,7 @@
 #' @method print rnaQC
 #' @export
 #' @rdname print.rnaQC
+
 print.rnaQC <- function(x, ...) {
   message("==============================")
   message("Object of class 'rnaQC'")
@@ -30,51 +31,6 @@ print.rnaQC <- function(x, ...) {
 }
 
 # --------------------------------------------
-#' Print Method for rnaRank Objects
-#'
-#' Custom print method for objects returned by \code{rna.rank()}.
-#'
-#' @param x An object returned by \code{rna.rank()}.
-#' @param ... Additional arguments (ignored).
-#'
-#' @method print rnaRank
-#' @export
-#' @rdname print.rnaRank
-print.rnaRank <- function(x, ...) {
-  message("==============================")
-  message("Object returned by 'rna.rank()'")
-  message("==============================")
-  message("Number of ranked genes: ", nrow(x$ranked_genes))
-  message("Groups analyzed: ", paste(unique(x$ranked_genes$Group), collapse=", "))
-  message("==============================")
-  message("You can visualize rankings with the 'plot' element:")
-  message(" - x$plot")
-  message("Or extract top genes from x$ranked_genes")
-  invisible(x)
-}
-
-# --------------------------------------------
-#' Print Method for rnaTtest Objects
-#'
-#' Custom print method for objects returned by \code{rna.ttest()}.
-#'
-#' @param x An object returned by \code{rna.ttest()}.
-#' @param ... Additional arguments (ignored).
-#'
-#' @method print rnaTtest
-#' @export
-#' @rdname print.rnaTtest
-print.rnaTtest <- function(x, ...) {
-  message("==============================")
-  message("Object returned by 'rna.ttest()'")
-  message("==============================")
-  message("Number of genes tested: ", length(x$tests))
-  message("Use the plots in x$plots to visualize expression differences")
-  message("Example to access test results for a gene: x$tests[['GENE_NAME']]")
-  invisible(x)
-}
-
-# --------------------------------------------
 #' Print Method for rnaROC Objects
 #'
 #' Custom print method for objects returned by \code{rna.roc()}.
@@ -85,6 +41,7 @@ print.rnaTtest <- function(x, ...) {
 #' @method print rnaROC
 #' @export
 #' @rdname print.rnaROC
+
 print.rnaROC <- function(x, ...) {
   message("==============================")
   message("Object returned by 'rna.roc()'")
@@ -107,6 +64,7 @@ print.rnaROC <- function(x, ...) {
 #' @method print rnaVolcano
 #' @export
 #' @rdname print.rnaVolcano
+
 print.rnaVolcano <- function(x, ...) {
   message("==============================")
   message("Object returned by 'rna.volcano()'")

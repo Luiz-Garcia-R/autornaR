@@ -1,0 +1,13 @@
+citHeader("To cite autotesteR:")
+
+bibentry(
+  bibtype = "Manual",
+  title   = "autotesteR: Tools for streamlined RNA-seq data analysis",
+  author  = person(
+    "Luiz Fernando", "Cardoso Garcia",
+    comment = "Universidade Federal do Paraná"
+  ),
+  year    = "2025",
+  note    = "R package version 0.1.0",
+  url     = "https://github.com/seu-usuario/autotesteR"
+)

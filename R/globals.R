@@ -12,8 +12,8 @@ if (getRversion() >= "2.15.1") {
     # UpSet / helpers
     "presence_df", "presence_list", "intersect",
 
-    # ggplot / tidyverse helpers
-    ".data",
+    # ggplot / tidyverse helpers / aes
+    ".data", "weight", "logFC", "label", "layout_weight",
 
     # PCA / dimensionality reduction
     "PC1", "PC2", "Comp1", "Comp2",
@@ -26,7 +26,7 @@ if (getRversion() >= "2.15.1") {
 
     # From rna_identify()
     "transcript_biotype", "description", "gene_biotype", "original_id",
-    "expressed", "gene_biotype_plot", "prop", "total",
+    "expressed", "gene_biotype_plot", "prop", "total", "lnc_type",
 
     # Differential expression / volcano
     "Regulation", "pvalue",

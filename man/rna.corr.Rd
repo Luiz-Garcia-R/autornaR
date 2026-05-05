@@ -2,49 +2,154 @@
 % Please edit documentation in R/rnaCorr.R
 \name{rna.corr}
 \alias{rna.corr}
-\title{Compute and visualize sample correlations from normalized RNA-seq data}
+\title{Correlation analysis between RNA-seq samples or groups}
 \usage{
-rna.corr(normalized_data, method = "auto", plot = TRUE, verbose = TRUE)
+rna.corr(
+  project,
+  method = c("auto", "pearson", "spearman", "kendall"),
+  mode = c("sample", "group", "gene"),
+  group = NULL,
+  genes = NULL,
+  compute_mi = TRUE,
+  mi_method = c("discrete", "knn"),
+  sample_x = NULL,
+  sample_y = NULL,
+  save = TRUE,
+  verbose = TRUE
+)
 }
 \arguments{
-\item{normalized_data}{A \code{normalized_data} object containing an expression
-matrix (\code{expr_matrix}) and metadata (\code{metadata}).}
+\item{project}{\code{rna_project} object created by \code{rna.project()}.}
 
-\item{method}{Character. Correlation method: \code{"pearson"}, \code{"spearman"},
-\code{"kendall"}, or \code{"auto"} for automatic selection based on normality tests
-(default: \code{"auto"}).}
+\item{method}{Character. Correlation method to use.
+One of:
+\itemize{
+\item \code{"auto"} (default): automatic method selection
+\item \code{"pearson"}
+\item \code{"spearman"}
+\item \code{"kendall"}
+}}
 
-\item{plot}{Logical. If \code{TRUE}, plots a correlation heatmap and, when
-applicable, a scatterplot (default: \code{TRUE}).}
+\item{mode}{Character. Correlation structure:
+\itemize{
+\item \code{"group"}: correlation between experimental groups
+\item \code{"sample"}: correlation between individual samples
+\item \code{"gene"}: correlation between selected genes
+}}
 
-\item{verbose}{Logical. If \code{TRUE}, prints progress and method selection
-messages (default: \code{TRUE}).}
+\item{group}{Optional. Subsets the data to a specific experimental group when mode = "gene".}
+
+\item{genes}{Character vector of length 2 with both gene symbol or ENSG.}
+
+\item{compute_mi}{Logical. If \code{TRUE}, computes mutual information (MI)
+between variables to capture non-linear dependencies not detected by
+correlation coefficients.}
+
+\item{mi_method}{Character. Method used to estimate mutual information.
+One of:
+\itemize{
+\item \code{"discrete"}: discretization-based estimator
+\item \code{"knn"}: k-nearest neighbors estimator (continuous data, default)
+}}
+
+\item{sample_x}{Character. Name of first sample (required when \code{mode = "sample"}).}
+
+\item{sample_y}{Character. Name of second sample (required when \code{mode = "sample"}).}
+
+\item{save}{Logical. Whether to store results in the active \code{rna_project}.}
+
+\item{verbose}{Logical. If \code{TRUE} (default), prints selected method (when auto)
+and displays the correlation plot.}
 }
 \value{
-A numeric correlation matrix.
+An object of class \code{"rna_correlation"} containing:
+\itemize{
+\item \code{method} — Method used for correlation
+\item \code{mode} — Correlation mode ("group", "sample" or "gene")
+\item \code{estimate} — Correlation coefficient
+\item \code{p.value} — P-value from \code{cor.test}
+\item \code{mi}, \code{mi_norm}, \code{mi_method} — Mutual information metrics (if computed)
+\item \code{relation_type} — Heuristic classification of dependency structure
+\item \code{conf.int} — Confidence interval
+\item \code{interpretation} — Strength classification
+\item \code{diagnostics} — Method selection diagnostics
+\item \code{structure} — Structural information about compared entities
+\item \code{plot} — ggplot object
+}
 }
 \description{
-This function calculates sample-to-sample correlation matrices and optionally
-produces a correlation heatmap and a group-wise scatterplot of mean expression
-values. The correlation method can be automatically determined based on
-data normality or manually specified.
+Computes correlation between two RNA-seq samples or experimental groups
+using Pearson, Spearman, or Kendall methods. When \code{method = "auto"},
+the function automatically selects the most appropriate method based on
+normality, presence of ties, sample size, and outlier fraction.
 }
 \details{
-The function first checks whether all samples show normal distributions using
-the Shapiro–Wilk test and whether there are ties. If all samples appear
-normally distributed and no ties are present, Pearson correlation is used;
-otherwise, Spearman correlation is applied.
+The function requires an active \code{rna_project} object containing
+normalized expression data and metadata.
 
-If \code{plot = TRUE}, two plots are produced:
+When mode = "gene", genes can be provided as Ensembl IDs or gene symbols.
+The function automatically resolves identifiers and displays gene symbols
+when available.
+
+Automatic method selection follows these rules:
+
 \itemize{
-\item A heatmap showing all pairwise sample correlations.
-\item A scatterplot comparing group-wise mean expression values if two
-groups are available.
+\item Extreme outlier fraction (> 10\%) -> Kendall
+\item Moderate outliers (> 3\%) or presence of ties -> Spearman
+\item Large sample size (> 5000 observations) -> Pearson
+\item Approximate normality (Shapiro–Wilk) -> Pearson
+\item Otherwise -> Spearman
 }
+
+Outliers are detected using the IQR rule (1.5 × IQR).
+
+The smoothing line in the plot depends on the correlation method:
+linear regression is used for Pearson, while loess smoothing is used
+for rank-based methods (Spearman/Kendall) to capture non-linear trends.
+
+In addition to correlation, the function can compute Mutual Information (MI),
+which captures both linear and non-linear dependencies between variables.
+
+When MI is enabled, the function also provides:
+\itemize{
+\item \code{non_linear_signal} — difference between MI and absolute correlation,
+indicating potential non-linear structure
+\item \code{relation_type} — heuristic classification of the relationship:
+\itemize{
+\item "strong linear relationship"
+\item "monotonic (possibly non-linear)"
+\item "non-linear complex relationship"
+\item "weak or ambiguous relationship"
+\item "no clear association"
+}
+}
+
+Note: Mutual information values are not directly comparable to correlation
+coefficients and depend on the estimation method.
+
+These metrics are exploratory and should be interpreted within the
+context of the data and experimental design.
+
+The function stores results inside the active project under:
+\code{rna_project$analyses$correlation}.
 }
 \examples{
 \dontrun{
-corr_mat <- rna.corr(normalized_data)
+# Group correlation (automatic method selection)
+rna.corr(project = my_project,
+         mode = "group")
+
+# Sample-to-sample correlation
+rna.corr(my_project,
+         mode = "sample",
+         sample_x = "Control_1",
+         sample_y = "Treatment_2"
+)
+
+# Gene-to-gene correlation
+rna.corr(my_project,
+         mode = "gene",
+         genes = c("gene1", "gene2"))
 }
 
 }

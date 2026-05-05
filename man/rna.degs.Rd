@@ -2,27 +2,117 @@
 % Please edit documentation in R/rnaDEGs.R
 \name{rna.degs}
 \alias{rna.degs}
-\title{Identify and visualize top up- and down-regulated genes with gene symbols}
+\title{Extract and visualize top differentially expressed genes (DEGs)}
 \usage{
-rna.degs(comp_data, top_n = 10, plot = TRUE, verbose = TRUE)
+rna.degs(
+  project,
+  contrast = NULL,
+  top_n = 10,
+  padj_cutoff = 0.05,
+  plot = TRUE,
+  save = TRUE,
+  verbose = TRUE
+)
 }
 \arguments{
-\item{comp_data}{A data frame with DE results (from rna.compare), or a list with \code{res}.
-Must include a column named \code{log2FoldChange}.}
+\item{project}{\code{rna_project} object created by \code{rna.project()}.}
 
-\item{top_n}{Integer. Number of genes from each end of fold-change distribution (default: 10).}
+\item{contrast}{Identifier of the comparison to use. Can be:
+\itemize{
+\item A character string matching a stored comparison name
+\item A numeric index (position in stored comparisons)
+\item \code{NULL} to use the most recent comparison
+}}
 
-\item{plot}{Logical. If TRUE, produces a bar plot of top genes (default: TRUE).}
+\item{top_n}{Integer. Number of genes to select from each tail of the
+log2 fold-change distribution (default: 10).}
 
-\item{verbose}{Logical. If TRUE, prints informative messages (default: TRUE).}
+\item{padj_cutoff}{Numeric. Adjusted p-value threshold used to define
+significant genes (default: 0.05).}
+
+\item{plot}{Logical. If \code{TRUE}, produces a bar plot of top genes.}
+
+\item{save}{Logical. Whether to store results in the active
+\code{rna_project}.}
+
+\item{verbose}{Logical. Whether to print informative messages.}
 }
 \value{
-A list with:
-\item{top_genes}{Data frame of top up- and down-regulated genes.}
-\item{plot}{A \code{ggplot} object (or NULL if plot = FALSE).}
+An object of class \code{"deg_result"} containing:
+\itemize{
+\item \code{comparison}: Comparison identifier
+\item \code{contrast}: Vector with \code{test} and \code{reference}
+\item \code{deg_table}: Full differential expression table
+\item \code{top_genes}: Data frame of selected top genes
+\item \code{plot}: \code{ggplot} object (or \code{NULL})
+\item \code{summary}: Summary statistics including:
+\itemize{
+\item Total genes
+\item Number of up- and down-regulated genes
+\item Number of significant genes
+\item Distribution metrics (mean, median, extremes)
+}
+\item \code{params}: Parameters used (e.g., \code{top_n}, \code{timestamp})
+}
 }
 \description{
-This function extracts the top up- and down-regulated genes from a
-differential expression results table (typically from DESeq2 via rna.compare)
-and optionally produces a bar plot showing their log2 fold changes using gene symbols.
+Identifies the top up- and down-regulated genes from a differential
+expression analysis performed with \code{rna.compare()}, and optionally
+generates a bar plot of log2 fold-changes using gene symbols.
+
+Gene identifiers are automatically mapped to symbols using \pkg{biomaRt},
+based on the organism defined in the active \code{rna_project}.
+}
+\details{
+The function ranks genes based on log2 fold-change and extracts the top
+\code{top_n} most upregulated and downregulated genes.
+
+\strong{Contrast interpretation:}
+The log2 fold-change is defined as \strong{test − reference}, inherited
+from \code{rna.compare()}. Therefore:
+\itemize{
+\item Positive values indicate higher expression in the test group
+\item Negative values indicate higher expression in the reference group
+}
+
+Gene identifiers are mapped to symbols using \pkg{biomaRt}. If mapping fails,
+original gene IDs are used as fallback.
+
+The bar plot displays:
+\itemize{
+\item Top upregulated genes (positive log2FC)
+\item Top downregulated genes (negative log2FC)
+\item Color-coded regulation direction
+}
+}
+\section{Output summary}{
+
+A summary is printed to the console including:
+\itemize{
+\item Total genes analyzed
+\item Number of up- and down-regulated genes
+\item Directional bias (percentage of upregulated genes)
+\item Number of significant genes (if available)
+\item Table of top genes
+}
+}
+
+\examples{
+\dontrun{
+# Use last comparison
+rna.degs(project = my_project)
+
+# Specify comparison by name
+rna.degs(my_project,
+         contrast = "treated_vs_control")
+
+# Select more genes
+rna.degs(my_project,
+         top_n = 20)
+
+# Disable plotting
+rna.degs(my_project,
+         plot = FALSE)
+}
+
 }

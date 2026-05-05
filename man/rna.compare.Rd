@@ -2,67 +2,131 @@
 % Please edit documentation in R/rnaCompare.R
 \name{rna.compare}
 \alias{rna.compare}
-\title{Compare RNA-seq groups using DESeq2}
+\title{Differential expression analysis using DESeq2 or limma-voom}
 \usage{
 rna.compare(
-  normalized_data,
+  project,
   group_col = "Group",
-  method = "deseq2",
   batch_col = "Batch",
-  clean_ids = TRUE,
-  assign_result = TRUE,
-  assign_name = "comp_data",
+  method = c("deseq2", "limma"),
+  contrast = NULL,
   plot = TRUE,
-  verbose = TRUE,
-  envir = parent.frame()
+  save = TRUE,
+  store_model = FALSE,
+  verbose = TRUE
 )
 }
 \arguments{
-\item{normalized_data}{A \code{normalized_data} object containing an expression
-matrix (\code{expr_matrix}) and associated metadata (\code{metadata}).}
+\item{project}{\code{rna_project} object created by \code{rna.project()}.}
 
-\item{group_col}{Character. Column name in \code{metadata} defining the comparison
+\item{group_col}{Character. Column name in metadata defining experimental
 groups (default: \code{"Group"}).}
 
-\item{method}{Character. Currently only \code{"deseq2"} is supported.}
+\item{batch_col}{Optional character. Column specifying batch effects.
+If present in metadata, it is included in the design formula.}
 
-\item{batch_col}{Optional character. Column name specifying batch information
-(default: \code{"Batch"}). If not found, batch correction is skipped.}
+\item{method}{Character. Differential expression method:
+\code{"deseq2"} or \code{"limma"}.}
 
-\item{clean_ids}{Logical. Whether to clean Ensembl gene IDs by removing
-version suffixes (default: \code{TRUE}).}
+\item{contrast}{Specifies the comparison(s) to perform. Can be:
+\itemize{
+\item A character vector of length 2: \code{c("test", "reference")}
+\item A list of such vectors for multiple contrasts
+\item \code{NULL}: automatically inferred if exactly two groups exist
+}}
 
-\item{assign_result}{Logical. If \code{TRUE}, assigns the result object to the
-parent environment (default: \code{TRUE}).}
+\item{plot}{Logical. If \code{TRUE}, displays diagnostic plots:
+MA plot (both methods) and dispersion plot (DESeq2 only).}
 
-\item{assign_name}{Character. Name to assign the output object if
-\code{assign_result = TRUE} (default: \code{"comp_data"}).}
+\item{save}{Logical. Whether to store results in the active \code{rna_project}.}
 
-\item{plot}{Logical. If \code{TRUE}, shows basic DESeq2 diagnostic plots
-(default: \code{TRUE}).}
+\item{store_model}{Logical. Wheter to store the complete model results in the active \code{rna_project}.}
 
-\item{verbose}{Logical. If \code{TRUE}, prints progress messages
-(default: \code{TRUE}).}
-
-\item{envir}{Environment. Environment where the output will be assigned
-if \code{assign_result = TRUE} (default: \code{parent.frame()}).}
+\item{verbose}{Logical. Whether to print progress messages.}
 }
 \value{
-An object of class \code{"rnaCompare"} containing:
-\item{dds}{The DESeqDataSet object.}
-\item{res}{A data frame with DESeq2 results.}
-\item{contrast}{The contrast used for comparison.}
-\item{plots}{A list of plotting functions.}
+Returns (invisibly) either:
+\itemize{
+\item A single object of class \code{"rnaCompare"} if one contrast is specified
+\item A named list of such objects if multiple contrasts are provided
+}
+
+Each \code{"rnaCompare"} object contains:
+\itemize{
+\item \code{model}: Fitted model object (\code{DESeqDataSet} or \code{MArrayLM})
+\item \code{res}: Data frame with differential expression results
+\item \code{contrast}: Contrast specification used
+\item \code{groups}: List with \code{test} and \code{reference}
+\item \code{method}: Method used ("deseq2" or "limma")
+\item \code{plots}: List of plotting functions (MA and dispersion)
+}
 }
 \description{
-Performs differential expression analysis between two groups
-in a normalized RNA-seq dataset using the DESeq2 package.
+Performs differential expression analysis between experimental groups
+using RNA-seq count data stored in the active \code{rna_project}.
+Supports both \pkg{DESeq2} and \pkg{limma} (voom) frameworks.
+
+The function handles design matrix construction, contrast specification,
+and result extraction, returning standardized outputs across methods.
 }
+\details{
+The function requires raw count data and expects that normalization has been
+performed with \code{rna.normalize(method = "none")} to preserve integer counts.
+
+\strong{Contrast definition:}
+All contrasts are defined as \strong{test − reference}, which determines
+the sign of the log2 fold-change:
+\itemize{
+\item Positive log2FC -> higher expression in test group
+\item Negative log2FC -> higher expression in reference group
+}
+
+\strong{Method-specific details:}
+\itemize{
+\item \pkg{DESeq2}: Uses negative binomial GLM with dispersion estimation.
+\item \pkg{limma}: Uses voom transformation followed by linear modeling
+with empirical Bayes moderation.
+}
+
+Multiple contrasts can be specified and will be computed independently.
+Each result is stored with a unique identifier in:
+\code{rna_project$analyses$comparison}.
+}
+\section{Output summary}{
+
+A summary is printed to the console including:
+\itemize{
+\item Total genes tested
+\item Number of significant genes (adjusted p-value < 0.05)
+\item Number of up- and down-regulated genes
+\item Top-ranked genes
+}
+}
+
 \examples{
 \dontrun{
-result <- rna.compare(normalized_data)
-print(result)
-result$plots$MA()
+# Basic usage (two groups automatically detected)
+rna.compare(project = my_project)
+
+# Explicit contrast
+rna.compare(my_project,
+            contrast = c("treated", "control"))
+
+# Multiple contrasts
+rna.compare(my_project,
+            contrast = list(
+                            c("treated", "control"),
+                            c("treated2", "control")
+  )
+)
+
+# Using limma instead of DESeq2
+rna.compare(my_project,
+            method = "limma")
+
+# Including batch effect
+rna.compare(my_project
+            batch_col = "Batch")
 }
 
 }

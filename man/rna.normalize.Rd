@@ -2,10 +2,10 @@
 % Please edit documentation in R/rnaNormalize.R
 \name{rna.normalize}
 \alias{rna.normalize}
-\title{Normalize RNA-seq count data}
+\title{Normalize RNA-seq count data with integrated QC and filtering}
 \usage{
 rna.normalize(
-  imp_data,
+  project,
   method = c("none", "log2", "cpm", "tpm", "rlog", "vst", "quantile", "upper-quartile"),
   filter_low = TRUE,
   min_expr = 10,
@@ -13,65 +13,150 @@ rna.normalize(
   remove_outlier_samples = TRUE,
   remove_outlier_genes = TRUE,
   outlier_method = c("iqr", "zscore"),
-  assign_result = TRUE,
-  assign_name = "normalized_data",
-  envir = parent.frame(),
-  help = FALSE
+  clean_gene_versions = TRUE,
+  gene_id_sep = "\\\\.",
+  save = TRUE
 )
 }
 \arguments{
-\item{imp_data}{An object of class \code{"imp_data"} as returned by \code{\link[=rna.import]{rna.import()}}.}
+\item{project}{\code{rna_project} object created by \code{rna.project()}.}
 
-\item{method}{Normalization method. One of:
-\code{"none"}, \code{"log2"}, \code{"cpm"}, \code{"tpm"}, \code{"rlog"}, \code{"vst"}, \code{"quantile"}, or \code{"upper-quartile"}.}
+\item{method}{Character. Normalization method to apply:
+\itemize{
+\item \code{"none"}: No normalization (raw counts retained)
+\item \code{"log2"}: Log2 transformation (\code{log2(count + 1)})
+\item \code{"cpm"}: Counts per million (library size normalization)
+\item \code{"tpm"}: Transcripts per million (length-normalized expression)
+\item \code{"rlog"}: Regularized log transformation (DESeq2)
+\item \code{"vst"}: Variance stabilizing transformation (DESeq2)
+\item \code{"quantile"}: Quantile normalization (limma)
+\item \code{"upper-quartile"}: Upper-quartile normalization
+}}
 
-\item{filter_low}{Logical; if \code{TRUE}, removes genes with low expression (default \code{TRUE}).}
+\item{filter_low}{Logical. If \code{TRUE}, removes lowly expressed genes
+prior to normalization (default: \code{TRUE}).}
 
-\item{min_expr}{Numeric; minimum count threshold (default \code{10}).}
+\item{min_expr}{Numeric. Minimum count threshold used to define expression
+(default: \code{10}).}
 
-\item{filter_min_prop}{Numeric; minimum proportion of samples expressing at least
-\code{min_expr} counts (default \code{0.1}).}
+\item{filter_min_prop}{Numeric. Minimum proportion of samples in which a gene
+must be expressed (above \code{min_expr}) to be retained (default: \code{0.1}).}
 
-\item{remove_outlier_samples}{Logical; if \code{TRUE}, detects and removes outlier samples (default \code{TRUE}).}
+\item{remove_outlier_samples}{Logical. If \code{TRUE}, detects and removes
+samples with abnormal library sizes (default: \code{TRUE}).}
 
-\item{remove_outlier_genes}{Logical; if \code{TRUE}, detects and removes outlier genes (default \code{TRUE}).}
+\item{remove_outlier_genes}{Logical. If \code{TRUE}, removes genes with extreme
+variance profiles (default: \code{TRUE}).}
 
-\item{outlier_method}{Character; method for outlier detection, either \code{"iqr"} or \code{"zscore"}.}
+\item{outlier_method}{Character. Method for outlier detection:
+\code{"iqr"} (robust, default) or \code{"zscore"}.}
 
-\item{assign_result}{Logical; if \code{TRUE}, assigns the normalized object in the calling environment (default \code{TRUE}).}
+\item{clean_gene_versions}{Logical. If \code{TRUE}, removes version suffixes
+from gene identifiers (e.g., \code{ENSG000001.5 -> ENSG000001}) when using
+Ensembl IDs (default: \code{TRUE}).}
 
-\item{assign_name}{Character; name to assign the normalized object (default \code{"normalized_data"}).}
+\item{gene_id_sep}{Character. Regular expression defining the separator used
+for gene version removal (default: \code{"\\."}).}
 
-\item{envir}{Environment where to assign the object.}
-
-\item{help}{Logical; if \code{TRUE}, prints short help information and exits.}
+\item{save}{Logical. Whether to store the normalized data inside the active
+\code{rna_project} (default: \code{TRUE}).}
 }
 \value{
-An object of class \code{"normalized_data"} containing:
+Invisibly returns an object of class \code{"normalized_data"} containing:
 \describe{
-\item{expr_matrix}{Normalized expression matrix.}
-\item{metadata}{Sample metadata, realigned with the matrix.}
+\item{expr_matrix}{Normalized expression matrix (genes × samples).}
+\item{metadata}{Aligned sample metadata.}
 \item{method}{Normalization method used.}
-\item{removed_genes}{Number of genes removed.}
-\item{removed_samples}{Number of samples removed.}
-\item{QC_metrics}{Basic quality control metrics.}
+\item{removed_genes}{Number of genes removed during filtering/outlier steps.}
+\item{removed_samples}{Number of samples removed as outliers.}
+\item{QC_metrics}{Data frame with per-sample QC metrics (library size and detected genes).}
+\item{gene_id_version_cleaned}{Logical indicating whether gene IDs were cleaned.}
+\item{gene_id_type}{Original gene identifier type (e.g., ENSEMBL, SYMBOL).}
 }
 }
 \description{
-Normalizes raw RNA-seq counts from an \code{imp_data} object created by \code{\link[=rna.import]{rna.import()}}.
-Supports multiple normalization methods, low-expression filtering, and optional
-outlier removal at both sample and gene levels.
+Performs normalization of raw RNA-seq count data stored in the active
+\code{rna_project} object (created with \code{rna.project()} and populated
+via \code{rna.import()}). The function integrates gene filtering,
+outlier detection, and multiple normalization strategies into a single,
+reproducible workflow.
+
+The resulting normalized dataset is stored internally and used as the
+standardized input for downstream analyses (e.g., differential expression,
+clustering, and pathway analysis).
 }
 \details{
-The function performs a sequence of cleaning and normalization steps:
-\enumerate{
-\item Optionally filters out genes expressed in fewer than \code{filter_min_prop}
-of samples at a level below \code{min_expr}.
-\item Detects and optionally removes outlier samples or genes using either
-IQR or z-score thresholds.
-\item Applies the specified normalization method.
-\item Returns a clean, normalized expression matrix ready for downstream analyses.
+The normalization workflow is structured into sequential steps:
+
+\strong{1. Gene filtering} \cr
+Genes with insufficient expression are removed based on the proportion
+of samples exceeding \code{min_expr}. This reduces noise and improves
+statistical stability in downstream analyses.
+
+\strong{2. Outlier detection} \cr
+Outlier samples are identified based on library size distributions, while
+outlier genes are detected using variance-based criteria. Two strategies
+are available:
+\itemize{
+\item \code{"iqr"}: Robust, recommended for most datasets
+\item \code{"zscore"}: Sensitive to extreme deviations
 }
 
-TPM normalization requires a \code{gene_length} column in \code{imp_data$annotation}.
+\strong{3. Normalization} \cr
+The selected normalization method is applied. Methods differ in their
+assumptions:
+\itemize{
+\item Count-based scaling (\code{cpm}, \code{upper-quartile})
+\item Length-aware normalization (\code{tpm})
+\item Variance stabilization (\code{vst}, \code{rlog})
+\item Distribution alignment (\code{quantile})
+}
+
+\strong{4. Quality control metrics} \cr
+Basic QC metrics are computed, including library size and number of
+detected genes per sample, enabling rapid inspection of data quality.
+
+\strong{5. Gene ID harmonization} \cr
+When Ensembl IDs include version suffixes, they are optionally removed
+to ensure compatibility with annotation databases and downstream tools.
+If duplicates arise after cleaning, counts are aggregated by gene.
+
+\strong{TPM requirement} \cr
+TPM normalization requires a \code{gene_length} column in
+\code{rna_project$input$imp_data$annotation}.
+}
+\examples{
+\dontrun{
+
+# Example 1: basic normalization (recommended starting point. \code{"None"} as default.)
+my_project <- rna.normalize(project = my_project)
+
+# Example 2: log2 transformation only (quick exploratory analysis)
+my_project <- rna.normalize(project = my_project,
+                            method = "log2")
+
+# Example 3: CPM normalization without filtering
+my_project <- rna.normalize(project = my_project,
+                            method = "cpm",
+                            filter_low = FALSE)
+}
+
+\dontrun{
+# Basic normalization
+  rna.normalize(project = my_project)
+
+# Choosing a specific normalization/transformation method
+  rna.normalize(my_project, method = "vst")
+
+# Adjust outliers
+  rna.normalize(my_project,
+                remove_outlier_samples = FALSE,
+                remove_outlier_genes = FALSE
+  )
+ }
+
+
+}
+\seealso{
+\code{\link{rna.import}}, \code{\link{rna.project}},  \code{\link{rna.qc}}
 }

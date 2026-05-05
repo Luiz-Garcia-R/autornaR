@@ -2,37 +2,138 @@
 % Please edit documentation in R/rnaRoc.R
 \name{rna.roc}
 \alias{rna.roc}
-\title{ROC analysis for selected genes}
+\title{ROC analysis for gene signatures}
 \usage{
 rna.roc(
-  normalized_data,
+  project,
   genes = NULL,
   group_col = "Group",
-  species = "mouse",
-  plot = TRUE
+  score_method = c("auto", "pca", "mean"),
+  show_gene_names = TRUE,
+  plot = TRUE,
+  save = TRUE
 )
 }
 \arguments{
-\item{normalized_data}{Object of class \code{normalized_data} (from \code{rna.normalize()}).}
+\item{project}{\code{rna_project} object created by \code{rna.project()}.}
 
-\item{genes}{Character vector of gene symbols or Ensembl IDs to analyze, or \code{"all"} for all genes (default \code{NULL}).}
+\item{genes}{Character vector of gene symbols or Ensembl IDs, or \code{"all"} to use all genes.}
 
-\item{group_col}{Character; metadata column defining sample groups (default \code{"Group"}).}
+\item{group_col}{Character. Column name in metadata defining binary groups.}
 
-\item{species}{Character; \code{"human"}, \code{"mouse"} or "\code{"zebrafish"} for gene annotation (default \code{"mouse"}).}
+\item{score_method}{Character. One of \code{"auto"}, \code{"pca"}, or \code{"mean"}.}
 
-\item{plot}{Logical; whether to plot the ROC curve (default \code{TRUE}).}
+\item{show_gene_names}{Logical. Wheter to display gene names in subtitle.}
+
+\item{plot}{Logical. Whether to display the ROC curve.}
+
+\item{save}{Logical. Whether to store results in the active \code{rna_project}.}
 }
 \value{
-A list containing:
+An object of class \code{"roc_result"} containing:
 \describe{
-\item{roc_object}{pROC ROC object.}
-\item{auc}{AUC value.}
-\item{genes}{Genes used for the analysis (symbols if available).}
-\item{method}{Method used: \code{"logistic"} or \code{"pca1"}.}
+\item{roc_object}{ROC object from \pkg{pROC}.}
+\item{auc}{Numeric AUC value.}
+\item{auc_ci}{Confidence interval for AUC.}
+\item{genes}{Genes used in the analysis.}
+\item{method}{Scoring strategy used (\code{"single_gene"}, \code{"logistic"}, or \code{"signature"}).}
+\item{score_method}{Method used for multi-gene scoring (\code{"pca"} or \code{"mean"}).}
+\item{best_threshold}{Optimal classification threshold (Youden index).}
+\item{best_sens}{Sensitivity at optimal threshold.}
+\item{best_spec}{Specificity at optimal threshold.}
 }
 }
 \description{
-Compute ROC curve and AUC for selected genes in a normalized RNA-seq dataset.
-Uses logistic regression for ≤3 genes or PCA1 for more than 3 genes.
+Computes Receiver Operating Characteristic (ROC) curves and Area Under the Curve (AUC)
+for gene-level or multi-gene signatures using normalized RNA-seq data stored in
+the active \code{rna_project}.
+
+This function provides a flexible framework to evaluate the discriminative
+performance of individual genes or gene sets in binary classification problems.
+}
+\details{
+The function adapts the prediction strategy based on the number of genes provided:
+
+\strong{Single gene}
+Expression values are directly used as predictor scores.
+
+\strong{Small gene sets (<= 5 genes)}
+A logistic regression model is fitted using gene expression as predictors.
+
+\strong{Larger gene sets (> 5 genes)}
+A composite signature score is computed:
+\itemize{
+\item \code{pca}: first principal component (default in \code{"auto"} mode)
+\item \code{mean}: average expression across genes
+}
+
+The ROC curve is computed using \pkg{pROC}, and the optimal threshold is
+determined using the Youden index.
+
+Gene identifiers can be provided as Ensembl IDs or gene symbols. When possible,
+gene symbols are retrieved automatically using \pkg{biomaRt}.
+}
+\section{Interpretation guide}{
+
+\itemize{
+\item AUC ~ 0.5 indicates no discriminative ability
+\item AUC 0.7–0.8 indicates moderate performance
+\item AUC 0.8–0.9 indicates strong performance
+\item AUC > 0.9 may indicate very strong signal or potential overfitting
+}
+
+For multi-gene signatures, interpretation depends on how the score is constructed.
+PCA-based scores capture dominant variance structure, while mean-based scores
+assume consistent directionality across genes.
+}
+
+\section{Important considerations}{
+
+\strong{Binary outcome required}
+The grouping variable must contain exactly two levels.
+
+\strong{Unsupervised signatures}
+PCA-based scoring does not use class labels and may not yield optimal classification.
+
+\strong{Large gene sets}
+Using \code{"all"} genes may produce unstable or uninterpretable results,
+especially without prior feature selection.
+
+\strong{Data leakage}
+When evaluating predictive performance, avoid using genes selected
+from the same dataset without proper validation.
+}
+
+\section{Pipeline context}{
+
+This function is typically used after \code{rna.normalize()} and optionally after
+feature selection steps such as \code{rna.compare()}. It complements visualization
+tools like \code{rna.heatmap()} by providing quantitative classification metrics.
+}
+
+\section{Side effects}{
+
+If \code{save = TRUE}, results are stored in the \code{rna_project} under the
+\code{analyses$roc} slot.
+}
+
+\examples{
+\dontrun{
+# Single gene ROC
+rna.roc(project = my_project,
+        genes = "CD8A"
+)
+
+# Multi-gene logistic model
+rna.roc(my_project,
+        genes = c("CD3D", "CD8A", "GZMB")
+)
+
+# Signature using PCA score
+rna.roc(my_project,
+        genes = c("Gene1", "Gene2", "Gene3", "Gene4", "Gene5", "Gene6"),
+        score_method = "pca"
+)
+}
+
 }

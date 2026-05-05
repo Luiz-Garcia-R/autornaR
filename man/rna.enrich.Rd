@@ -2,62 +2,132 @@
 % Please edit documentation in R/rnaEnrich.R
 \name{rna.enrich}
 \alias{rna.enrich}
-\title{Functional enrichment analysis (GO) for differential expression results}
+\title{Gene Ontology (GO) enrichment analysis for differential expression results}
 \usage{
 rna.enrich(
-  comp_data,
-  species = "mouse",
+  project,
+  use_comparison = NULL,
+  plot_style = c("dotplot", "barplot"),
+  ont = c("BP", "MF", "CC"),
+  enrich_p_cutoff = 0.1,
   padj_cutoff = 0.05,
-  log2fc_cutoff = 1,
-  ont = "BP",
+  log2fc_cutoff = 0.5,
   plot = TRUE,
-  top_terms = 10
+  top_terms = 10,
+  save = TRUE
 )
 }
 \arguments{
-\item{comp_data}{A result object from \code{\link[=rna_compare]{rna_compare()}} or a list containing
-differential expression results with a column \code{log2FoldChange}.}
+\item{project}{\code{rna_project} object created by \code{rna.project()}.}
 
-\item{species}{Character. Either \code{"human"}, \code{"mouse"} or \code{"zebrafish"} (default: \code{"mouse"}).}
+\item{use_comparison}{Character or numeric. Identifier of the comparison
+stored in \code{rna_project$analyses$comparison}. If \code{NULL},
+the most recent comparison is used.}
 
-\item{padj_cutoff}{Numeric. Adjusted p-value threshold for significance
-(default: \code{0.05}).}
+\item{plot_style}{Character. Wheter use \code{barplot} or \code{dotplot}.}
 
-\item{log2fc_cutoff}{Numeric. Absolute log2 fold-change threshold for gene
-selection (default: \code{1}).}
+\item{ont}{Character vector. Ontology domains to test:
+\itemize{
+\item \code{"BP"}: Biological Process
+\item \code{"MF"}: Molecular Function
+\item \code{"CC"}: Cellular Component
+}}
 
-\item{ont}{Character. Ontology type passed to
-\code{\link[clusterProfiler:enrichGO]{clusterProfiler::enrichGO()}}, one of \code{"BP"}, \code{"MF"}, or \code{"CC"}
-(default: \code{"BP"}).}
+\item{enrich_p_cutoff}{Numeric. P-value cutoff used internally by
+\code{clusterProfiler::enrichGO()} to filter enriched GO terms
+(default: \code{0.1}).}
 
-\item{plot}{Logical. Whether to display enrichment dot plots (default: \code{TRUE}).}
+\item{padj_cutoff}{Numeric. Adjusted p-value threshold used to filter
+differentially expressed genes prior to enrichment (default: \code{0.05}).}
 
-\item{top_terms}{Integer. Number of top GO terms to display in plots (default: \code{10}).}
+\item{log2fc_cutoff}{Numeric. Absolute log2 fold-change threshold used
+to define up- and down-regulated genes (default: \code{0.5}).}
+
+\item{plot}{Logical. Whether to display dot plots of enriched GO terms
+(default: \code{TRUE}).}
+
+\item{top_terms}{Integer. Number of top enriched terms to display in plots
+(default: \code{10}).}
+
+\item{save}{Logical. Whether to store results in the active
+\code{rna_project} (default: \code{TRUE}).}
 }
 \value{
-A list containing:
-\item{up}{A \code{clusterProfiler} enrichment result for up-regulated genes.}
-\item{down}{A \code{clusterProfiler} enrichment result for down-regulated genes.}
+An object of class \code{"enrich_result"} containing:
+\describe{
+\item{comparison}{Comparison identifier used}
+\item{contrast}{Group contrast (reference vs test)}
+\item{organism}{Organism used for annotation}
+\item{gene_id_type}{Gene identifier type used in enrichment}
+\item{up}{Named list of enrichment results for up-regulated genes (per ontology)}
+\item{down}{Named list of enrichment results for down-regulated genes (per ontology)}
+\item{params}{List of parameters used in the analysis}
+}
 }
 \description{
-This function performs Gene Ontology (GO) enrichment analysis using the
-\pkg{clusterProfiler} package for up- and down-regulated genes separately.
-It supports human, mouse and zebrafish datasets and automatically creates dot plots
-for significant terms.
+Performs Gene Ontology (GO) enrichment analysis on differentially expressed
+genes derived from \code{rna.compare()}, using the \pkg{clusterProfiler}
+framework. Enrichment is computed separately for up- and down-regulated genes,
+allowing directional biological interpretation.
+
+The function automatically retrieves the selected comparison from the active
+\code{rna_project}, applies filtering based on adjusted p-values and
+log2 fold-change thresholds, maps gene identifiers, and computes enrichment
+across one or more ontology domains (BP, MF, CC).
 }
 \details{
-This function filters genes based on adjusted p-values and log2 fold-change
-thresholds, then performs GO enrichment separately for up- and
-down-regulated gene sets using Entrez ID mapping.
-
-It supports human (\code{org.Hs.eg.db}), mouse (\code{org.Mm.eg.db}) and zebra fish (\code{org.Dr.eg.db})
-annotation databases.
+The function performs the following steps:
+\enumerate{
+\item Retrieves differential expression results from \code{rna_project}
+\item Filters genes using \code{padj_cutoff} and \code{log2fc_cutoff}
+\item Splits genes into up- and down-regulated sets
+\item Performs GO enrichment separately for each set and ontology
+\item Optionally visualizes results using dot plots
 }
+
+Gene identifiers are automatically interpreted using the project metadata
+(\code{gene_id_type}) and passed to \code{clusterProfiler::enrichGO()}.
+
+Supported annotation databases:
+\itemize{
+\item Human: \code{org.Hs.eg.db}
+\item Mouse: \code{org.Mm.eg.db}
+\item Zebrafish: \code{org.Dr.eg.db}
+}
+
+\strong{Important:}
+\itemize{
+\item Gene IDs must be cleaned (no Ensembl version suffixes)
+\item Enrichment depends strongly on filtering thresholds
+\item Up- and down-regulated enrichments may reveal distinct biology
+}
+}
+\section{Stored output}{
+
+When \code{save = TRUE}, results are stored in:
+\code{rna_project$analyses$enrich}, allowing reproducibility and reuse.
+}
+
+\section{Visualization}{
+
+When \code{plot = TRUE}, dot plots are generated using
+\code{enrichplot::dotplot()}, showing the top enriched GO terms per ontology
+and direction (up/down).
+}
+
 \examples{
 \dontrun{
-enrich_res <- rna.enrich(comp_data, species = "human")
-enrich_res$up
-enrich_res$down
+# Run enrichment using last comparison
+rna.enrich(project = my_project)
+
+# Run enrichment with stricter thresholds
+rna.enrich(my_project,
+           padj_cutoff = 0.01,
+           log2fc_cutoff = 1)
+
+# Run enrichment for molecular function
+rna.enrich(my_project,
+           ont = "MF")
 }
 
 }

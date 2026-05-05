@@ -2,63 +2,147 @@
 % Please edit documentation in R/rnaDimred.R
 \name{rna.dimred}
 \alias{rna.dimred}
-\title{Perform dimensionality reduction (PCA, UMAP, t-SNE) on normalized RNA-seq data}
+\title{Dimensionality reduction for RNA-seq data (PCA, UMAP, t-SNE)}
 \usage{
 rna.dimred(
-  norm_data,
+  project,
   group_col = "Group",
+  run_tsne = FALSE,
+  add_ellipse = FALSE,
+  ellipse_level = 0.95,
+  ncomp_pca = NULL,
   n_neighbors = NULL,
   tsne_perplexity = 30,
-  ncomp_pca = 2,
+  use_pca_preprocessing = TRUE,
+  pca_method = "auto",
+  pca_var_threshold = 0.8,
+  pca_max_dims = 50,
+  pca_min_dims = 10,
+  point_size = 2,
+  seed = NULL,
+  save = TRUE,
   verbose = TRUE
 )
 }
 \arguments{
-\item{norm_data}{A \code{normalized_data} object containing an expression matrix
-(\code{expr_matrix}) and sample metadata (\code{metadata}).}
+\item{project}{\code{rna_project} object created by \code{rna.project()}.}
 
-\item{group_col}{Character. Name of the column in \code{metadata} defining sample
-groups for coloring in plots (default: \code{"Group"}).}
+\item{group_col}{Character. Metadata column used to define sample groups
+for coloring plots (default: \code{"Group"}).}
+
+\item{run_tsne}{Logical. Whether to compute t-SNE embeddings (default: \code{FALSE}).}
+
+\item{add_ellipse}{Logical. If \code{TRUE}, adds confidence ellipses to PCA plot
+when group sizes allow (default: \code{FALSE}).}
+
+\item{ellipse_level}{Numeric. Confidence level for PCA ellipses
+(default: \code{0.95}).}
+
+\item{ncomp_pca}{Integer. Maximum number of PCA components to compute.
+If \code{NULL}, uses the maximum possible (default).}
 
 \item{n_neighbors}{Integer. Number of neighbors for UMAP. If \code{NULL},
-it is set automatically based on the number of samples (default: \code{NULL}).}
+automatically set based on sample size.}
 
-\item{tsne_perplexity}{Numeric. Perplexity parameter for t-SNE (default: \code{30}).}
+\item{tsne_perplexity}{Numeric. Initial perplexity for t-SNE
+(automatically adjusted if too large; default: \code{30}).}
 
-\item{ncomp_pca}{Integer. Number of PCA components to compute (default: \code{2}).}
+\item{use_pca_preprocessing}{Logical. Whether to use PCA-reduced space as input
+for UMAP and t-SNE (default: \code{TRUE}).}
 
-\item{verbose}{Logical. If \code{TRUE}, prints progress and displays plots
+\item{pca_method}{Character. Strategy for selecting number of PCs:
+\itemize{
+\item \code{"auto"}: selects PCs based on cumulative variance threshold
+\item \code{"variance"}: selects PCs reaching \code{pca_var_threshold}
+\item \code{"fixed"}: uses \code{ncomp_pca} directly
+}}
+
+\item{pca_var_threshold}{Numeric. Target cumulative variance explained when
+using adaptive PCA selection (default: \code{0.8}).}
+
+\item{pca_max_dims}{Integer. Maximum number of PCs allowed (default: \code{50}).}
+
+\item{pca_min_dims}{Integer. Minimum number of PCs enforced (default: \code{10}).}
+
+\item{point_size}{Numeric. Size of points in plots (default: \code{2}).}
+
+\item{seed}{Optional integer used to set the random seed for reproducibility.
+If \code{NULL}, the existing random number generator state is used.}
+
+\item{save}{Logical. Whether to store results in the active
+\code{rna_project} (default: \code{TRUE}).}
+
+\item{verbose}{Logical. If \code{TRUE}, prints progress messages and displays plots
 (default: \code{TRUE}).}
 }
 \value{
-A list containing:
-\item{expr_matrix}{The expression matrix used for dimensionality reduction.}
-\item{metadata}{The metadata used for annotation.}
-\item{res_dimred}{A list of PCA, UMAP, and (if applicable) t-SNE results.}
-\item{plots}{A list of \code{ggplot} objects for PCA, UMAP, and t-SNE visualizations.}
+An object of class \code{"dimred_result"} containing:
+\describe{
+\item{res_dimred}{List with dimensionality reduction results:
+\itemize{
+\item \code{summary}: dataset overview (samples, genes, grouping, seed and rng state)
+\item \code{preprocessing}: PCA preprocessing parameters
+\item \code{PCA}: PCA model, variance explained, loadings, coordinates
+\item \code{UMAP}: UMAP model, coordinates, and parameters
+\item \code{tSNE}: t-SNE model and coordinates (if computed)
+}
+}
+\item{plots}{List of \code{ggplot2} objects:
+\code{PCA}, \code{UMAP}, and optionally \code{tSNE}}
+}
 }
 \description{
-This function applies multiple dimensionality reduction techniques — PCA,
-UMAP, and optionally t-SNE — to visualize sample relationships in
-normalized RNA-seq expression data. It automatically adjusts parameters for
-small datasets and returns both results and plots.
+Performs dimensionality reduction on normalized RNA-seq expression data
+stored in the active \code{rna_project}, generating low-dimensional
+representations of samples using Principal Component Analysis (PCA),
+Uniform Manifold Approximation and Projection (UMAP), and optionally
+t-distributed Stochastic Neighbor Embedding (t-SNE).
+
+The function automatically adapts parameters based on dataset size and
+structure, and returns both numerical results and publication-ready plots.
 }
 \details{
-Dimensionality reduction techniques such as PCA, UMAP, and t-SNE are commonly
-used to visualize relationships among RNA-seq samples. This function performs:
+The function expects normalized expression data available in
+\code{rna_project$data$normalized_data}, including:
 \itemize{
-\item \strong{PCA:} Principal Component Analysis using \code{stats::prcomp}.
-\item \strong{UMAP:} Uniform Manifold Approximation and Projection via
-the \code{umap} package.
-\item \strong{t-SNE:} t-distributed Stochastic Neighbor Embedding via
-\code{Rtsne} (skipped for <6 samples).
+\item \code{expr_matrix}: gene expression matrix (genes x samples)
+\item \code{metadata}: sample metadata
+}
+
+Internally, the expression matrix is transposed so that samples are treated
+as observations.
+
+\strong{Adaptive behavior:}
+\itemize{
+\item UMAP neighbors are set to \code{floor(n_samples / 2)} when unspecified
+\item t-SNE perplexity is capped at \code{floor((n_samples - 1)/3)}
+\item t-SNE is skipped when \code{n_samples < 6}
+\item PCA dimensionality is automatically selected when
+\code{use_pca_preprocessing = TRUE}
+}
+
+\strong{Interpretation notes:}
+\itemize{
+\item PCA captures global variance structure and is deterministic
+\item UMAP emphasizes local structure and clustering
+\item t-SNE is stochastic and sensitive to parameter choice
 }
 }
+\section{Stored output}{
+
+When \code{save = TRUE}, results are stored in:
+\code{rna_project$analyses$dimred}, enabling reproducibility and reuse.
+}
+
 \examples{
 \dontrun{
-dim_res <- rna.dimred(normalized_data)
-dim_res$plots$PCA
-dim_res$plots$UMAP
+# Run default dimensionality reduction
+rna.dimred(project = my_project)
+
+# Run with t-SNE and ellipses
+rna.dimred(my_project,
+           run_tsne = TRUE,
+           add_ellipse = TRUE)
 }
 
 }
