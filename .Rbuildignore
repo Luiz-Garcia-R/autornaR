@@ -16,6 +16,7 @@
 ^NEWS\\.md$
 ^docs/
 ^vignettes/
+^CITATION\.cff$
 
 # Cache / temporary / output
 ^\\.Rhistory$
