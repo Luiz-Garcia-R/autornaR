@@ -59,6 +59,7 @@ rna.project() - Create a new rna_project object to store the results from downst
 rna.import() - Import and validate raw RNA-seq count data (raw_data + metadata)
 rna.normalize() - Normalize data, filter genes, impute missing values, remove outliers
 rna.qc() - Performs comprehensive quality control (QC) on normalized RNA-seq data
+- rna.save() - Extracts and save the essential components from a object
 
 # Exploratory and Differential Analysis
 For deeper insights and pairwise comparisons:
@@ -76,7 +77,6 @@ For deeper insights and pairwise comparisons:
   - rna.volcano() - Generate volcano plots for differential expression analysis
 
 ## Example Workflow (Minimal)
-
 ```r
 # Example raw counts
 raw_counts <- data.frame(
