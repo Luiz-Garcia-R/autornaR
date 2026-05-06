@@ -125,35 +125,66 @@ If duplicates arise after cleaning, counts are aggregated by gene.
 TPM normalization requires a \code{gene_length} column in
 \code{rna_project$input$imp_data$annotation}.
 }
+\section{Filtering strategies and use cases}{
+
+
+Filtering parameters can strongly influence downstream analyses.
+The default configuration is optimized for general RNA-seq workflows,
+particularly differential expression analysis.
+
+However, more permissive filtering may be required when the goal is to
+preserve genes expressed in rare or specific cell populations.
+
+\strong{Standard analysis (default)}
+\itemize{
+\item Removes lowly expressed genes to reduce noise
+\item Recommended for differential expression and global analyses
+\item Default parameters:
+\itemize{
+\item \code{min_expr = 10}
+\item \code{filter_min_prop = 0.1}
+\item \code{remove_outlier_genes = TRUE}
+}
+}
+
+\strong{Deconvolution / gene set scoring}
+\itemize{
+\item Preserves low-abundance and cell-type-specific genes
+\item Recommended for immune profiling, cell signatures, and scoring methods
+\item Suggested parameters:
+\itemize{
+\item \code{min_expr = 1}
+\item \code{filter_min_prop = 0.05}
+\item \code{remove_outlier_genes = FALSE}
+}
+}
+
+\strong{Important:}
+More stringent filtering may remove biologically relevant markers,
+especially for rare cell populations.
+}
+
 \examples{
 \dontrun{
 
-# Example 1: basic normalization (recommended starting point. \code{"None"} as default.)
-my_project <- rna.normalize(project = my_project)
+Example 1: basic normalization using default settings (suitable for general analysis)
+rna.normalize(project = my_project)
 
 # Example 2: log2 transformation only (quick exploratory analysis)
-my_project <- rna.normalize(project = my_project,
-                            method = "log2")
+rna.normalize(my_project,
+              method = "log2")
 
-# Example 3: CPM normalization without filtering
-my_project <- rna.normalize(project = my_project,
-                            method = "cpm",
-                            filter_low = FALSE)
+# Example 3: Using relaxed filtering thresholds for deconvolution and gene set scoring
+proj <- rna.normalize(my_project,
+                      method = "vst",   # or "log2"
+                      filter_low = TRUE,
+                      min_expr = 1,
+                      filter_min_prop = 0.05,
+                      remove_outlier_genes = FALSE
+)
 }
 
-\dontrun{
-# Basic normalization
-  rna.normalize(project = my_project)
 
-# Choosing a specific normalization/transformation method
-  rna.normalize(my_project, method = "vst")
-
-# Adjust outliers
-  rna.normalize(my_project,
-                remove_outlier_samples = FALSE,
-                remove_outlier_genes = FALSE
-  )
- }
 
 
 }

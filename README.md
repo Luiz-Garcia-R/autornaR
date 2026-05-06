@@ -55,10 +55,10 @@ Example of metadata:
 ## Main Workflow
 
 The recommended workflow guides users from raw count import to quality control and initial gene evaluation:
-rna.project() - Create a new rna_project object to store the results from downstream analyses
-rna.import() - Import and validate raw RNA-seq count data (raw_data + metadata)
-rna.normalize() - Normalize data, filter genes, impute missing values, remove outliers
-rna.qc() - Performs comprehensive quality control (QC) on normalized RNA-seq data
+- rna.project() - Create a new rna_project object to store the results from downstream analyses
+- rna.import() - Import and validate raw RNA-seq count data (raw_data + metadata)
+- rna.normalize() - Normalize data, filter genes, impute missing values, remove outliers
+- rna.qc() - Performs comprehensive quality control (QC) on normalized RNA-seq data
 - rna.save() - Extracts and save the essential components from a object
 
 # Exploratory and Differential Analysis
