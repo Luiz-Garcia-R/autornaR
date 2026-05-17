@@ -54,10 +54,7 @@
 # Bioinformatics
 # ======================
 
-#' @importFrom fgsea fgseaMultilevel plotEnrichment
-#' @importFrom AnnotationDbi select
 #' @importFrom pheatmap pheatmap
-#' @importFrom biomaRt useEnsembl getBM
 #' @importFrom pROC roc auc
 #' @importFrom ComplexUpset upset
 

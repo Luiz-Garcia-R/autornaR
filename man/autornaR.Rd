@@ -25,14 +25,16 @@ exploratory/differential analysis:
 
 \subsection{Main Functions Overview}{\tabular{ll}{
    Function \tab Description \cr
+   \code{rna.project()} \tab Create a new rna_project object \cr
    \code{rna.import()} \tab Import and standardize RNA-seq count data \cr
    \code{rna.normalize()} \tab Normalize, filter, and impute missing values \cr
    \code{rna.qc()} \tab QC plots: library size, expression, density, correlation heatmaps \cr
-   \code{rna.rank()} \tab Rank genes by mean or variance per group \cr
+   \code{rna.compare()} \tab Performs differential expression analysis between two groups \cr
+   \code{rna.degs()} \tab Rank genes by mean or variance per group \cr
    \code{rna.roc()} \tab ROC curves for discriminant genes \cr
-   \code{rna.ttest()} \tab T-test or Mann-Whitney for individual genes \cr
+   \code{rna.boxplot()} \tab Limma t-test for individual genes \cr
    \code{rna.volcano()} \tab Volcano plot and DE gene summary \cr
-   \code{rna.upset()} \tab UpSet plot for presence/absence or DE genes across groups \cr
+   \code{rna.sets()} \tab Evaluatte presence/absence or DE genes across groups \cr
 }
 
 }
@@ -64,28 +66,33 @@ metadata <- data.frame(
   Group  = rep(c("Control","Treatment"), each = 3)
 )
 
+# Create a new rna project
+my_project <- rna.project()
+
 # Import
-imp_data <- rna.import(raw_counts, metadata)
+my_project <- rna.import(project = my_project,
+                         raw_counts,
+                         metadata)
 
 # Normalize
-normalized <- rna.normalize(imp_data)
+my_project <- rna.normalize(my_project)
 
 # QC
-rna.qc(normalized, metadata)
+my_project <- rna.qc(my_project)
 
 # Gene ranking and exploratory analysis
-rna.rank(normalized, metric = "mean")
-rna.roc(normalized, genes = c("G001","G002"))
-rna.ttest(normalized, genes = c("G001","G002"))
-rna.volcano(normalized)
-rna.upset(normalized)
+rna.compare(my_project, method = "limma")
+rna.roc(my_project, genes = c("G001","G002"))
+rna.boxplot(my_project, genes = "G001")
+rna.volcano(my_project)
+rna.sets(my_project)
 
-# Print summary of normalization
-print(normalized)
+# Save rna_project object
+rna.save(rna_project)
 }
 
 }
 \author{
-\strong{Maintainer}: Luiz Garcia \email{luiz.cardoso@ufpr.br} (\href{https://orcid.org/0000-0002-9616-0927}{ORCID}) (UFPR)
+\strong{Maintainer}: Luiz Garcia \email{luiz.cardoso@ufpr.br} (\href{https://orcid.org/0000-0002-9616-0927}{ORCID})
 
 }

@@ -93,7 +93,6 @@
 #' }
 #'
 #' @importFrom ggplot2 ggplot aes geom_col labs theme_minimal scale_fill_manual
-#' @importFrom biomaRt useEnsembl getBM
 #'
 #' @export
 
@@ -109,12 +108,8 @@ rna.degs <- function(project,
   # ---------------------------
   # 0) Basic checks
   # ---------------------------
-  required_pkgs <- c(
-    "ggplot2",
-    "biomaRt"
-  )
-
-  .check_dependencies(required_pkgs)
+  .check_dependencies("ggplot2")
+  .check_dependencies("biomaRt", bioc = TRUE)
 
   # ---------------------------
   # 1) Get active project

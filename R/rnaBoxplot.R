@@ -87,8 +87,6 @@
 #'             style = "violin"
 #' }
 #'
-#' @importFrom limma lmFit contrasts.fit eBayes topTable makeContrasts
-#' @importFrom AnnotationDbi select
 #' @importFrom ggplot2 ggplot aes geom_violin geom_boxplot geom_point
 #'   annotate labs theme_minimal theme element_text
 #' @importFrom dplyr left_join
@@ -113,7 +111,8 @@ rna.boxplot <- function(project,
   # ---------------------------
   # 1) Required packages
   # ---------------------------
-  .check_dependencies(c("limma","AnnotationDbi","ggplot2","dplyr"))
+  .check_dependencies(c("ggplot2","dplyr"))
+  .check_dependencies(c("limma","AnnotationDbi", bioc = TRUE))
 
   # ---------------------------
   # 2) Get active project

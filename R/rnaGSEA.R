@@ -188,22 +188,23 @@ rna.gsea <- function(project,
 
   geneset_collection <- toupper(geneset_collection)
 
-  pkgs <- c(
-    "BiocParallel",
-    "fgsea",
-    "msigdbr",
-    "AnnotationDbi",
-    "stringr"
+  pkgs <- c("msigdbr",
+            "stringr"
   )
 
+  bioc_pkgs <- c("BiocParallel",
+                 "fgsea",
+                 "AnnotationDbi")
+
   .check_dependencies(pkgs)
+  .check_dependencies(pkgs, bioc = TRUE)
 
   # Check ggplot2
   if (enrich_plot && !requireNamespace("ggplot2", quietly = TRUE)) {
-    stop("Package 'ggplot2' is required when enrich_plot = TRUE.")
+    .check_dependencies("ggplot2")
   }
 
-  # Check
+  # Check heatmap
   if (plot_heatmap) {
     .check_dependencies("pheatmap")
   }
@@ -623,7 +624,7 @@ rna.gsea <- function(project,
     pathways = pathways,
     gsea_full = gsea_res,
     gsea_top = gsea_top,
-    direction_summary = direction_summary,   # 👈 AQUI
+    direction_summary = direction_summary,
     input_summary = list(
       n_genes = length(gene_ranking),
       gene_id_type = params$gene_id_type

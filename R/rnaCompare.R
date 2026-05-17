@@ -102,9 +102,6 @@
 #'             batch_col = "Batch")
 #' }
 #'
-#' @importFrom DESeq2 DESeq results plotMA plotDispEsts dispersions
-#' @importFrom edgeR DGEList calcNormFactors
-#' @importFrom limma voom lmFit contrasts.fit eBayes topTable plotMD makeContrasts
 #' @importFrom dplyr rename
 #' @importFrom stats model.matrix aov
 #'
@@ -126,7 +123,13 @@ rna.compare <- function(project,
   # ---------------------------
   # 0) Basic checks
   # ---------------------------
-  .check_dependencies(c("clusterProfiler", "msigdbr"))
+  if (method == "deseq2") {
+    .check_dependencies(c("DESeq2", "SummarizedExperiment"), bioc = TRUE)
+  }
+
+  if (method == "limma") {
+    .check_dependencies(c("limma", "edgeR"), bioc = TRUE)
+  }
 
   # ---------------------------
   # 1) get active project

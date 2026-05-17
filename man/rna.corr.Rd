@@ -24,17 +24,17 @@ rna.corr(
 \item{method}{Character. Correlation method to use.
 One of:
 \itemize{
-\item \code{"auto"} (default): automatic method selection
-\item \code{"pearson"}
-\item \code{"spearman"}
-\item \code{"kendall"}
+\item \code{auto} (default): automatic method selection
+\item \code{pearson}
+\item \code{spearman}
+\item \code{kendall}
 }}
 
 \item{mode}{Character. Correlation structure:
 \itemize{
-\item \code{"group"}: correlation between experimental groups
-\item \code{"sample"}: correlation between individual samples
-\item \code{"gene"}: correlation between selected genes
+\item group: correlation between experimental groups
+\item sample: correlation between individual samples
+\item gene: correlation between selected genes
 }}
 
 \item{group}{Optional. Subsets the data to a specific experimental group when mode = "gene".}
@@ -48,8 +48,8 @@ correlation coefficients.}
 \item{mi_method}{Character. Method used to estimate mutual information.
 One of:
 \itemize{
-\item \code{"discrete"}: discretization-based estimator
-\item \code{"knn"}: k-nearest neighbors estimator (continuous data, default)
+\item discrete: discretization-based estimator
+\item knn: k-nearest neighbors estimator (continuous data, default)
 }}
 
 \item{sample_x}{Character. Name of first sample (required when \code{mode = "sample"}).}
@@ -62,19 +62,19 @@ One of:
 and displays the correlation plot.}
 }
 \value{
-An object of class \code{"rna_correlation"} containing:
+An object of class \code{rna_correlation} containing:
 \itemize{
-\item \code{method} — Method used for correlation
-\item \code{mode} — Correlation mode ("group", "sample" or "gene")
-\item \code{estimate} — Correlation coefficient
-\item \code{p.value} — P-value from \code{cor.test}
-\item \code{mi}, \code{mi_norm}, \code{mi_method} — Mutual information metrics (if computed)
-\item \code{relation_type} — Heuristic classification of dependency structure
-\item \code{conf.int} — Confidence interval
-\item \code{interpretation} — Strength classification
-\item \code{diagnostics} — Method selection diagnostics
-\item \code{structure} — Structural information about compared entities
-\item \code{plot} — ggplot object
+\item method - Method used for correlation
+\item mode - Correlation mode ("group", "sample" or "gene")
+\item estimate - Correlation coefficient
+\item p.value - P-value from \code{cor.test}
+\item mi, mi_norm, mi_method - Mutual information metrics (if computed)
+\item relation_type - Heuristic classification of dependency structure
+\item conf.int - Confidence interval
+\item interpretation - Strength classification
+\item diagnostics - Method selection diagnostics
+\item structure - Structural information about compared entities
+\item plot - ggplot object
 }
 }
 \description{
@@ -87,7 +87,7 @@ normality, presence of ties, sample size, and outlier fraction.
 The function requires an active \code{rna_project} object containing
 normalized expression data and metadata.
 
-When mode = "gene", genes can be provided as Ensembl IDs or gene symbols.
+When \code{mode = "gene"}, genes can be provided as Ensembl IDs or gene symbols.
 The function automatically resolves identifiers and displays gene symbols
 when available.
 
@@ -112,15 +112,15 @@ which captures both linear and non-linear dependencies between variables.
 
 When MI is enabled, the function also provides:
 \itemize{
-\item \code{non_linear_signal} — difference between MI and absolute correlation,
-indicating potential non-linear structure
-\item \code{relation_type} — heuristic classification of the relationship:
+\item {non_linear_signal} - difference between MI and absolute correlation,
+\item {indicating potential} non-linear structure
+\item {relation_type} - heuristic classification of the relationship:
 \itemize{
-\item "strong linear relationship"
-\item "monotonic (possibly non-linear)"
-\item "non-linear complex relationship"
-\item "weak or ambiguous relationship"
-\item "no clear association"
+\item strong linear relationship
+\item monotonic (possibly non-linear)
+\item non-linear complex relationship
+\item weak or ambiguous relationship
+\item no clear association
 }
 }
 

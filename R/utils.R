@@ -178,12 +178,36 @@
 # ============================
 # Check dependencies
 # ============================
-.check_dependencies <- function(pkgs) {
-  missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]
-  if (length(missing)) {
+.check_dependencies <- function(pkgs, bioc = FALSE) {
+
+  missing <- pkgs[
+    !vapply(pkgs, requireNamespace,
+            logical(1), quietly = TRUE)
+  ]
+
+  if (length(missing) > 0) {
+
+    installer <- if (bioc) {
+      paste0(
+        "BiocManager::install(c(",
+        paste(sprintf('"%s"', missing), collapse = ", "),
+        "))"
+      )
+    } else {
+      paste0(
+        "install.packages(c(",
+        paste(sprintf('"%s"', missing), collapse = ", "),
+        "))"
+      )
+    }
+
     stop(
-      "Missing packages: ",
-      paste(missing, collapse = ", "),
+      paste0(
+        "Missing required packages: ",
+        paste(missing, collapse = ", "),
+        "\n\nInstall using:\n",
+        installer
+      ),
       call. = FALSE
     )
   }
