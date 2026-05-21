@@ -64,7 +64,7 @@ The recommended workflow guides users from raw count import to quality control a
 # Exploratory and Differential Analysis
 For deeper insights and pairwise comparisons:
   - rna.compare() - Performs differential expression analysis (Limma or DESeq2) between two groups
-  - rna.corr() - Compute correlations among samples or experimental groups
+  - rna.association() - Compute gene or clinical features correlations among samples
   - rna.enrich() - performs Gene Ontology (GO) enrichment analysis
   - rna.degs() - Identify differentially expressed genes
   - rna.dimred() - Perform PCA and UMAP for dimensionality reduction

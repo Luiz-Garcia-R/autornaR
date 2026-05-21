@@ -112,7 +112,7 @@ rna.boxplot <- function(project,
   # 1) Required packages
   # ---------------------------
   .check_dependencies(c("ggplot2","dplyr"))
-  .check_dependencies(c("limma","AnnotationDbi", bioc = TRUE))
+  .check_dependencies(c("limma","AnnotationDbi"), bioc = TRUE)
 
   # ---------------------------
   # 2) Get active project
@@ -376,9 +376,9 @@ rna.boxplot <- function(project,
         color = .data[[group_col]]),
       position = ggplot2::position_jitter(width = 0.1),
       shape = 21,
-      color = "black",
+      color = "grey20",
       size = 1.2,
-      alpha = 0.2) +
+      alpha = 0.1) +
 
     ggplot2::labs(
       title = gene_label,

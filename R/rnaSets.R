@@ -144,7 +144,7 @@ rna.sets <- function(project,
 
   expr <- as.matrix(.get_expr(proj))
   metadata <- .get_meta(proj)
-  comps <- .get_comp(proj)
+  comp_data <- .get_comp_obj(proj, comparison)
 
   # ---------------------------
   # 2) Validate input
@@ -161,13 +161,11 @@ rna.sets <- function(project,
   # ---------------------------
   # 3) Accessing comp object
   # ---------------------------
-  comparison_id <- .get_last_or_selected(
-    comps,
-    comparison,
-    what = "comparison"
-  )
-
-  comp_data <- comps[[comparison_id]]
+  comparison_id <- if (is.null(comparison)) {
+    proj$analyses$comparison$last
+  } else {
+    comparison
+  }
 
   if (is.null(comp_data) || !inherits(comp_data, "rnaCompare")) {
     stop("Selected object is not a valid comparison.")
@@ -184,6 +182,13 @@ rna.sets <- function(project,
   if (length(group_levels) != 2) {
     stop("rna.sets() supports only 2-group comparisons.")
   }
+
+  # Comparison label
+  comparison_label <- paste(
+    group_levels[1],
+    "vs",
+    group_levels[2]
+  )
 
   # ---------------------------
   # 4) Align genes
@@ -274,7 +279,7 @@ rna.sets <- function(project,
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::labs(
-        title = paste("DEG Summary -", comparison),
+        title = paste("DEG Summary -", comparison_label),
         x = "",
         y = "DEGs count"
       ) +
@@ -296,7 +301,8 @@ rna.sets <- function(project,
   obj <- list(
     params = list(
       timestamp = Sys.time(),
-      comparison = comparison,
+      comparison = comparison_id,
+      comparison_label = comparison_label,
       total_genes = length(common_genes),
       total_deg = sum(deg_all),
       padj_cutoff = padj_cutoff,
@@ -326,7 +332,7 @@ rna.sets <- function(project,
       subtype = "sets",
       prefix = "sets",
       log = list(
-        comparison = comparison,
+        comparison = comparison_id,
         direction = direction,
         log2fc_cutoff = log2fc_cutoff,
         padj_cutoff = padj_cutoff,
@@ -339,26 +345,24 @@ rna.sets <- function(project,
   # 11) Return
   # ---------------------------
   if (verbose) {
-  .print_header("RNA DEG Sets")
+    .print_header("RNA DEG Sets")
 
-  .print_block("Comparison", function() {
-    cat("Comparison:        ", comparison, "\n")
-    cat("Groups:            ",
-        group_levels[1], " vs ", group_levels[2], "\n", sep = "")
-  })
+    .print_block("Comparison", function() {
+      cat(comparison_label, "\n")
+    })
 
-  .print_block("DEG Summary", function() {
-    cat("Genes tested:      ", length(common_genes), "\n")
-    cat("Total DEGs:        ", sum(deg_all), "\n")
-    cat("Up in ", group_levels[2], ":           ", sum(up_sig), "\n", sep = "")
-    cat("Up in ", group_levels[1], ":           ", sum(down_sig), "\n", sep = "")
+    .print_block("DEG Summary", function() {
+      cat("Genes tested:      ", length(common_genes), "\n")
+      cat("Total DEGs:        ", sum(deg_all), "\n")
+      cat("Up in ", group_levels[2], ":           ", sum(up_sig), "\n", sep = "")
+      cat("Up in ", group_levels[1], ":           ", sum(down_sig), "\n", sep = "")
 
-    if (direction != "both") {
-      cat("Directional filter:      ", direction, "\n")
-      cat("Returned DEGs:           ", sum(deg_filtered), "\n")
-    }
-  })
-}
+      if (direction != "both") {
+        cat("Directional filter:      ", direction, "\n")
+        cat("Returned DEGs:           ", sum(deg_filtered), "\n")
+      }
+    })
+  }
 
   return(invisible(proj))
 

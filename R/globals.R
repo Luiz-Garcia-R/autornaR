@@ -31,6 +31,9 @@ if (getRversion() >= "2.15.1") {
     # Differential expression / volcano
     "Regulation", "pvalue",
 
+    # Correlation / association
+    "x_feature", "y_feature", "p",
+
     # Additional helpers (if any)
     "Comp1", "Comp2"
   ))

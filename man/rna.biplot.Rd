@@ -10,7 +10,7 @@ rna.biplot(
   group_col = "Group",
   style = c("loading", "anova", "hybrid"),
   n_genes = 10,
-  gene_list = NULL,
+  genes = NULL,
   point_size = 2,
   save = TRUE,
   verbose = TRUE
@@ -29,7 +29,7 @@ One of \code{"loading"}, \code{"anova"}, or \code{"hybrid"}.}
 \item{n_genes}{Integer. Number of top genes to display when
 \code{biplot_genes} is not provided.}
 
-\item{gene_list}{Character vector. Optional vector of gene names to include.
+\item{genes}{Character vector. Optional vector of gene names to include.
 Overrides automatic selection.}
 
 \item{point_size}{Numeric. Size of sample points in the plot.}
@@ -74,7 +74,7 @@ rna.biplot(project = my_project)
 # PCA biplot with a specific gene set
 rna.biplot(project = my_project,
            n_genes = 2,
-           gene_list = c("IL6", "HSP70"))
+           genes = c("IL6", "HSP70"))
 }
 
 }

@@ -3,12 +3,16 @@
 # ============================
 # Global cache environment
 # ============================
+#' @keywords internal
+
 .autornar_cache <- new.env(parent = emptyenv())
 .autornar_cache$gene_maps <- list()
 
 # ============================
 # Attach to project
 # ============================
+#' @keywords internal
+
 .attach_to_project <- function(proj,
                                obj,
                                slot,
@@ -61,6 +65,8 @@
 # ============================
 # Get last or selected
 # ============================
+#' @keywords internal
+
 .get_last_or_selected <- function(x, id = NULL, what = "element") {
 
   if (length(x) == 0) {
@@ -110,6 +116,8 @@
 # ============================
 # Set seed
 # ============================
+#' @keywords internal
+
 .set_seed <- function(seed) {
   if (!is.null(seed)) {
     old_seed <- if (exists(".Random.seed", envir = .GlobalEnv)) {
@@ -126,6 +134,8 @@
 # ============================
 # Reset seed
 # ============================
+#' @keywords internal
+
 .reset_seed <- function(old_seed) {
   if (!is.null(old_seed)) {
     .Random.seed <<- old_seed
@@ -135,6 +145,8 @@
 # ============================
 # Get Biomart dataset
 # ============================
+#' @keywords internal
+
 .get_biomart_dataset <- function(organism) {
 
   organism <- tolower(organism)
@@ -151,6 +163,7 @@
 # Order contrast levels
 # ============================
 #' @keywords internal
+
 .order_contrast_levels <- function(levels_vec) {
 
   stopifnot(length(levels_vec) == 2)
@@ -178,6 +191,8 @@
 # ============================
 # Check dependencies
 # ============================
+#' @keywords internal
+
 .check_dependencies <- function(pkgs, bioc = FALSE) {
 
   missing <- pkgs[
@@ -217,6 +232,7 @@
 # Smart pathway naming
 # ============================
 #' @keywords internal
+
 .smart_pathway_name <- function(x, max_words = 6) {
 
   vapply(
@@ -295,6 +311,7 @@
 # Auxiliary print functions
 # ============================
 #' @keywords internal
+
 .print_header <- function(title) {
   cat("\n")
   cat(strrep("=", 50), "\n")
@@ -313,6 +330,8 @@
 # ============================
 # Go enrichment
 # ============================
+#' @keywords internal
+
 .run_go_enrichment <- function(
     gene_ids,
     OrgDb,
@@ -363,6 +382,8 @@
 # ============================
 # Heatmap gene selection
 # ============================
+#' @keywords internal
+
 .select_heatmap_genes <- function(expr_mat,
                                   res_df = NULL,
                                   genes = NULL,
@@ -414,6 +435,8 @@
 # ============================
 # Convert gene ids
 # ============================
+#' @keywords internal
+
 .convert_gene_ids <- function(genes,
                               from = "SYMBOL",
                               to = "ENSEMBL",
@@ -463,6 +486,8 @@
 # ============================
 # Map gene symbols
 # ============================
+#' @keywords internal
+
 .map_gene_annotation <- function(genes, organism = "human") {
 
   pkgs <- c("AnnotationDbi")
@@ -504,6 +529,8 @@
 # ============================
 # Get gene annotation
 # ============================
+#' @keywords internal
+
 .align_gene_annotation <- function(gene_annotation, expr_mat) {
 
   if (is.null(gene_annotation)) {
@@ -530,6 +557,7 @@
 # ============================
 # Detect organism
 # ============================
+#' @keywords internal
 #' @importFrom stats na.omit
 
 .detect_organism <- function(ids) {
@@ -547,6 +575,8 @@
 # ============================
 # Normalize sample names
 # ============================
+#' @keywords internal
+
 .normalize_sample_names <- function(x) {
   x <- as.character(x)
   x <- trimws(x)
@@ -558,6 +588,8 @@
 # ============================
 # Get biomart gene info
 # ============================
+#' @keywords internal
+
 .get_biomart_gene_info <- function(gene_ids, organism) {
 
   dataset <- switch(
@@ -596,6 +628,8 @@
 # ============================
 # Clean gene ids
 # ============================
+#' @keywords internal
+
 .clean_gene_ids <- function(expr_mat) {
 
   gene_ids <- rownames(expr_mat)
@@ -608,14 +642,10 @@
 
 }
 
-
-
-
-
-
-
-
-
+# ============================
+# Bootstrap AUC
+# ============================
+#' @keywords internal
 
 .bootstrap_auc <- function(df, group_col, safe_gene_labels, method, score_method, n_boot = 1000) {
 
@@ -623,7 +653,11 @@
 
   for (i in seq_len(n_boot)) {
 
-    idx <- sample(seq_len(nrow(df)), replace = TRUE)
+    idx <- unlist(
+      lapply(split(seq_len(nrow(df)), df[[group_col]]),
+             function(i) sample(i, length(i), replace = TRUE))
+    )
+
     df_boot <- df[idx, , drop = FALSE]
 
     # --- prediction ---
@@ -651,8 +685,15 @@
 
       } else if (score_method == "pca") {
 
-        pca <- stats::prcomp(df_boot[, safe_gene_labels, drop = FALSE], scale. = TRUE)
-        pred <- pca$x[, 1]
+        pca <- prcomp(df_boot[, safe_gene_labels, drop = FALSE], scale. = TRUE)
+        pc1 <- pca$x[, 1]
+
+        # Force direction
+        if (cor(pc1, df_boot[[group_col]]) < 0) {
+          pc1 <- -pc1
+        }
+
+        pred <- pc1
 
       }
     }
@@ -666,7 +707,6 @@
     roc_obj <- pROC::roc(
       df_boot[[group_col]],
       pred,
-      direction = "<",
       quiet = TRUE
     )
 
@@ -675,10 +715,91 @@
 
   aucs <- aucs[!is.na(aucs)]
 
-  ci <- quantile(aucs, probs = c(0.025, 0.975))
+  ci_boot <- quantile(aucs, probs = c(0.025, 0.975), na.rm = TRUE)
 
   list(
     auc_boot = aucs,
-    ci = ci
+    ci_boot = ci_boot
   )
+}
+
+# ============================
+# Resolve features (rna.association)
+# ============================
+#' @keywords internal
+
+.resolve_features <- function(project,
+                              expr_mat,
+                              metadata,
+                              features,
+                              type = "gene",
+                              format = "continuous") {
+
+  if (type == "gene") {
+
+    gene_map <- .get_gene_annotation(project)
+
+    gene_ids <- gene_map$gene_id
+    gene_symbols <- gene_map$symbol
+
+    symbol_to_id <- setNames(gene_ids, gene_symbols)
+
+    resolve_gene <- function(g) {
+
+      if (g %in% gene_symbols) {
+        return(symbol_to_id[[g]])
+      }
+
+      if (g %in% gene_ids) {
+        return(g)
+      }
+
+      stop("Gene not found: ", g)
+    }
+
+    resolved <- vapply(features,
+                       resolve_gene,
+                       character(1))
+
+    clean_ids <- sub("\\..*", "", rownames(expr_mat))
+    rownames(expr_mat) <- clean_ids
+
+    resolved <- sub("\\..*", "", resolved)
+
+    out <- expr_mat[resolved, , drop = FALSE]
+
+    rownames(out) <- features
+
+    return(out)
+  }
+
+  if (type == "metadata") {
+
+    missing <- setdiff(features, colnames(metadata))
+
+    if (length(missing) > 0) {
+      stop("Metadata variables not found: ",
+           paste(missing, collapse = ", "))
+    }
+
+    out <- t(as.matrix(metadata[, features, drop = FALSE]))
+
+    if (format == "continuous") {
+
+      non_numeric <- rownames(out)[
+        !apply(out, 1, is.numeric)
+      ]
+
+      if (length(non_numeric) > 0) {
+        warning(
+          "Some metadata variables are not numeric: ",
+          paste(non_numeric, collapse = ", ")
+        )
+      }
+    }
+
+    return(out)
+  }
+
+  stop("Unsupported type: ", type)
 }

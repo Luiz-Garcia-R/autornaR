@@ -310,7 +310,6 @@ rna.roc <- function(project,
   roc_obj <- pROC::roc(
     group_clean,
     pred_clean,
-    direction = "<",
     quiet = TRUE
   )
 
@@ -327,10 +326,6 @@ rna.roc <- function(project,
     )
   )
 
-
-
-
-
   boot <- .bootstrap_auc(
     df = df,
     group_col = group_col,
@@ -339,9 +334,6 @@ rna.roc <- function(project,
     score_method = ifelse(method == "signature", score_method_use, NA),
     n_boot = 1000
   )
-
-
-
 
   # ---------------------------
   # 9) Plot
@@ -480,13 +472,13 @@ print.roc_result <- function(x, ...) {
     }
 
     cat(
-      "AUC: ", round(auc, 3),
+      "AUC (Delong): ", round(auc, 3),
       " [", fmt_ci(auc_ci), "]\n",
       sep = ""
     )
 
     if (!is.null(auc_boot_ci)) {
-      cat("Bootstrap: [", fmt_ci(auc_boot_ci), "]\n",
+      cat("Bootstrap (stability): [", fmt_ci(auc_boot_ci), "]\n",
         sep = ""
       )
     }

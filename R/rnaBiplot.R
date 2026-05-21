@@ -20,7 +20,7 @@
 #'   One of \code{"loading"}, \code{"anova"}, or \code{"hybrid"}.
 #' @param n_genes Integer. Number of top genes to display when
 #'   \code{biplot_genes} is not provided.
-#' @param gene_list Character vector. Optional vector of gene names to include.
+#' @param genes Character vector. Optional vector of gene names to include.
 #'   Overrides automatic selection.
 #' @param point_size Numeric. Size of sample points in the plot.
 #' @param save Logical. Whether to store results in the active \code{rna_project}.
@@ -47,7 +47,7 @@
 #' # PCA biplot with a specific gene set
 #' rna.biplot(project = my_project,
 #'            n_genes = 2,
-#'            gene_list = c("IL6", "HSP70"))
+#'            genes = c("IL6", "HSP70"))
 #' }
 #'
 #' @importFrom utils tail
@@ -59,7 +59,7 @@ rna.biplot <- function(project,
                        group_col = "Group",
                        style = c("loading", "anova", "hybrid"),
                        n_genes = 10,
-                       gene_list = NULL,
+                       genes = NULL,
                        point_size = 2,
                        save = TRUE,
                        verbose = TRUE
@@ -96,7 +96,7 @@ rna.biplot <- function(project,
   # ---------------------------
   # 3) Gene mapping
   # ---------------------------
-  gene_map <- .get_gene_annotation(proj, expr_mat)
+  gene_map <- .get_gene_annotation(proj)
 
   gene_ids <- gene_map$gene_id
   gene_symbols <- gene_map$symbol
@@ -120,10 +120,10 @@ rna.biplot <- function(project,
   pc_y = 2
 
   # --- gene selection ---
-  if (!is.null(gene_list)) {
+  if (!is.null(genes)) {
     valid_idx <- which(
-      gene_ids %in% gene_list |
-        gene_symbols %in% gene_list
+      gene_ids %in% genes |
+        gene_symbols %in% genes
     )
 
     if (length(valid_idx) == 0) {
@@ -320,7 +320,7 @@ rna.biplot <- function(project,
         mode = style,
         group_col = group_col,
         pcs = c(pc_x, pc_y),
-        used_custom_genes = !is.null(gene_list)
+        used_custom_genes = !is.null(genes)
       )
     )
   }
