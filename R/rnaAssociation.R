@@ -134,10 +134,10 @@ rna.association <- function(project,
                             x_features,
                             y_features = NULL,
                             x_type = "gene",
-                            y_type = "gene",
+                            y_type = NULL,
                             format = "continuous",
                             group = NULL,
-                            method = c("pearson", "spearman", "kendall"),
+                            method = c("spearman", "pearson", "kendall"),
                             compute_mi = FALSE,
                             mi_method = c("knn", "discrete"),
                             cluster = TRUE,
@@ -147,10 +147,6 @@ rna.association <- function(project,
   method <- match.arg(method)
   mi_method <- match.arg(mi_method)
 
-  if (is.null(y_features)) {
-    y_features <- x_features
-  }
-
   # ---------------------------
   # Load data
   # ---------------------------
@@ -158,8 +154,20 @@ rna.association <- function(project,
   metadata <- .get_meta(project)
 
   # ---------------------------
-  # Optional group filtering
+  # Validate input
   # ---------------------------
+  if (is.null(y_features)) {
+    y_features <- x_features
+    y_type <- x_type
+  }
+
+  if (is.null(y_type)) {
+
+    y_type <- x_type
+
+  }
+
+  # Group filtering
   if (!is.null(group)) {
 
     samples_keep <- metadata$Sample[
@@ -201,12 +209,12 @@ rna.association <- function(project,
   # ---------------------------
   corr_mat <- matrix(
     NA,
-    nrow = nrow(x_data),
-    ncol = nrow(y_data)
+    nrow = nrow(y_data),
+    ncol = nrow(x_data)
   )
 
-  rownames(corr_mat) <- rownames(x_data)
-  colnames(corr_mat) <- rownames(y_data)
+  rownames(corr_mat) <- rownames(y_data)
+  colnames(corr_mat) <- rownames(x_data)
 
   long <- data.frame()
 
@@ -230,7 +238,7 @@ rna.association <- function(project,
 
       r <- unname(test$estimate)
 
-      corr_mat[i, j] <- r
+      corr_mat[j, i] <- r
 
       long <- rbind(long, data.frame(
         x_feature = rownames(x_data)[i],

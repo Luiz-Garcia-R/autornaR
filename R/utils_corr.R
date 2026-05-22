@@ -2,9 +2,64 @@
 # Auxiliary correlation functions
 # ============================
 
-# ============================
-# Diagnosis
-# ============================
+#' @keywords internal
+.prepare_corr_data <- function(expr_mat, metadata, type,
+                               sample_x = NULL,
+                               sample_y = NULL) {
+
+  if (type == "group") {
+
+    groups <- unique(metadata$Group)
+
+    if (length(groups) != 2)
+      stop("Group correlation requires exactly two groups.")
+
+    group_means <- sapply(groups, function(g) {
+      samples <- metadata$Sample[metadata$Group == g]
+      rowMeans(expr_mat[, samples, drop = FALSE])
+    })
+
+    x <- group_means[,1]
+    y <- group_means[,2]
+
+    labels <- groups
+
+    structure_info <- list(
+      level = "gene-level",
+      n = length(x)
+    )
+  }
+
+  else if (type == "sample") {
+
+    if (is.null(sample_x) || is.null(sample_y))
+      stop("For sample correlation, provide sample_x and sample_y.")
+
+    if (sample_x == sample_y)
+      stop("sample_x and sample_y must be different.")
+
+    if (!all(c(sample_x, sample_y) %in% colnames(expr_mat)))
+      stop("Selected samples not found in expression matrix.")
+
+    x <- expr_mat[, sample_x]
+    y <- expr_mat[, sample_y]
+
+    labels <- c(sample_x, sample_y)
+
+    structure_info <- list(
+      level = "gene-level",
+      n = length(x)
+    )
+  }
+
+  list(
+    x = x,
+    y = y,
+    labels = labels,
+    structure = structure_info
+  )
+}
+
 #' @keywords internal
 .run_corr_diagnostics <- function(x, y, method) {
 
@@ -80,90 +135,9 @@
   ))
 }
 
-# ============================
-# Resolve features (rna.association)
-# ============================
-#' @keywords internal
-
-.resolve_features <- function(project,
-                              expr_mat,
-                              metadata,
-                              features,
-                              type = "gene",
-                              format = "continuous") {
-
-  if (type == "gene") {
-
-    gene_map <- .get_gene_annotation(project)
-
-    gene_ids <- gene_map$gene_id
-    gene_symbols <- gene_map$symbol
-
-    symbol_to_id <- setNames(gene_ids, gene_symbols)
-
-    resolve_gene <- function(g) {
-
-      if (g %in% gene_symbols) {
-        return(symbol_to_id[[g]])
-      }
-
-      if (g %in% gene_ids) {
-        return(g)
-      }
-
-      stop("Gene not found: ", g)
-    }
-
-    resolved <- vapply(features,
-                       resolve_gene,
-                       character(1))
-
-    clean_ids <- sub("\\..*", "", rownames(expr_mat))
-    rownames(expr_mat) <- clean_ids
-
-    resolved <- sub("\\..*", "", resolved)
-
-    out <- expr_mat[resolved, , drop = FALSE]
-
-    rownames(out) <- features
-
-    return(out)
-  }
-
-  if (type == "metadata") {
-
-    missing <- setdiff(features, colnames(metadata))
-
-    if (length(missing) > 0) {
-      stop("Metadata variables not found: ",
-           paste(missing, collapse = ", "))
-    }
-
-    out <- metadata[, features, drop = FALSE]
-
-    if (format == "continuous") {
-
-      out[] <- lapply(out, function(v) {
-
-        if (is.numeric(v)) {
-          return(v)
-        }
-
-        suppressWarnings(as.numeric(as.character(v)))
-      })
-    }
-
-    out <- t(as.matrix(out))
-
-    return(out)
-  }
-
-  stop("Unsupported type: ", type)
-}
-
-# ============================
-# Compute mi
-# ============================
+  # ============================
+  # Compute mi
+  # ============================
 #' @importFrom stats complete.cases
 
   .compute_mi <- function(x, y, method = c("knn", "discrete"), bins = 10, k = 5) {
