@@ -263,17 +263,13 @@
 
       xx <- gsub("mediated", "", xx)
 
-      # 4. Tokenização
       words <- unlist(strsplit(xx, "\\s+"))
       words <- words[nzchar(words)]
 
-      # 5. Mantém estrutura → NÃO filtra agressivamente
-      # só remove duplicatas consecutivas
       if (length(words) > 1) {
         words <- words[c(TRUE, words[-1] != words[-length(words)])]
       }
 
-      # 6. Mantém palavras importantes no início
       priority <- c(
         "immune","inflammation","interferon","cytokine",
         "apoptosis","cell","dna","repair",
@@ -281,19 +277,16 @@
         "signaling","mtor","nfkb","jak","stat"
       )
 
-      # reordenar levemente (sem destruir frase)
       idx_priority <- which(words %in% priority)
       if (length(idx_priority) > 0) {
         words <- c(words[idx_priority], words[-idx_priority])
       }
 
-      # 7. Limitar tamanho de forma segura
       words <- head(words, max_words)
 
       out <- paste(words, collapse = " ")
       out <- tools::toTitleCase(out)
 
-      # 8. limpeza final
       out <- gsub("\\s+", " ", out)
       out <- trimws(out)
 

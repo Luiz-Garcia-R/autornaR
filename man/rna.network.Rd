@@ -10,7 +10,8 @@ rna.network(
   group = NULL,
   threshold = 0.8,
   cor_p = 0.05,
-  only_hubs = FALSE,
+  node_filter = c("all", "top"),
+  top_nodes = 0.2,
   cor_method = c("pearson", "spearman", "auto"),
   community_method = c("louvain", "leiden", "none"),
   layout = c("fr", "kk", "stress", "lgl", "graphopt"),
@@ -22,55 +23,70 @@ rna.network(
 \arguments{
 \item{project}{\code{rna_project} object created by \code{rna.project()}.}
 
-\item{pathway}{Character or numeric. Pathway name or index from the
-previously computed GSEA results. If \code{NULL}, the top enriched
-pathway is used automatically.}
+\item{pathway}{Character or numeric. Pathway name or index from GSEA results.}
 
-\item{group}{Character. Experimental group used to compute correlations.
-If \code{NULL}, the first group in the metadata is used.}
+\item{group}{Character. Experimental group used to compute correlations.}
 
-\item{threshold}{Numeric. Minimum absolute correlation required for an
-edge to be included in the network (default: \code{0.6}).}
+\item{threshold}{Numeric. Minimum absolute correlation required to define an edge.}
 
-\item{cor_p}{Numeric. Maximum p-value allowed for correlations to be
-retained (default: \code{0.05}).}
+\item{cor_p}{Numeric. Maximum p-value allowed for correlations.}
 
-\item{only_hubs}{Logical. If \code{TRUE}, only hub genes are labeled
-in the network plot (default: \code{FALSE}).}
-
-\item{cor_method}{Character. Correlation method used to build the network:
+\item{node_filter}{Character. Defines the structural view of the network:
 \itemize{
-\item \code{"pearson"}: Pearson correlation
-\item \code{"spearman"}: Spearman rank correlation
-\item \code{"auto"}: automatically selects Spearman when
-sample size is small (\code{n < 8}), otherwise Pearson
+\item \code{"all"}: full pathway network (recommended for structural interpretation)
+\item \code{"top"}: restricted network containing only the most central genes
+}
+
+\strong{Important:}
+When \code{node_filter = "top"}, the network is no longer a full pathway graph
+but a \emph{centrality-enriched subnetwork}, highlighting influential genes
+rather than full modular architecture.}
+
+\item{top_nodes}{Numeric. Fraction of most central nodes retained when
+\code{node_filter = "top"} (default: \code{0.2}).}
+
+\item{cor_method}{Character. Correlation method used:
+\itemize{
+\item \code{"pearson"}: linear coexpression structure
+\item \code{"spearman"}: rank-based robustness
+\item \code{"auto"}: adaptive choice based on sample size
 }}
 
-\item{community_method}{Character. Community detection algorithm applied
-to the network:
+\item{community_method}{Character. Community detection strategy:
 \itemize{
-\item \code{"louvain"}: Louvain modularity optimization
-\item \code{"leiden"}: Leiden algorithm
-\item \code{"none"}: skip community detection
+\item \code{"louvain"}: favors larger, coarse-grained modules (global view)
+\item \code{"leiden"}: more stable and fine-grained community structure
+\item \code{"none"}: no explicit modular partitioning
+}
+
+\strong{Guidance:}
+\itemize{
+\item Use \code{louvain} for full-network interpretation (\code{all})
+\item Use \code{leiden} for hub-focused or reduced networks (\code{top})
+\item Use \code{none} when focusing on continuous gradients of connectivity
 }}
 
-\item{layout}{Character. Graph layout algorithm used for visualization:
+\item{layout}{Character. Graph layout algorithm:
 \itemize{
-\item \code{"fr"}: Fruchterman-Reingold force-directed layout
-\item \code{"kk"}: Kamada-Kawai layout
-\item \code{"stress"}: stress majorization layout
-\item \code{"lgl"}: large graph layout
-\item \code{"graphopt"}: graph optimization layout
+\item \code{"fr"}: fast global layout, good for overview plots
+\item \code{"kk"}: balanced structure-preserving layout
+\item \code{"stress"}: best preservation of relational distances (recommended for top nodes)
+\item \code{"lgl"}: scalable layout for larger networks
+\item \code{"graphopt"}: compact structure visualization
+}
+
+\strong{Guidance:}
+\itemize{
+\item \code{fr}: publication-style overview of full networks
+\item \code{stress}: best for interpreting hub-centered structures
+\item \code{kk}: balanced exploratory analysis
 }}
 
-\item{seed}{Optional integer used to set the random seed for reproducibility.
-If \code{NULL}, the current random number generator state is preserved.}
+\item{seed}{Optional integer used for reproducibility.}
 
-\item{plot}{Logical. Whether to display the network plot when running
-interactively (default: \code{TRUE}).}
+\item{plot}{Logical. Whether to display the network plot.}
 
-\item{save}{Logical. Whether to store the results in the active
-\code{rna_project} (default: \code{TRUE}).}
+\item{save}{Logical. Whether to store results in \code{rna_project}.}
 }
 \value{
 An object of class \code{"rna_network"} containing:
@@ -90,67 +106,56 @@ The function invisibly returns a list containing:
 }
 }
 \description{
-Builds a gene coexpression network for genes belonging to a selected
-pathway using normalized RNA-seq expression data stored in the active
-\code{rna_project}. Edges represent pairwise gene correlations within
-a specified experimental group, allowing exploration of pathway-level
-regulatory structure and hub genes.
+Builds a gene coexpression network for genes belonging to a selected pathway
+using normalized RNA-seq expression data stored in the active \code{rna_project}.
 
-The function integrates pathway information from previous GSEA results,
-constructs a correlation network, computes topological metrics, optionally
-detects communities, and generates a publication-ready network plot.
+The function translates pathway-level gene sets (from GSEA results) into a
+correlation-based network, where edges represent gene-gene coexpression
+within a defined experimental group.
+
+Beyond network construction, the function supports two complementary
+analytical views:
+
+\itemize{
+\item \strong{Global structure (\code{node_filter = "all"})}:
+preserves the full pathway topology, enabling interpretation of
+modular organization and overall connectivity.
+
+\item \strong{Hub-centered structure (\code{node_filter = "top"})}:
+restricts visualization to the most central genes, emphasizing
+regulatory influence and core network drivers.
+}
+
+These two modes represent different biological perspectives rather than
+simple visual filtering.
 }
 \details{
-The function expects normalized RNA-seq data and GSEA results already
-stored in the project object.
+The function expects pre-computed GSEA results and normalized expression data.
 
-Required project components:
+The resulting network is sensitive to filtering choices:
+
 \itemize{
-\item \code{rna_project$data$normalized_data$expr_matrix}: gene expression
-matrix (genes x samples)
-\item \code{rna_project$data$normalized_data$metadata}: sample metadata
-containing group annotations
-\item \code{rna_project$analyses$gsea}: previously computed GSEA results
+\item Lower \code{threshold} increases connectivity and density
+\item \code{node_filter = "top"} shifts interpretation toward central regulators
+\item Community structure becomes less stable in highly filtered networks
 }
 
-The selected pathway genes are extracted from the GSEA results and matched
-to the expression matrix. Pairwise correlations are computed across samples
-within the chosen experimental group, and edges are retained according to
-correlation magnitude and statistical significance.
+Therefore, parameter selection should reflect the biological question:
 
-\strong{Network construction:}
+\strong{Recommended usage patterns:}
 \itemize{
-\item Edges represent pairwise gene correlations
-\item Correlations are filtered by magnitude and p-value
-\item Edge weights correspond to correlation strength
-\item Distances used for centrality metrics are defined as
-\code{1 - |correlation|}
-}
-
-\strong{Topological metrics:}
-\itemize{
-\item degree centrality
-\item betweenness centrality
-\item closeness centrality
-\item composite hub score
-}
-
-Hub genes are defined as nodes with degree greater than
-\code{mean(degree) + sd(degree)}.
-
-When enabled, community detection partitions the network into modules
-using modularity-based algorithms.
-
-\strong{Visualization:}
-
-The resulting network plot displays:
-\itemize{
-\item nodes sized by degree
-\item nodes colored by log2 fold-change from differential expression analysis
-\item edge thickness proportional to correlation magnitude
-\item gene labels optionally restricted to hub genes
+\item \emph{Pathway structure exploration}: \code{all + leiden + stress}
+\item \emph{Regulatory hub discovery}: \code{top + none/leiden + stress}
+\item \emph{Publication figure}: \code{all + louvain + fr}
 }
 }
+\section{Interpretation note}{
+
+Networks generated with \code{node_filter = "top"} represent a
+\emph{centrality-enriched projection of the pathway}, not the full
+coexpression topology.
+}
+
 \section{Stored output}{
 
 When \code{save = TRUE}, the network object is stored in:
@@ -168,11 +173,12 @@ rna.network(project = my_project)
 
 # Use a specific pathway from GSEA
 rna.network(my_project,
-            pathway = "Cellular Response To Starvation")
+            pathway = 'Cellular Response To Starvation')
 
-# Restrict labels to hub genes
+# Restrict labels to top 20\% genes
 rna.network(my_project,
-            only_hubs = TRUE)
+            node_filter = 'top',
+            top_nodes = 0.2)
 
 # Use Spearman correlation
 rna.network(my_project,
