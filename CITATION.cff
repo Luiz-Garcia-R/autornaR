@@ -13,8 +13,8 @@ abstract: >
   simplify reproducible transcriptomic workflows while remaining accessible
   to users with limited bioinformatics experience.
 
-version: "0.2.6"
-date-released: 2025-10-21
+version: 0.2.7
+date-released: 2026-27-05
 url: "https://github.com/Luiz-Garcia-R/autornaR"
 
 keywords:
