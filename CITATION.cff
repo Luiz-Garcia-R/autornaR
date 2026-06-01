@@ -1,8 +1,12 @@
 cff-version: 1.2.0
+
 message: "If you use this software, please cite it as below."
+
 authors:
-  - family-names: "Cardoso Garcia"
-    given-names: "Luiz Fernando"
+  - family-names: Cardoso Garcia
+    given-names: Luiz Fernando
+    affiliation: Universidade Federal do Paraná
+    ORCID = "0000-0002-9616-0927"
 title: "autornaR"
 
 abstract: >
@@ -13,7 +17,7 @@ abstract: >
   simplify reproducible transcriptomic workflows while remaining accessible
   to users with limited bioinformatics experience.
 
-version: 0.2.7
+version: "0.2.7"
 date-released: 2026-27-05
 url: "https://github.com/Luiz-Garcia-R/autornaR"
 
