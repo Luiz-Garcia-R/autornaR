@@ -25,8 +25,9 @@ keywords:
   - R
 
 version: "0.2.7"
-date-released: 2026-27-05
+date-released: 2026-05-27
+
 repository-code: "https://github.com/Luiz-Garcia-R/autornaR"
 url: "https://github.com/Luiz-Garcia-R/autornaR"
 
-license: MIT
+license: "MIT"
