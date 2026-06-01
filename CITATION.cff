@@ -1,12 +1,14 @@
 cff-version: 1.2.0
-
+title: autornaR
 message: "If you use this software, please cite it as below."
+type: software
 
 authors:
   - family-names: Cardoso Garcia
     given-names: Luiz Fernando
     affiliation: Universidade Federal do Paraná
-    ORCID = "0000-0002-9616-0927"
+    orcid: "https://orcid.org/0000-0002-9616-0927"
+
 title: "autornaR"
 
 abstract: >
