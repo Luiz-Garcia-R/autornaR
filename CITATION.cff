@@ -8,11 +8,6 @@ authors:
     affiliation: Universidade Federal do Paraná
     ORCID = "0000-0002-9616-0927"
 
-version: 0.2.7
-date-released: 2026-27-05
-
-url: https://github.com/Luiz-Garcia-R/autornaR
-
 abstract: >
   autornaR is an R package designed to streamline RNA-seq data analysis,
   providing tools for data import, validation, normalization, quality
@@ -21,11 +16,8 @@ abstract: >
   simplify reproducible transcriptomic workflows while remaining accessible
   to users with limited bioinformatics experience.
 
-keywords:
-  - RNA-seq
-  - transcriptomics
-  - bioinformatics
-  - differential-expression
-  - R
+version: 0.2.7
+date-released: 2026-27-05
+url: https://github.com/Luiz-Garcia-R/autornaR
 
 license: MIT
