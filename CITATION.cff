@@ -4,6 +4,15 @@ authors:
   - family-names: "Cardoso Garcia"
     given-names: "Luiz Fernando"
 title: "autornaR"
+
+abstract: >
+  autornaR is an R package designed to streamline RNA-seq data analysis,
+  providing tools for data import, validation, normalization, quality
+  control, exploratory analysis, differential expression, functional
+  enrichment, statistical testing, and visualization. The package aims to
+  simplify reproducible transcriptomic workflows while remaining accessible
+  to users with limited bioinformatics experience.
+
 version: "0.2.6"
 date-released: 2025-10-21
 url: "https://github.com/Luiz-Garcia-R/autornaR"
