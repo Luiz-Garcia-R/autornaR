@@ -166,7 +166,7 @@ rna.compare <- function(project,
       )
     }
 
-    contrast_list <- list(c(groups[2], groups[1]))
+    contrast_list <- list(c(groups[1], groups[2]))
 
   } else {
 

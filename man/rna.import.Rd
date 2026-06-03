@@ -9,11 +9,11 @@ rna.import(
   raw_data,
   metadata = NULL,
   format = c("clean", "hisat2", "star", "featureCounts", "tximport"),
-  rename_samples = NULL,
   gene_col = NULL,
   group_col = NULL,
   gene_id_type = c("auto", "ENSEMBL", "SYMBOL", "ENTREZ"),
   organism = c("auto", "mouse", "human", "zebrafish"),
+  rename_samples = NULL,
   clean_names = TRUE,
   strict = TRUE,
   save = TRUE,
@@ -33,9 +33,6 @@ with the count matrix. If detection fails, the function will return an error
 \item{format}{Character. Input format: \code{"clean"}, \code{"hisat2"},
 \code{"star"}, \code{"featureCounts"}, or \code{"tximport"}.}
 
-\item{rename_samples}{Optional character vector to rename sample columns.
-Must have the same length and order as the detected sample columns.}
-
 \item{gene_col}{Optional character specifying the column containing gene
 identifiers. If \code{NULL} (default), the function will attempt to detect
 the gene column automatically. If no suitable column is found, row names
@@ -50,6 +47,9 @@ Default is \code{"auto"}.}
 
 \item{organism}{Character. Organism name:
 \code{"auto"}, \code{"mouse"}, \code{"human"}, or \code{"zebrafish"}.}
+
+\item{rename_samples}{Optional character vector to rename sample columns.
+Must have the same length and order as the detected sample columns.}
 
 \item{clean_names}{Logical. If \code{TRUE}, automatically cleans sample names
 by removing file extensions and special characters.}

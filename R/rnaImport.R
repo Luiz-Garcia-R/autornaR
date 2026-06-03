@@ -25,14 +25,14 @@
 #' (in strict mode).
 #' @param format Character. Input format: \code{"clean"}, \code{"hisat2"},
 #'   \code{"star"}, \code{"featureCounts"}, or \code{"tximport"}.
-#' @param rename_samples Optional character vector to rename sample columns.
-#' Must have the same length and order as the detected sample columns.
 #' @param gene_col Optional character specifying the column containing gene
 #' identifiers. If \code{NULL} (default), the function will attempt to detect
 #' the gene column automatically. If no suitable column is found, row names
 #' will be used when possible.
 #' @param group_col Optional character specifying the column containing sample
 #' groups. If \code{NULL} (default).
+#' @param rename_samples Optional character vector to rename sample columns.
+#' Must have the same length and order as the detected sample columns.
 #' @param gene_id_type Character. Gene identifier type:
 #'   \code{"auto"}, \code{"ENSEMBL"}, \code{"SYMBOL"}, \code{"ENTREZ"}.
 #'   Default is \code{"auto"}.
@@ -99,11 +99,11 @@ rna.import <- function(
     raw_data,
     metadata = NULL,
     format = c("clean", "hisat2", "star", "featureCounts", "tximport"),
-    rename_samples = NULL,
     gene_col = NULL,
     group_col = NULL,
     gene_id_type = c("auto", "ENSEMBL", "SYMBOL", "ENTREZ"),
     organism = c("auto", "mouse", "human", "zebrafish"),
+    rename_samples = NULL,
     clean_names = TRUE,
     strict = TRUE,
     save = TRUE,
@@ -145,20 +145,26 @@ rna.import <- function(
   # ---------------------------
   # 3.5) Handle rownames as gene IDs
   # ---------------------------
-  if (is.null(gene_col)) {
-
-    gene_col <- "Geneid"
-
   if (is.null(colnames(raw_data)) || ncol(raw_data) == 0) {
     add_error("raw_data has no columns.")
   }
 
   # Check column
   possible_gene_cols <- c(
-    gene_col,
-    "Geneid","geneid","GeneID","GENEID",
-    "Gene","ID","id","Id",
-    "gene_name","gene","symbol","Symbol"
+    "Gene_ID",
+    "Geneid",
+    "geneid",
+    "GeneID",
+    "GENEID",
+    "Ensembl_ID",
+    "ENSEMBL_ID",
+    "ensembl_id",
+    "Gene",
+    "gene",
+    "ID",
+    "id",
+    "Symbol",
+    "symbol"
   )
 
   found <- intersect(possible_gene_cols, colnames(raw_data))
@@ -178,33 +184,44 @@ rna.import <- function(
 
       if (looks_like_gene) {
 
+        if (is.null(gene_col)) {
+
+          stop(
+            "No gene identifier column detected. Please specify 'gene_col'."
+          )
+
+        }
+
         raw_data[[gene_col]] <- rn
-        raw_data <- raw_data[, c(gene_col, setdiff(colnames(raw_data), gene_col))]
 
-        add_warning("Gene IDs detected in rownames and moved to column.")
+        raw_data <- raw_data[, c(
+          gene_col,
+          setdiff(colnames(raw_data), gene_col)
+        )]
 
+        add_warning(
+          "Gene IDs detected in rownames and moved to column."
+        )
       }
     }
   }
-}
 
   # ---------------------------
   # 4) Detect gene column
   # ---------------------------
-  possible_gene_cols <- c(
-    gene_col,
-    "Geneid","geneid","GeneID","GENEID",
-    "Gene","ID","id","Id",
-    "gene_name","gene","symbol","Symbol"
+  if (!is.null(gene_col)) {
+    possible_gene_cols <- c(gene_col, possible_gene_cols)
+  }
+
+  found <- intersect(
+    possible_gene_cols,
+    colnames(raw_data)
   )
 
-  found <- intersect(possible_gene_cols, colnames(raw_data))
-
-  if (length(found) == 0) {
-    add_error("No gene column detected.")
-  } else {
+  if (length(found) > 0) {
     gene_col <- found[1]
   }
+
 
   # ---------------------------
   # 5) Detect gene ID type
@@ -290,7 +307,6 @@ rna.import <- function(
   # ---------------------------
   # 8) Resolve organism
   # ---------------------------
-
   if (organism == "auto") {
 
     if (gene_id_type %in% c("SYMBOL", "ENTREZ")) {
@@ -453,6 +469,7 @@ rna.import <- function(
         add_warning("Some samples in count matrix not found in metadata.")
       }
 
+      metadata_original <- metadata
       metadata <- metadata[idx[valid], , drop = FALSE]
 
       if (detected_sample_col != "Sample") {
@@ -490,6 +507,7 @@ rna.import <- function(
   if (!is.null(metadata)) {
 
     detected_group_col <- NULL
+    original_group_levels <- NULL
 
     # ---------------------------
     # 12.1) Manual override
@@ -551,8 +569,35 @@ rna.import <- function(
     # 12.4) Build group info
     # ---------------------------
     if (!is.null(detected_group_col)) {
-      metadata$Group <- metadata[[detected_group_col]]
-      group_info <- as.list(table(metadata$Group))
+
+      if (is.null(original_group_levels)) {
+
+        original_group_levels <- unique(
+          as.character(metadata_original[[detected_group_col]])
+        )
+
+      }
+
+      detected_levels <- original_group_levels
+
+      metadata$Group <- factor(
+        metadata[[detected_group_col]],
+        levels = detected_levels
+      )
+
+      group_info <- list(
+        column = detected_group_col,
+        levels = detected_levels,
+        sizes = as.list(table(metadata$Group))
+      )
+
+      add_warning(
+        paste0(
+          "Group order detected: ",
+          paste(detected_levels, collapse = " -> ")
+        )
+      )
+
     } else {
       add_warning("No group column detected.")
     }
