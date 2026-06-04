@@ -445,6 +445,10 @@ rna.import <- function(
       metadata$Sample <- .normalize_sample_names(metadata$Sample)
       sample.cols <- .normalize_sample_names(sample.cols)
 
+      colnames(raw_data_counts)[
+        colnames(raw_data_counts) != gene_col
+      ] <- sample.cols
+
       # Trim
       metadata$Sample <- trimws(metadata$Sample)
       sample.cols <- trimws(sample.cols)
@@ -456,21 +460,25 @@ rna.import <- function(
         add_error("No matching samples between metadata and count matrix.")
       }
 
+      # Preserve original metadata order
+      metadata_original <- metadata
+
       # Reorder safely
       idx <- match(sample.cols, metadata$Sample)
 
       if (any(is.na(idx))) {
-        add_warning("Some samples in count matrix not found in metadata.")
+
+        missing_samples <- sample.cols[is.na(idx)]
+
+        add_warning(
+          paste0(
+            "Samples in count matrix not found in metadata: ",
+            paste(missing_samples, collapse = ", ")
+          )
+        )
       }
 
-      valid <- !is.na(idx)
-
-      if (!all(valid)) {
-        add_warning("Some samples in count matrix not found in metadata.")
-      }
-
-      metadata_original <- metadata
-      metadata <- metadata[idx[valid], , drop = FALSE]
+      metadata <- metadata[idx[!is.na(idx)], , drop = FALSE]
 
       if (detected_sample_col != "Sample") {
         add_warning(paste0(

@@ -571,10 +571,16 @@
 #' @keywords internal
 
 .normalize_sample_names <- function(x) {
-  x <- as.character(x)
+
   x <- trimws(x)
-  x <- gsub("\\.(bam|counts|txt|csv)$", "", x, ignore.case = TRUE)
-  x <- gsub("[^A-Za-z0-9_\\-]+", "", x)
+
+  x <- gsub(
+    "\\.(bam|counts|txt|csv)$",
+    "",
+    x,
+    ignore.case = TRUE
+  )
+
   x
 }
 

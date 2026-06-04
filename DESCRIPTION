@@ -1,7 +1,7 @@
 Package: autornaR
 Type: Package
 Title: Comprehensive RNAseq Data Analysis and Visualization
-Version: 0.2.8
+Version: 0.2.9
 Authors@R: 
     person("Luiz", "Garcia", 
            email = "luiz.cardoso@ufpr.br", 
