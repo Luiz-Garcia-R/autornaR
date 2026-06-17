@@ -1,7 +1,7 @@
 Package: autornaR
 Type: Package
 Title: Comprehensive RNAseq Data Analysis and Visualization
-Version: 0.2.9
+Version: 0.2.10
 Authors@R: 
     person("Luiz", "Garcia", 
            email = "luiz.cardoso@ufpr.br", 
@@ -47,6 +47,7 @@ Suggests:
     enrichplot,
     fgsea,
     FNN,
+    GSVA,
     knitr,
     limma,
     org.Dr.eg.db,

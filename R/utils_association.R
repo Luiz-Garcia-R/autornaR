@@ -81,16 +81,109 @@
 }
 
 # ============================
-# Resolve features (rna.association)
+# Resolve features
 # ============================
 #' @keywords internal
+
+# TODO:
+# In future versions allow mixed feature types
+# (gene + metadata + pathway + cell_score)
+# for regression-like workflows.
+
 
 .resolve_features <- function(project,
                               expr_mat,
                               metadata,
                               features,
-                              type = "gene",
+                              type = "auto",
                               format = "continuous") {
+
+  # ---------------------------
+  # Auto-detection
+  # ---------------------------
+
+  if (type == "auto") {
+
+    gene_map <- .get_gene_annotation(project)
+
+    gene_ids <- gene_map$gene_id
+    gene_symbols <- gene_map$symbol
+
+    # Remove Ensembl version suffixes
+    gene_ids_clean <- sub(
+      "\\..*",
+      "",
+      gene_ids
+    )
+
+    features_clean <- sub(
+      "\\..*",
+      "",
+      features
+    )
+
+    is_gene <-
+      features_clean %in% gene_ids_clean |
+      features %in% gene_symbols
+
+    is_metadata <- features %in% colnames(metadata)
+
+    # ---------------------------
+    # Ambiguous features
+    # ---------------------------
+
+    ambiguous <- is_gene & is_metadata
+
+    if (any(ambiguous)) {
+
+      stop(
+        "Ambiguous feature(s) detected: ",
+        paste(features[ambiguous],
+              collapse = ", "),
+        ". Please specify type explicitly."
+      )
+    }
+
+    # ---------------------------
+    # Unresolved features
+    # ---------------------------
+
+    unresolved <- !(is_gene | is_metadata)
+
+    if (any(unresolved)) {
+
+      stop(
+        "Could not automatically resolve feature(s): ",
+        paste(features[unresolved],
+              collapse = ", ")
+      )
+    }
+
+    # ---------------------------
+    # Determine feature class
+    # ---------------------------
+
+    detected <- ifelse(
+      is_gene,
+      "gene",
+      "metadata"
+    )
+
+    if (length(unique(detected)) > 1) {
+
+      stop(
+        "Features belong to multiple classes. ",
+        "Current implementation requires all features ",
+        "to have the same type."
+      )
+    }
+
+    type <- unique(detected)
+  }
+
+  # ---------------------------
+  # Gene features
+  # ---------------------------
 
   if (type == "gene") {
 
@@ -99,66 +192,167 @@
     gene_ids <- gene_map$gene_id
     gene_symbols <- gene_map$symbol
 
-    symbol_to_id <- setNames(gene_ids, gene_symbols)
+    symbol_to_id <- setNames(
+      gene_ids,
+      gene_symbols
+    )
 
     resolve_gene <- function(g) {
 
+      g_clean <- sub(
+        "\\..*",
+        "",
+        g
+      )
+
+      gene_ids_clean <- sub(
+        "\\..*",
+        "",
+        gene_ids
+      )
+
       if (g %in% gene_symbols) {
-        return(symbol_to_id[[g]])
+
+        return(
+          symbol_to_id[[g]]
+        )
       }
 
-      if (g %in% gene_ids) {
-        return(g)
+      if (g_clean %in% gene_ids_clean) {
+
+        return(
+          gene_ids[
+            match(
+              g_clean,
+              gene_ids_clean
+            )
+          ]
+        )
       }
 
-      stop("Gene not found: ", g)
+      stop(
+        "Gene not found: ",
+        g
+      )
     }
 
-    resolved <- vapply(features,
-                       resolve_gene,
-                       character(1))
+    resolved <- vapply(
+      features,
+      resolve_gene,
+      character(1)
+    )
 
-    clean_ids <- sub("\\..*", "", rownames(expr_mat))
-    rownames(expr_mat) <- clean_ids
+    rownames(expr_mat) <- sub(
+      "\\..*",
+      "",
+      rownames(expr_mat)
+    )
 
-    resolved <- sub("\\..*", "", resolved)
+    resolved <- sub(
+      "\\..*",
+      "",
+      resolved
+    )
 
-    out <- expr_mat[resolved, , drop = FALSE]
+    out <- expr_mat[
+      resolved,
+      ,
+      drop = FALSE
+    ]
 
     rownames(out) <- features
 
     return(out)
   }
 
+  # ---------------------------
+  # Metadata features
+  # ---------------------------
+
   if (type == "metadata") {
 
-    missing <- setdiff(features, colnames(metadata))
+    missing <- setdiff(
+      features,
+      colnames(metadata)
+    )
 
     if (length(missing) > 0) {
-      stop("Metadata variables not found: ",
-           paste(missing, collapse = ", "))
+
+      stop(
+        "Metadata variables not found: ",
+        paste(missing,
+              collapse = ", ")
+      )
     }
 
-    out <- metadata[, features, drop = FALSE]
+    out <- metadata[
+      ,
+      features,
+      drop = FALSE
+    ]
 
     if (format == "continuous") {
 
-      out[] <- lapply(out, function(v) {
+      out[] <- lapply(
+        out,
+        function(v) {
 
-        if (is.numeric(v)) {
-          return(v)
+          if (is.numeric(v)) {
+            return(v)
+          }
+
+          suppressWarnings(
+            as.numeric(
+              as.character(v)
+            )
+          )
         }
-
-        suppressWarnings(as.numeric(as.character(v)))
-      })
+      )
     }
 
-    out <- t(as.matrix(out))
+    out <- t(
+      as.matrix(out)
+    )
 
     return(out)
   }
 
-  stop("Unsupported type: ", type)
+  # ---------------------------
+  # GSVA features
+  # ---------------------------
+  if (type == "gsva") {
+
+    scores <- .get_gsva_scores(project)
+
+    missing <- setdiff(
+      features,
+      rownames(scores)
+    )
+
+    if (length(missing) > 0) {
+
+      stop(
+        "GSVA pathways not found: ",
+        paste(missing, collapse = ", ")
+      )
+
+    }
+
+    return(
+      scores[
+        features,
+        ,
+        drop = FALSE
+      ]
+    )
+
+  }
+
+  # Else
+  stop(
+    "Unsupported type: ",
+    type
+  )
 }
 
 # ============================

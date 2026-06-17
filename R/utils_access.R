@@ -118,3 +118,18 @@
   .get_gsea <- function(project, id = NULL) {
     .get_from_container(project$analyses$gsea, id)
   }
+
+# --- gsva ---
+  .get_gsva <- function(project, id = NULL) {
+    .get_from_container(
+      project$analyses$gsva, id)
+  }
+
+# --- gsva scores ---
+  .get_gsva_scores <- function(project, id = NULL) {
+    .get_from_container(
+      project$analyses$gsva,
+      id,
+      "pathway_scores"
+    )
+  }

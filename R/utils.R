@@ -520,6 +520,45 @@
 }
 
 # ============================
+# Convert gene symbols
+# ============================
+#' @keywords internal
+
+.convert_expr_to_symbols <- function(expr, proj) {
+
+  gene_map <- .get_gene_annotation(proj)
+
+  gene_symbols <- gene_map$symbol[
+    match(
+      rownames(expr),
+      gene_map$gene_id
+    )
+  ]
+
+  gene_symbols[
+    is.na(gene_symbols) |
+      gene_symbols == ""
+  ] <- rownames(expr)[
+    is.na(gene_symbols) |
+      gene_symbols == ""
+  ]
+
+  valid <- !is.na(gene_symbols) &
+    gene_symbols != ""
+
+  expr <- expr[valid, , drop = FALSE]
+
+  rownames(expr) <- gene_symbols[valid]
+
+  expr <- rowsum(
+    expr,
+    group = rownames(expr)
+  )
+
+  as.matrix(expr)
+}
+
+# ============================
 # Get gene annotation
 # ============================
 #' @keywords internal

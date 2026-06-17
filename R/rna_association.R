@@ -16,19 +16,19 @@
 #' @param y_features Optional character vector of features to place on the
 #'   y-axis. If \code{NULL}, uses \code{x_features}.
 #' @param x_type Character. Type of x-axis features. Currently supported:
-#'   \code{"gene"} and \code{"metadata"}.
+#'   \code{auto}, \code{gene}, \code{metadata} and \code{gsva}.
 #' @param y_type Character. Type of y-axis features. Currently supported:
-#'   \code{"gene"} and \code{"metadata"}.
+#'   \code{auto}, \code{gene} \code{metadata} and \code{gsva}.
 #' @param format Character. Data format expected for association analysis.
-#'   Currently supports \code{"continuous"}.
+#'   Currently supports \code{continuous}.
 #' @param group Optional character. Restricts analysis to samples belonging
 #'   to the specified group in metadata.
 #' @param method Correlation method used for association analysis.
-#'   One of \code{"pearson"}, \code{"spearman"}, or \code{"kendall"}.
+#'   One of \code{pearson}, \code{spearman}, or \code{kendall}.
 #' @param compute_mi Logical. Whether to additionally compute mutual
 #'   information for each association pair (default: \code{FALSE}).
 #' @param mi_method Method used for mutual information estimation.
-#'   One of \code{"knn"} or \code{"discrete"}.
+#'   One of \code{knn} or \code{discrete}.
 #' @param cluster Logical. Whether to hierarchically cluster rows and columns
 #'   when the association matrix is symmetric
 #'   (default: \code{TRUE}).
@@ -133,8 +133,8 @@
 rna.association <- function(project,
                             x_features,
                             y_features = NULL,
-                            x_type = "gene",
-                            y_type = NULL,
+                            x_type = c("auto", "gene", "metadata", "gsva"),
+                            y_type = c("auto", "gene", "metadata", "gsva"),
                             format = "continuous",
                             group = NULL,
                             method = c("spearman", "pearson", "kendall"),
@@ -145,6 +145,8 @@ rna.association <- function(project,
                             verbose = TRUE) {
 
   method <- match.arg(method)
+  x_type <- match.arg(x_type)
+  y_type <- match.arg(y_type)
   mi_method <- match.arg(mi_method)
 
   # ---------------------------
