@@ -45,13 +45,13 @@
 #'   \item{formula}{Model formula used for fitting.}
 #'   \item{fit}{Fitted \code{lm} object.}
 #'   \item{coefficients}{Regression coefficient table.}
-#'   \item{diagnostics}{Model diagnostic metrics.}
 #'   \item{plot}{Generated \pkg{ggplot2} visualization (when available).}
 #'   \item{outcome}{Outcome variable.}
 #'   \item{predictors}{Predictor variables.}
 #'   \item{covariates}{Adjustment covariates.}
 #'   \item{params}{List containing analysis parameters and metadata.}
 #' }
+#'
 #'
 #' @details
 #' The function was designed as a generalized regression engine for
@@ -62,6 +62,27 @@
 #'
 #' Currently, linear regression models are fitted using
 #' \code{\link[stats]{lm}}.
+#'
+#' Unlike correlation analyses, regression models explicitly distinguish
+#' between an outcome variable and one or more predictor variables.
+#' Consequently, the model estimates how changes in predictor values are
+#' associated with changes in the outcome while preserving directionality
+#' (\code{outcome ~ predictors}).
+#'
+#' For single-predictor models, the regression coefficient
+#' (\eqn{\beta}) represents the expected change in the outcome for a
+#' one-unit increase in the predictor. The coefficient of determination
+#' (\eqn{R^2}) quantifies the proportion of outcome variability explained
+#' by the model. When only one predictor is included, \eqn{R^2}
+#' corresponds to the squared Pearson correlation coefficient between the
+#' predictor and outcome.
+#'
+#' Regression analysis provides a flexible framework for studying
+#' gene-gene and gene-phenotype relationships because additional
+#' covariates can be incorporated directly into the model. This allows
+#' users to evaluate associations while adjusting for potential
+#' confounding variables such as age, sex, batch effects, or other sample
+#' characteristics.
 #'
 #' Missing values are removed using complete-case filtering prior to
 #' model fitting.
@@ -76,7 +97,6 @@
 #'   \item model summary statistics (\eqn{\beta}, p-value and R^2).
 #' }
 #'
-#' If \code{diagnostics = TRUE}, the following metrics are computed:
 #'
 #' \itemize{
 #'   \item R^2;
@@ -340,8 +360,8 @@ rna_regression <- function(
   names(coef_table) <- c(
     "estimate",
     "std_error",
-    "t",
-    "p",
+    "t-statistic",
+    "p-value",
     "variable"
   )
 
@@ -351,8 +371,8 @@ rna_regression <- function(
       "variable",
       "estimate",
       "std_error",
-      "t",
-      "p"
+      "t-statistic",
+      "p-value"
     )
   ]
 
@@ -433,8 +453,8 @@ rna_regression <- function(
 
     subtitle_text <- paste0(
       "\u03B2 = ", beta,
-      " | p = ", pval,
-      " | R^2 = ", r2
+      " | R^2 = ", r2,
+      " | p = ", pval
     )
 
     line_col <- "#2F5D8A"
@@ -442,14 +462,11 @@ rna_regression <- function(
     point_col <- "grey40"
 
     g <- ggplot2::ggplot(
-
       model_df,
-
-      ggplot2::aes_string(
-        x = pred,
-        y = outcome
+      ggplot2::aes(
+        x = .data[[pred]],
+        y = .data[[outcome]]
       )
-
     ) +
 
       ggplot2::geom_point(
@@ -607,7 +624,7 @@ print.rna_regression <- function(x, ...) {
 
     cat(
       "n: ",
-      x$params$n_samples,
+      x$n_samples,
       "\n",
       sep = ""
     )
@@ -623,14 +640,14 @@ print.rna_regression <- function(x, ...) {
 
     cat(
       "R^2: ",
-      round(x$diagnostics$r_squared, 3),
+      round(x$model_metrics$r_squared, 3),
       "\n",
       sep = ""
     )
 
     cat(
       "Adjusted R^2: ",
-      round(x$diagnostics$adj_r_squared, 3),
+      round(x$model_metrics$adj_r_squared, 3),
       "\n",
       sep = ""
     )
@@ -638,7 +655,7 @@ print.rna_regression <- function(x, ...) {
     cat(
       "Sigma: ",
       round(
-        x$diagnostics$sigma,
+        x$model_metrics$sigma,
         3
       ),
       "\n",

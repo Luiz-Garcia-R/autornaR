@@ -62,7 +62,6 @@ The \code{rna_regression} object contains:
 \item{formula}{Model formula used for fitting.}
 \item{fit}{Fitted \code{lm} object.}
 \item{coefficients}{Regression coefficient table.}
-\item{diagnostics}{Model diagnostic metrics.}
 \item{plot}{Generated \pkg{ggplot2} visualization (when available).}
 \item{outcome}{Outcome variable.}
 \item{predictors}{Predictor variables.}
@@ -89,6 +88,27 @@ symbols when annotation information is available in the project object.
 Currently, linear regression models are fitted using
 \code{\link[stats]{lm}}.
 
+Unlike correlation analyses, regression models explicitly distinguish
+between an outcome variable and one or more predictor variables.
+Consequently, the model estimates how changes in predictor values are
+associated with changes in the outcome while preserving directionality
+(\code{outcome ~ predictors}).
+
+For single-predictor models, the regression coefficient
+(\eqn{\beta}) represents the expected change in the outcome for a
+one-unit increase in the predictor. The coefficient of determination
+(\eqn{R^2}) quantifies the proportion of outcome variability explained
+by the model. When only one predictor is included, \eqn{R^2}
+corresponds to the squared Pearson correlation coefficient between the
+predictor and outcome.
+
+Regression analysis provides a flexible framework for studying
+gene-gene and gene-phenotype relationships because additional
+covariates can be incorporated directly into the model. This allows
+users to evaluate associations while adjusting for potential
+confounding variables such as age, sex, batch effects, or other sample
+characteristics.
+
 Missing values are removed using complete-case filtering prior to
 model fitting.
 
@@ -101,8 +121,6 @@ automatically generated showing:
 \item 95\\% confidence interval;
 \item model summary statistics (\eqn{\beta}, p-value and R^2).
 }
-
-If \code{diagnostics = TRUE}, the following metrics are computed:
 
 \itemize{
 \item R^2;
