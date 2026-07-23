@@ -113,24 +113,24 @@ rna.qc <- function(project,
                    plot = TRUE,
                    save = TRUE) {
 
-  # ---------------------------
+  # ===========================================================================
   # 0) Basic checks
-  # ---------------------------
+  # ===========================================================================
   pkgs <- c("ggplot2", "pheatmap", "data.table")
 
   .check_dependencies(pkgs)
 
-  # ---------------------------
+  # ===========================================================================
   # 1) Get active project
-  # ---------------------------
+  # ===========================================================================
   proj <- project
 
   expr_mat <- .get_expr(proj)
   metadata <- .get_meta(proj)
 
-  # ---------------------------
+  # ===========================================================================
   # 2) Validate input
-  # ---------------------------
+  # ===========================================================================
   if (is.null(expr_mat)) {
     stop("No expression matrix available. Run 'rna.normalize()' first.")
   }
@@ -150,23 +150,23 @@ rna.qc <- function(project,
     )
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 3) Align samples
-  # ---------------------------
+  # ===========================================================================
   common_samples <- intersect(colnames(expr_mat), metadata$Sample)
   if (length(common_samples) == 0) stop("No matching samples between metadata and expression matrix.")
   metadata_sub <- metadata[match(common_samples, metadata$Sample), , drop = FALSE]
   expr_mat <- expr_mat[, common_samples, drop = FALSE]
 
-  # ---------------------------
+  # ===========================================================================
   # 4) Library sizes and genes detected
-  # ---------------------------
+  # ===========================================================================
   lib_sizes <- colSums(expr_mat)
   genes_detected <- colSums(expr_mat > 0)
 
-  # ---------------------------
+  # ===========================================================================
   # 5) Detect library size outliers
-  # ---------------------------
+  # ===========================================================================
   if (highlight_outliers) {
     q <- quantile(lib_sizes, probs = c(0.25, 0.75))
     iqr <- diff(q)
@@ -178,17 +178,17 @@ rna.qc <- function(project,
     outliers_lib <- integer(0)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 6) Percent of genes detected per group
-  # ---------------------------
+  # ===========================================================================
   percent_genes_detected <- sapply(unique(metadata_sub[[group_col]]), function(grp) {
     samples_in_group <- metadata_sub$Sample[metadata_sub[[group_col]] == grp]
     mean(colSums(expr_mat[, samples_in_group, drop = FALSE] > 0) / nrow(expr_mat)) * 100
   })
 
-  # ---------------------------
+  # ===========================================================================
   # 7) Prepare long format table
-  # ---------------------------
+  # ===========================================================================
   dt <- data.table::as.data.table(expr_mat, keep.rownames = "Gene")
 
   df_long <- data.table::melt(
@@ -210,9 +210,9 @@ rna.qc <- function(project,
   # Preserve sample order
   df_long$Sample <- factor(df_long$Sample, levels = colnames(expr_mat))
 
-  # ---------------------------
+  # ===========================================================================
   # 8) Library size barplot
-  # ---------------------------
+  # ===========================================================================
   if (plot) {
   df_box <- data.frame(Sample = colnames(expr_mat), Library_size = lib_sizes,
                        Genes_detected = genes_detected, Group = metadata_sub[[group_col]])
@@ -228,9 +228,9 @@ rna.qc <- function(project,
   print(p_boxplot)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 9) Expression boxplot
-  # ---------------------------
+  # ===========================================================================
   if (plot) {
     p_expr_box <- ggplot2::ggplot(df_long, ggplot2::aes(x = Sample, y = Expression, fill = Sample)) +
     ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA) +
@@ -241,9 +241,9 @@ rna.qc <- function(project,
   print(p_expr_box)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 10) Density plot per group
-  # ---------------------------
+  # ===========================================================================
   if (plot) {
   p_density <- ggplot2::ggplot(df_long, ggplot2::aes(x = Expression,
                                                      color = .data[[group_col]],
@@ -256,9 +256,9 @@ rna.qc <- function(project,
   print(p_density)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 11) Correlation metrics
-  # ---------------------------
+  # ===========================================================================
   corr_mat <- cor(expr_mat, use = "pairwise.complete.obs", method = "pearson")
 
   mean_corr <- colMeans(corr_mat)
@@ -267,15 +267,15 @@ rna.qc <- function(project,
   low_corr_threshold <- quantile(mean_corr, 0.1)
   low_corr_samples <- names(mean_corr)[mean_corr < low_corr_threshold]
 
-  # ---------------------------
+  # ===========================================================================
   # 12) Library size metrics
-  # ---------------------------
+  # ===========================================================================
   lib_cv <- sd(lib_sizes) / mean(lib_sizes) * 100
   lib_summary <- summary(lib_sizes)
 
-  # ---------------------------
+  # ===========================================================================
   # 13) Intra vs inter-group correlation
-  # ---------------------------
+  # ===========================================================================
   groups <- metadata_sub[[group_col]]
   if (length(unique(groups)) > 1) {
     same_group <- outer(groups, groups, "==")
@@ -286,9 +286,9 @@ rna.qc <- function(project,
     inter_corr <- NA
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 14) QC classification
-  # ---------------------------
+  # ===========================================================================
   qc_flags <- list()
 
   # Library size quality
@@ -335,9 +335,9 @@ rna.qc <- function(project,
     qc_verdict <- "Overall QC assessment: Acceptable"
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 15) Sample correlation heatmap
-  # ---------------------------
+  # ===========================================================================
   Var1 <- Var2 <- Var1_num <- Var2_num <- NULL
 
   if (plot) {
@@ -395,9 +395,9 @@ rna.qc <- function(project,
     print(p_corr)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 16) Output
-  # ---------------------------
+  # ===========================================================================
   obj <- list(
     summary = list(
       timestamp = Sys.time(),
@@ -441,9 +441,9 @@ rna.qc <- function(project,
 
   class(obj) <- "rna_QC"
 
-  # ---------------------------
+  # ===========================================================================
   # 17) Attach to project
-  # ---------------------------
+  # ===========================================================================
   if (save) {
 
     proj <- .attach_to_project(
@@ -462,9 +462,9 @@ rna.qc <- function(project,
     )
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 18) Return
-  # ---------------------------
+  # ===========================================================================
   .print_header("RNA quality control")
 
   .print_block("QC Summary", function() {

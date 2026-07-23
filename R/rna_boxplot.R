@@ -25,6 +25,7 @@
 #'   to include in the design matrix.
 #' @param style Character. Whether use \code{boxplot} or \code{violin} for data
 #'   visualization.
+#' @param colors Character. Optional box colors.
 #' @param show_signif Logical. Whether to display significance annotation
 #'   (asterisks based on p-value) on the plot.
 #' @param seed Optional. Set a seed for reproducibility for point \code{jitter}.
@@ -100,6 +101,7 @@ rna.boxplot <- function(project,
                         contrast = NULL,
                         batch_col = NULL,
                         style = c("boxplot", "violin"),
+                        colors = NULL,
                         show_signif = TRUE,
                         seed = NULL,
                         save = TRUE,
@@ -108,15 +110,15 @@ rna.boxplot <- function(project,
 
   style <- match.arg(style)
 
-  # ---------------------------
+  # ===========================================================================
   # 1) Required packages
-  # ---------------------------
+  # ===========================================================================
   .check_dependencies(c("ggplot2","dplyr"))
   .check_dependencies(c("limma","AnnotationDbi"), bioc = TRUE)
 
-  # ---------------------------
+  # ===========================================================================
   # 2) Get active project
-  # ---------------------------
+  # ===========================================================================
   proj <- project
 
   expr_mat <- as.matrix(.get_expr(proj))
@@ -126,9 +128,9 @@ rna.boxplot <- function(project,
   gene_map <- .get_gene_annotation(proj)
   gene_map <- .align_gene_annotation(gene_map, expr_mat)
 
-  # ---------------------------
+  # ===========================================================================
   # 4) Resolve gene ID
-  # ---------------------------
+  # ===========================================================================
   gene_ids <- gene_map$gene_id
   gene_symbols <- gene_map$symbol
 
@@ -148,9 +150,9 @@ rna.boxplot <- function(project,
     gene_label <- gene_use
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 4.1) Build design + contrast
-  # ---------------------------
+  # ===========================================================================
 
   if (!(group_col %in% colnames(metadata))) {
     stop(paste0("Column '", group_col, "' not found in metadata."))
@@ -159,9 +161,9 @@ rna.boxplot <- function(project,
   # group factor
   metadata[[group_col]] <- as.factor(metadata[[group_col]])
 
-  # ---------------------------
+  # ===========================================================================
   # 4.2) Resolve contrast
-  # ---------------------------
+  # ===========================================================================
   if (is.null(contrast)) {
 
     groups <- levels(metadata[[group_col]])
@@ -192,9 +194,9 @@ rna.boxplot <- function(project,
   metadata[[group_col]] <- factor(metadata[[group_col]],
                               levels = c(contrast_vec[2], contrast_vec[1]))
 
-  # ---------------------------
+  # ===========================================================================
   # 4.3) Design formula
-  # ---------------------------
+  # ===========================================================================
   if (!is.null(batch_col)) {
 
     if (!(batch_col %in% colnames(metadata))) {
@@ -213,9 +215,9 @@ rna.boxplot <- function(project,
 
   design <- model.matrix(design_formula, data = metadata)
 
-  # ---------------------------
+  # ===========================================================================
   # 4.4) Contrast matrix
-  # ---------------------------
+  # ===========================================================================
   contrast_name <- paste0(
     group_col, contrast_vec[1], " - ", group_col, contrast_vec[2]
   )
@@ -225,9 +227,9 @@ rna.boxplot <- function(project,
     levels = design
   )
 
-  # ---------------------------
+  # ===========================================================================
   # 5) Get limma result (cache or compute)
-  # ---------------------------
+  # ===========================================================================
   limma_id <- paste(gene_use, group_col, sep = "_")
   is_log <- norm_method %in% c("log2", "rlog", "vst")
 
@@ -300,9 +302,9 @@ rna.boxplot <- function(project,
     ci_high <- gene_res$CI.R
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 6) Effect size (Cohen's d) and IC95
-  # ---------------------------
+  # ===========================================================================
   value_vec <- expr_mat_use[gene_use, ]
 
   df_sub <- data.frame(
@@ -329,9 +331,9 @@ rna.boxplot <- function(project,
   se_diff <- sd_pooled * sqrt(1/nx + 1/ny)
   ic95 <- mean_diff + c(-1,1) * qt(0.975, df = nx+ny-2) * se_diff
 
-  # ---------------------------
+  # ===========================================================================
   # 7) P-value annotation
-  # ---------------------------
+  # ===========================================================================
   pval <- gene_res$P.Value
   signif_label <- if (pval < 0.001) "***"
   else if (pval < 0.01) "**"
@@ -344,9 +346,9 @@ rna.boxplot <- function(project,
     paste0("p = ", formatC(pval, format = "f", digits = 3))
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 8) Plot
-  # ---------------------------
+  # ===========================================================================
   df_long <- data.frame(
     Sample = colnames(expr_mat),
     Value  = as.numeric(value_vec)
@@ -355,7 +357,6 @@ rna.boxplot <- function(project,
   df_long <- dplyr::left_join(df_long, metadata, by = "Sample")
   df_long <- df_long[df_long[[group_col]] %in% contrast_vec, ]
   df_long[[group_col]] <- droplevels(df_long[[group_col]])
-
 
   # Boxplot Plot
   if (style == "boxplot") {
@@ -393,6 +394,11 @@ rna.boxplot <- function(project,
       axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
       axis.title.y = ggplot2::element_text(margin = ggplot2::margin(r = 12))
     )
+
+  if (!is.null(colors)) {
+    p <- p +
+      ggplot2::scale_fill_manual(values = colors)
+  }
 
   if (show_signif) {
     p <- p + ggplot2::annotation_custom(
@@ -438,6 +444,11 @@ rna.boxplot <- function(project,
         axis.title.y = ggplot2::element_text(margin = ggplot2::margin(r = 12))
       )
 
+    if (!is.null(colors)) {
+      p <- p +
+        ggplot2::scale_fill_manual(values = colors)
+    }
+
     if (show_signif) {
       p <- p + ggplot2::annotation_custom(
         grid::textGrob(
@@ -450,9 +461,9 @@ rna.boxplot <- function(project,
       }
     }
 
-  # ---------------------------
+  # ===========================================================================
   # 9) Output
-  # ---------------------------
+  # ===========================================================================
   rng_state <- if (!is.null(seed)) .Random.seed else NULL
 
   params <- list(
@@ -490,9 +501,9 @@ rna.boxplot <- function(project,
     sep = "_"
   )
 
-  # ---------------------------
+  # ===========================================================================
   # 10) Attach to project
-  # ---------------------------
+  # ===========================================================================
   if (save) {
 
     if (!is.null(proj$analyses$boxplot[[comparison_id]])) {
@@ -524,9 +535,9 @@ rna.boxplot <- function(project,
 
   print(p)
 
-  # ---------------------------
+  # ===========================================================================
   # 11) Return
-  # ---------------------------
+  # ===========================================================================
   .print_header("RNA Boxplot results")
 
   .print_block("Results Summary", function() {

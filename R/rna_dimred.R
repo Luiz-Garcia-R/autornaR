@@ -18,6 +18,7 @@
 #'   when group sizes allow (default: \code{FALSE}).
 #' @param ellipse_level Numeric. Confidence level for PCA ellipses
 #'   (default: \code{0.95}).
+#' @param colors Character. Optional point colors.
 #' @param ncomp_pca Integer. Maximum number of PCA components to compute.
 #'   If \code{NULL}, uses the maximum possible (default).
 #' @param n_neighbors Integer. Number of neighbors for UMAP. If \code{NULL},
@@ -113,6 +114,7 @@ rna.dimred <- function(project,
                        run_tsne = FALSE,
                        add_ellipse = FALSE,
                        ellipse_level = 0.95,
+                       colors = NULL,
                        ncomp_pca = NULL,
                        n_neighbors = NULL,
                        tsne_perplexity = 30,
@@ -127,9 +129,9 @@ rna.dimred <- function(project,
                        verbose = TRUE
 ) {
 
-  # ---------------------------
+  # ===========================================================================
   # 0) Basic checks
-  # ---------------------------
+  # ===========================================================================
   .check_dependencies(c("dplyr", "ggplot2", "umap"))
 
   if (run_tsne) {
@@ -140,9 +142,9 @@ rna.dimred <- function(project,
   old_seed <- .set_seed(seed)
   on.exit(.reset_seed(old_seed), add = TRUE)
 
-  # ---------------------------
+  # ===========================================================================
   # 1) Get active project
-  # ---------------------------
+  # ===========================================================================
   proj <- project
 
   expr_mat <- .get_expr(proj)
@@ -151,9 +153,9 @@ rna.dimred <- function(project,
   samples <- metadata$Sample
   groups <- as.factor(metadata[[group_col]])
 
-  # ---------------------------
+  # ===========================================================================
   # 2) Validate input
-  # ---------------------------
+  # ===========================================================================
   if (is.null(expr_mat)) {
     stop("No expression matrix available.")
   }
@@ -173,9 +175,9 @@ rna.dimred <- function(project,
     )
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 3) Ensure sample order consistency
-  # ---------------------------
+  # ===========================================================================
   if (!all(colnames(expr_mat) == samples))
     expr_mat <- expr_mat[, samples, drop = FALSE]
 
@@ -207,9 +209,9 @@ rna.dimred <- function(project,
     }
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 4) PCA
-  # ---------------------------
+  # ===========================================================================
   if (verbose) message("[rna_dimred] Running PCA...")
 
   if (is.null(ncomp_pca)) {
@@ -246,9 +248,9 @@ rna.dimred <- function(project,
     })
   )
 
-  # ---------------------------
+  # ===========================================================================
   # 5) PCA preprocessing selection
-  # ---------------------------
+  # ===========================================================================
   if (use_pca_preprocessing) {
 
     if (pca_method == "auto") {
@@ -296,9 +298,14 @@ rna.dimred <- function(project,
       y = sprintf("PC2 (%.1f%%)", 100 * var_explained[2])
     )
 
-  # ---------------------------
+  if (!is.null(colors)) {
+    p_pca <- p_pca +
+      ggplot2::scale_color_manual(values = colors)
+  }
+
+  # ===========================================================================
   # 6) UMAP
-  # ---------------------------
+  # ===========================================================================
   if (is.null(n_neighbors) || n_neighbors >= n_samples)
     n_neighbors <- max(2, floor(n_samples / 2))
 
@@ -322,9 +329,14 @@ rna.dimred <- function(project,
     ggplot2::theme_minimal(base_size = 12) +
     ggplot2::labs(title = "UMAP")
 
-  # ---------------------------
+  if (!is.null(colors)) {
+    p_umap <- p_umap +
+      ggplot2::scale_color_manual(values = colors)
+  }
+
+  # ===========================================================================
   # 7) t-SNE
-  # ---------------------------
+  # ===========================================================================
   tsne_res <- NULL
   df_tsne <- NULL
   p_tsne <- NULL
@@ -365,20 +377,26 @@ rna.dimred <- function(project,
       ggplot2::geom_point(size = point_size, alpha = 0.8) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::labs(title = sprintf("t-SNE", tsne_perplexity))
+
+    if (!is.null(colors)) {
+      p_tsne <- p_tsne +
+        ggplot2::scale_color_manual(values = colors)
+    }
+
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 8) Print plots
-  # ---------------------------
+  # ===========================================================================
   if (verbose) {
     print(p_pca)
     print(p_umap)
     if (!is.null(p_tsne)) print(p_tsne)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 9) Output
-  # ---------------------------
+  # ===========================================================================
   rng_state <- if (!is.null(seed)) .Random.seed else NULL
 
   obj <- list(
@@ -422,9 +440,9 @@ rna.dimred <- function(project,
 
   class(obj) <- "dimred_result"
 
-  # ---------------------------
+  # ===========================================================================
   # 10) Attach to project
-  # ---------------------------
+  # ===========================================================================
   if (save) {
 
     proj <- .attach_to_project(
@@ -443,9 +461,9 @@ rna.dimred <- function(project,
     )
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 11) Return
-  # ---------------------------
+  # ===========================================================================
   .print_header("RNA Dimensionality Reduction")
 
   .print_block("Summary", function() {

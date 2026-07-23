@@ -10,6 +10,7 @@ rna.roc(
   group_col = "Group",
   score_method = c("auto", "pca", "mean"),
   show_gene_names = TRUE,
+  colors = "#1f77b4",
   plot = TRUE,
   save = TRUE
 )
@@ -24,6 +25,8 @@ rna.roc(
 \item{score_method}{Character. One of \code{"auto"}, \code{"pca"}, or \code{"mean"}.}
 
 \item{show_gene_names}{Logical. Wheter to display gene names in subtitle.}
+
+\item{colors}{Character. Optional plot line colors.}
 
 \item{plot}{Logical. Whether to display the ROC curve.}
 

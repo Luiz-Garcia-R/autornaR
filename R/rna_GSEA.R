@@ -180,9 +180,9 @@ rna.gsea <- function(project,
                      save = TRUE
 ) {
 
-  # ---------------------------
+  # ===========================================================================
   # 0) Basic checks
-  # ---------------------------
+  # ===========================================================================
   heatmap_mode <- match.arg(heatmap_mode)
   ranking_method = match.arg(ranking_method)
 
@@ -213,9 +213,9 @@ rna.gsea <- function(project,
   old_seed <- .set_seed(seed)
   on.exit(.reset_seed(old_seed), add = TRUE)
 
-  # ---------------------------
+  # ===========================================================================
   # 1) Get active project
-  # ---------------------------
+  # ===========================================================================
   proj <- project
 
   expr <- as.matrix(.get_expr(proj))
@@ -227,9 +227,9 @@ rna.gsea <- function(project,
   comps <- .get_comp(proj)
   gene_map <- .get_gene_annotation(proj)
 
-  # ---------------------------
+  # ===========================================================================
   # 3) Validate input
-  # ---------------------------
+  # ===========================================================================
   # --- Organism ---
   orgdb <- switch(
     organism,
@@ -270,9 +270,9 @@ rna.gsea <- function(project,
     geneset_subcollection <- NULL
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 4) Ranking computation
-  # ---------------------------
+  # ===========================================================================
 
   if (!is.null(res_df)) {
 
@@ -349,9 +349,9 @@ rna.gsea <- function(project,
   gene_ranking <- gene_ranking[is.finite(gene_ranking)]
   gene_ranking <- sort(gene_ranking, decreasing = TRUE)
 
-  # ---------------------------
+  # ===========================================================================
   # 5) Load global gene sets
-  # ---------------------------
+  # ===========================================================================
 
   # ---- Compatibility check for zebrafish ----
   if (organism == "zebrafish" && geneset_collection == "C5") {
@@ -397,9 +397,9 @@ rna.gsea <- function(project,
   clean_names <- .smart_pathway_name(names(pathways))
   names(pathways) <- clean_names
 
-  # ---------------------------
+  # ===========================================================================
   # 5.5) ID conversion
-  # ---------------------------
+  # ===========================================================================
   gene_ids <- names(gene_ranking)
 
   gene_symbols <- gene_map$symbol[
@@ -425,9 +425,9 @@ rna.gsea <- function(project,
     stop("gene_ranking lost its names after aggregation.")
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 6) GSEA
-  # ---------------------------
+  # ===========================================================================
   tapply(gene_ranking, names(gene_ranking), median)
 
   gsea_res <- fgsea::fgseaMultilevel(
@@ -453,9 +453,9 @@ rna.gsea <- function(project,
     )
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 7) Enrichment plots
-  # ---------------------------
+  # ===========================================================================
   enrich_plots <- NULL
 
   if (enrich_plot && nrow(gsea_top) > 0) {
@@ -483,9 +483,9 @@ rna.gsea <- function(project,
     lapply(enrich_plots, print)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 8) Prepare pathways for NES heatmap
-  # ---------------------------
+  # ===========================================================================
   if (plot_heatmap && nrow(gsea_sig) > 0) {
 
     gsea_heat <- NULL
@@ -579,9 +579,9 @@ rna.gsea <- function(project,
     }
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 9) RNG handling
-  # ---------------------------
+  # ===========================================================================
   rng_state <- if (exists(".Random.seed", envir = .GlobalEnv)) .Random.seed else NULL
 
   seed <- if (is.null(seed)) {
@@ -590,9 +590,9 @@ rna.gsea <- function(project,
     as.character(seed)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 10) Output
-  # ---------------------------
+  # ===========================================================================
   direction_summary <- list(
     up = sum(gsea_top$NES > 0),
     down = sum(gsea_top$NES < 0),
@@ -634,9 +634,9 @@ rna.gsea <- function(project,
 
   class(obj) <- "gsea_result"
 
-  # ---------------------------
+  # ===========================================================================
   # 11) Attach to project
-  # ---------------------------
+  # ===========================================================================
   if (save) {
 
     proj <- .attach_to_project(
@@ -662,9 +662,9 @@ rna.gsea <- function(project,
 
 }
 
-# ---------------------------
+# ===========================================================================
 # 12) Print S3
-# ---------------------------
+# ===========================================================================
 #' Print method for gsea_result objects
 #'
 #' Displays a formatted summary of a \code{gsea_result} object,
@@ -720,9 +720,9 @@ print.gsea_result <- function(x, ...) {
   invisible(x)
 }
 
-# ---------------------------
+# ===========================================================================
 # 13) Summary method
-# ---------------------------
+# ===========================================================================
 #' Summary method for gsea_result objects
 #'
 #' Returns a table of top enriched pathways from a

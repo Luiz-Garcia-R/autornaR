@@ -9,6 +9,7 @@ rna.biplot(
   use_dimred = NULL,
   group_col = "Group",
   style = c("loading", "anova", "hybrid"),
+  colors = NULL,
   n_genes = 10,
   genes = NULL,
   point_size = 2,
@@ -25,6 +26,8 @@ rna.biplot(
 
 \item{style}{Character. Method used for gene selection.
 One of \code{"loading"}, \code{"anova"}, or \code{"hybrid"}.}
+
+\item{colors}{Character. Optional point colors.}
 
 \item{n_genes}{Integer. Number of top genes to display when
 \code{biplot_genes} is not provided.}

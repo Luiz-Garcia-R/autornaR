@@ -10,6 +10,7 @@ rna.dimred(
   run_tsne = FALSE,
   add_ellipse = FALSE,
   ellipse_level = 0.95,
+  colors = NULL,
   ncomp_pca = NULL,
   n_neighbors = NULL,
   tsne_perplexity = 30,
@@ -37,6 +38,8 @@ when group sizes allow (default: \code{FALSE}).}
 
 \item{ellipse_level}{Numeric. Confidence level for PCA ellipses
 (default: \code{0.95}).}
+
+\item{colors}{Character. Optional point colors.}
 
 \item{ncomp_pca}{Integer. Maximum number of PCA components to compute.
 If \code{NULL}, uses the maximum possible (default).}

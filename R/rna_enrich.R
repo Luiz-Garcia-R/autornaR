@@ -117,9 +117,9 @@ rna.enrich <- function(project,
 
   plot_style <- match.arg(plot_style)
 
-  # ---------------------------
+  # ===========================================================================
   # 0) Basic checks
-  # ---------------------------
+  # ===========================================================================
   ont <- match.arg(ont, several.ok = TRUE)
 
   .check_dependencies("clusterProfiler")
@@ -132,18 +132,18 @@ rna.enrich <- function(project,
     .check_dependencies("enrichplot")
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 1) Get active project
-  # ---------------------------
+  # ===========================================================================
   proj <- project
 
   organism <- .get_organism(proj)
   gene_id_type <- .get_gene_id_type(proj)
   comps <- .get_comp(proj)
 
-  # ---------------------------
+  # ===========================================================================
   # 2) Validate input
-  # ---------------------------
+  # ===========================================================================
   if (is.null(use_comparison)) {
     use_comparison <- tail(setdiff(names(comps), "last"), 1)
     msg <- "[rna.enrich] Using last comparison: "
@@ -159,9 +159,9 @@ rna.enrich <- function(project,
 
   comp_obj <- .get_comp_obj(proj, use_comparison)
 
-  # ---------------------------
+  # ===========================================================================
   # 3) Validate organism
-  # ---------------------------
+  # ===========================================================================
   message("[rna.enrich] Using organism from project: ", organism)
 
   org_pkg <- switch(
@@ -182,9 +182,9 @@ rna.enrich <- function(project,
     zebrafish = org.Dr.eg.db::org.Dr.eg.db
   )
 
-  # ---------------------------
+  # ===========================================================================
   # 3) Validate input
-  # ---------------------------
+  # ===========================================================================
   res <- as.data.frame(comp_obj$res)
 
   contrast <- c(
@@ -203,9 +203,9 @@ rna.enrich <- function(project,
     )
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 4) Filter up- and down-regulated genes
-  # ---------------------------
+  # ===========================================================================
   up_genes <- res[!is.na(res$padj) &
                     res$padj < padj_cutoff &
                     res$log2FoldChange > log2fc_cutoff, ]
@@ -302,15 +302,15 @@ rna.enrich <- function(project,
   }
 
 
-  # ---------------------------
+  # ===========================================================================
   # 5) enrichment + plotting
-  # ---------------------------
+  # ===========================================================================
   ego_up   <- .run_direction(up_genes, "up-regulated")
   ego_down <- .run_direction(down_genes, "down-regulated")
 
-  # ---------------------------
+  # ===========================================================================
   # 6) Output
-  # ---------------------------
+  # ===========================================================================
 
   params <- list(
     timestamp = Sys.time(),
@@ -332,9 +332,9 @@ rna.enrich <- function(project,
 
   class(obj) <- "enrich_result"
 
-  # ---------------------------
+  # ===========================================================================
   # 7) Attach to project
-  # ---------------------------
+  # ===========================================================================
   if (save) {
 
     proj <- .attach_to_project(
@@ -356,9 +356,9 @@ rna.enrich <- function(project,
   return(invisible(proj))
 }
 
-# ---------------------------
+# ===========================================================================
 # 8) Print S3
-# ---------------------------
+# ===========================================================================
 #' Print method for \code{enrich_result} objects
 #'
 #' Displays a concise summary of Gene Ontology (GO) enrichment results,

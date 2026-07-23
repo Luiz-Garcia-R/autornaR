@@ -10,6 +10,7 @@ rna.sets(
   padj_cutoff = 0.05,
   log2fc_cutoff = 0.5,
   direction = c("both", "up", "down"),
+  colors = NULL,
   plot = FALSE,
   save = TRUE,
   verbose = TRUE
@@ -29,6 +30,8 @@ If \code{NULL}, the most recent comparison is used.}
 
 \item{direction}{Character. One of \code{"both"}, \code{"up"}, or \code{"down"}.
 Determines which genes are flagged as DEGs in the main output (default: \code{"both"}).}
+
+\item{colors}{Character. Optional bars colors.}
 
 \item{plot}{Logical. If \code{TRUE}, displays a barplot summarizing DEG counts per group
 (default: \code{FALSE}).}

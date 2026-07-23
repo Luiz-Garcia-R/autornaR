@@ -18,6 +18,7 @@
 #' @param group_col Character. Column name in metadata used for grouping samples.
 #' @param style Character. Method used for gene selection.
 #'   One of \code{"loading"}, \code{"anova"}, or \code{"hybrid"}.
+#' @param colors Character. Optional point colors.
 #' @param n_genes Integer. Number of top genes to display when
 #'   \code{biplot_genes} is not provided.
 #' @param genes Character vector. Optional vector of gene names to include.
@@ -58,6 +59,7 @@ rna.biplot <- function(project,
                        use_dimred = NULL,
                        group_col = "Group",
                        style = c("loading", "anova", "hybrid"),
+                       colors = NULL,
                        n_genes = 10,
                        genes = NULL,
                        point_size = 2,
@@ -65,23 +67,23 @@ rna.biplot <- function(project,
                        verbose = TRUE
 ) {
 
-  # ---------------------------
+  # ===========================================================================
   # 0) Basic checks
-  # ---------------------------
+  # ===========================================================================
   .check_dependencies(c("dplyr", "ggplot2", "ggrepel"))
 
-  # ---------------------------
+  # ===========================================================================
   # 1) Get active project
-  # ---------------------------
+  # ===========================================================================
   proj <- project
 
   expr_mat <- as.matrix(.get_expr(proj))
   metadata <- .get_meta(proj)
   dimred <- .get_dimred(proj, id = use_dimred)
 
-  # ---------------------------
+  # ===========================================================================
   # 2) Validate input
-  # ---------------------------
+  # ===========================================================================
   pca_res <- dimred$PCA$model
   loadings <- dimred$PCA$loadings
   df_pca <- dimred$PCA$coordinates
@@ -93,9 +95,9 @@ rna.biplot <- function(project,
 
   groups <- as.factor(metadata[[group_col]])
 
-  # ---------------------------
+  # ===========================================================================
   # 3) Gene mapping
-  # ---------------------------
+  # ===========================================================================
   gene_map <- .get_gene_annotation(proj)
 
   gene_ids <- gene_map$gene_id
@@ -110,9 +112,9 @@ rna.biplot <- function(project,
 
   names(gene_labels) <- gene_ids
 
-  # ---------------------------
+  # ===========================================================================
   # 4) Computate loadings
-  # ---------------------------
+  # ===========================================================================
   style <- match.arg(style)
   p_biplot <- NULL
 
@@ -203,18 +205,17 @@ rna.biplot <- function(project,
 
     df_pca$Group <- groups
 
-  # ---------------------------
+  # ===========================================================================
   # 5) Compute Variation
-  # ---------------------------
+  # ===========================================================================
   var_exp <- (pca_res$sdev^2) / sum(pca_res$sdev^2)
 
   pc1_var <- round(var_exp[pc_x] * 100, 1)
   pc2_var <- round(var_exp[pc_y] * 100, 1)
 
-
-  # ---------------------------
+  # ===========================================================================
   # 6) Plot
-  # ---------------------------
+  # ===========================================================================
     p_biplot <- ggplot2::ggplot(df_pca,
                                 ggplot2::aes(PC1, PC2, color = Group)) +
       ggplot2::geom_point(size = point_size, alpha = 0.8) +
@@ -256,18 +257,24 @@ rna.biplot <- function(project,
         x = paste0("PC", pc_x, " (", pc1_var, "%)"),
         y = paste0("PC", pc_y, " (", pc2_var, "%)")
       )
+
+  if (!is.null(colors)) {
+    p_biplot <- p_biplot +
+      ggplot2::scale_color_manual(values = colors)
   }
 
-  # ---------------------------
+}
+
+  # ===========================================================================
   # 7) Print plots if verbose
-  # ---------------------------
+  # ===========================================================================
   if (verbose) {
     print(p_biplot)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 8) Output
-  # ---------------------------
+  # ===========================================================================
   obj <- NULL
 
   obj <- list(
@@ -303,9 +310,9 @@ rna.biplot <- function(project,
 
   class(obj) <- "biplot_result"
 
-  # ---------------------------
+  # ===========================================================================
   # 9) Attach to project
-  # ---------------------------
+  # ===========================================================================
   if (save) {
 
     proj <- .attach_to_project(
@@ -325,9 +332,9 @@ rna.biplot <- function(project,
     )
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 10) Return
-  # ---------------------------
+  # ===========================================================================
     has_score <- exists("score")
 
     .print_header("PCA biplot results")

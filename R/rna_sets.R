@@ -16,6 +16,7 @@
 #'   (default: \code{0.5}).
 #' @param direction Character. One of \code{"both"}, \code{"up"}, or \code{"down"}.
 #'   Determines which genes are flagged as DEGs in the main output (default: \code{"both"}).
+#' @param colors Character. Optional bars colors.
 #' @param plot Logical. If \code{TRUE}, displays a barplot summarizing DEG counts per group
 #'   (default: \code{FALSE}).
 #' @param save Logical. Whether to store results in the active \code{rna_project}
@@ -126,29 +127,30 @@ rna.sets <- function(project,
                      padj_cutoff = 0.05,
                      log2fc_cutoff = 0.5,
                      direction = c("both", "up", "down"),
+                     colors = NULL,
                      plot = FALSE,
                      save = TRUE,
                      verbose = TRUE) {
 
   direction <- match.arg(direction)
 
-  # ---------------------------
+  # ===========================================================================
   # 0) Basic checks
-  # ---------------------------
+  # ===========================================================================
   .check_dependencies("ggplot2")
 
-  # ---------------------------
+  # ===========================================================================
   # 1) Get active project
-  # ---------------------------
+  # ===========================================================================
   proj <- project
 
   expr <- as.matrix(.get_expr(proj))
   metadata <- .get_meta(proj)
   comp_data <- .get_comp_obj(proj, comparison)
 
-  # ---------------------------
+  # ===========================================================================
   # 2) Validate input
-  # ---------------------------
+  # ===========================================================================
   if (is.null(proj$data$normalized_data)) {
     stop("No normalization results found in rna_project. Run rna.normalize() first.")
   }
@@ -158,9 +160,9 @@ rna.sets <- function(project,
     stop("No comparisons found. Run rna.compare() first.")
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 3) Accessing comp object
-  # ---------------------------
+  # ===========================================================================
   comparison_id <- if (is.null(comparison)) {
     proj$analyses$comparison$last
   } else {
@@ -190,23 +192,23 @@ rna.sets <- function(project,
     group_levels[2]
   )
 
-  # ---------------------------
+  # ===========================================================================
   # 4) Align genes
-  # ---------------------------
+  # ===========================================================================
   common_genes <- intersect(rownames(expr), rownames(res))
   expr <- expr[common_genes, , drop = FALSE]
   res  <- res[common_genes, , drop = FALSE]
 
-  # ---------------------------
+  # ===========================================================================
   # 5) Detection filter
-  # ---------------------------
+  # ===========================================================================
   keep_genes <- rep(TRUE, length(common_genes))
   names(keep_genes) <- common_genes
   detection_matrix <- NULL
 
-  # ---------------------------
+  # ===========================================================================
   # 6) DEG classification
-  # ---------------------------
+  # ===========================================================================
   base_sig <- res$padj < padj_cutoff & !is.na(res$padj)
 
   up_sig   <- base_sig & res$log2FoldChange >  log2fc_cutoff
@@ -233,9 +235,9 @@ rna.sets <- function(project,
     row.names = common_genes
   )
 
-  # ---------------------------
+  # ===========================================================================
   # 7) One-hot by group detection
-  # ---------------------------
+  # ===========================================================================
   one_hot <- matrix(
     FALSE,
     nrow = length(common_genes),
@@ -248,9 +250,9 @@ rna.sets <- function(project,
 
   one_hot_df <- as.data.frame(one_hot)
 
-  # ---------------------------
+  # ===========================================================================
   # 8) Optional DEG summary plot
-  # ---------------------------
+  # ===========================================================================
   if (plot) {
 
     n_up_test <- sum(up_sig & keep_genes)
@@ -264,7 +266,10 @@ rna.sets <- function(project,
       value = c(n_up_test, n_up_ref)
     )
 
-    vivid_colors <- scales::hue_pal()(length(unique(plot_df$group)))
+
+    if (is.null(colors)) {
+      colors <- scales::hue_pal()(length(unique(plot_df$group)))
+    }
 
     g <- ggplot2::ggplot(plot_df,
                          ggplot2::aes(x = .data$group,
@@ -277,7 +282,7 @@ rna.sets <- function(project,
         size = 4
       ) +
       ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::scale_fill_manual(values = vivid_colors) +
+      ggplot2::scale_fill_manual(values = colors) +
       ggplot2::labs(
         title = paste("DEG Summary -", comparison_label),
         x = "",
@@ -295,9 +300,9 @@ rna.sets <- function(project,
     print(g)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 9) Output
-  # ---------------------------
+  # ===========================================================================
   obj <- list(
     params = list(
       timestamp = Sys.time(),
@@ -320,9 +325,9 @@ rna.sets <- function(project,
 
   class(obj) <- "rna_sets"
 
-  # ---------------------------
+  # ===========================================================================
   # 10) Attach to project
-  # ---------------------------
+  # ===========================================================================
   if (save) {
 
     proj <- .attach_to_project(
@@ -341,9 +346,9 @@ rna.sets <- function(project,
     )
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 11) Return
-  # ---------------------------
+  # ===========================================================================
   if (verbose) {
     .print_header("RNA DEG Sets")
 

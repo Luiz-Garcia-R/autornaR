@@ -11,6 +11,7 @@ rna.volcano(
   top_genes = NULL,
   padj_threshold = 0.05,
   log2fc_threshold = 0.5,
+  colors = NULL,
   save = TRUE,
   verbose = TRUE
 )
@@ -39,6 +40,8 @@ significance (default \code{0.05}).}
 
 \item{log2fc_threshold}{Numeric. Absolute log2 fold-change cutoff for
 biological relevance (default \code{0.5}).}
+
+\item{colors}{Character. Optional points colors.}
 
 \item{save}{Logical. Whether to store results in the active \code{rna_project}
 (default \code{TRUE}).}

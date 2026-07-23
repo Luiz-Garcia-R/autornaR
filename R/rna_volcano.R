@@ -45,6 +45,7 @@
 #'   significance (default \code{0.05}).
 #' @param log2fc_threshold Numeric. Absolute log2 fold-change cutoff for
 #'   biological relevance (default \code{0.5}).
+#' @param colors Character. Optional points colors.
 #' @param save Logical. Whether to store results in the active \code{rna_project}
 #'   (default \code{TRUE}).
 #' @param verbose Logical. If \code{TRUE}, prints the plot and summary to the console
@@ -118,26 +119,27 @@ rna.volcano <- function(project,
                         top_genes = NULL,
                         padj_threshold = 0.05,
                         log2fc_threshold = 0.5,
+                        colors = NULL,
                         save = TRUE,
                         verbose = TRUE) {
 
-  # ---------------------------
+  # ===========================================================================
   # 0) Basic checks
-  # ---------------------------
+  # ===========================================================================
   pkgs <- c("ggrepel", "ggplot2")
 
   .check_dependencies(pkgs)
 
-  # ---------------------------
+  # ===========================================================================
   # 1) Get active project
-  # ---------------------------
+  # ===========================================================================
   proj <- project
 
   comp_obj <- .get_comp_obj(proj, comparison)
 
-  # ---------------------------
+  # ===========================================================================
   # 2) Validate input
-  # ---------------------------
+  # ===========================================================================
   if (!is.null(genes) && !is.null(top_genes)) {
     stop("Use either 'genes' or 'top_genes', not both.")
   }
@@ -168,9 +170,9 @@ rna.volcano <- function(project,
     comparison_id <- comparison
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 3) Gene annotation
-  # ---------------------------
+  # ===========================================================================
   if (is.null(rownames(res_df))) {
     rownames(res_df) <- res_df$Gene
   }
@@ -203,9 +205,9 @@ rna.volcano <- function(project,
            ifelse(is_down, "Down", "NS"))
   )
 
-  # ---------------------------
+  # ===========================================================================
   # 4) Label selection
-  # ---------------------------
+  # ===========================================================================
     # gene symbol -> ENSEMBL
     if (!is.null(genes)) {
 
@@ -238,9 +240,9 @@ rna.volcano <- function(project,
 
     res_df$highlight <- res_df$Gene %in% label_df$Gene
 
-  # ---------------------------
+  # ===========================================================================
   # 5) Plot
-  # ---------------------------
+  # ===========================================================================
   p <- ggplot2::ggplot(res_df, ggplot2::aes(x = log2FoldChange, y = -log10(padj + 1e-300), color = group_color)) +
 
       ggplot2::geom_point(
@@ -254,11 +256,6 @@ rna.volcano <- function(project,
       ggplot2::scale_alpha_manual(values = c(0.4, 1), guide = "none") +
 
       ggplot2::scale_size_identity() +
-
-      ggplot2::scale_color_manual(
-      values = c("Up" = "#ff3333",
-                 "Down" = "#006699",
-                 "NS" = "darkgrey")) +
 
       ggplot2::labs(
         color = "Regulation",
@@ -283,6 +280,19 @@ rna.volcano <- function(project,
         plot.background = ggplot2::element_rect(fill = "white", color = NA),
         panel.background = ggplot2::element_rect(fill = "white", color = NA))
 
+  # Color
+  if (is.null(colors)) {
+      p <- p +
+        ggplot2::scale_color_manual(
+          values = c("Up" = "#ff3333",
+                     "Down" = "#006699",
+                     "NS" = "darkgrey"))
+  } else {
+    p <- p +
+      ggplot2::scale_color_manual(values = colors)
+    }
+
+
   if (!is.null(label_df)) {
 
     p <- p +
@@ -300,9 +310,9 @@ rna.volcano <- function(project,
     invisible(dev.flush())
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 6) Output
-  # ---------------------------
+  # ===========================================================================
     selected_genes <- NULL
 
     if (!is.null(label_df)) {
@@ -323,9 +333,9 @@ rna.volcano <- function(project,
 
   class(obj) <- "rna_volcano"
 
-  # ---------------------------
+  # ===========================================================================
   # 7) Attach to project
-  # ---------------------------
+  # ===========================================================================
   if (save) {
 
     proj <- .attach_to_project(
@@ -343,9 +353,9 @@ rna.volcano <- function(project,
     )
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 8) Return
-  # ---------------------------
+  # ===========================================================================
   if (verbose) {
 
     .print_header("RNA Volcano Plot")

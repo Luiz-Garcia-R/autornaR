@@ -13,6 +13,7 @@
 #' @param group_col Character. Column name in metadata defining binary groups.
 #' @param score_method Character. One of \code{"auto"}, \code{"pca"}, or \code{"mean"}.
 #' @param show_gene_names Logical. Wheter to display gene names in subtitle.
+#' @param colors Character. Optional plot line colors.
 #' @param plot Logical. Whether to display the ROC curve.
 #' @param save Logical. Whether to store results in the active \code{rna_project}.
 #'
@@ -113,30 +114,31 @@ rna.roc <- function(project,
                     group_col = "Group",
                     score_method = c("auto", "pca", "mean"),
                     show_gene_names = TRUE,
+                    colors = "#1f77b4",
                     plot = TRUE,
                     save = TRUE) {
 
   score_method <- match.arg(score_method)
 
-  # ---------------------------
+  # ===========================================================================
   # 0) Basic checks
-  # ---------------------------
+  # ===========================================================================
   pkgs <- c("pROC", "ggplot2", "dplyr")
 
   .check_dependencies(pkgs)
 
-  # ---------------------------
+  # ===========================================================================
   # 1) Get active project
-  # ---------------------------
+  # ===========================================================================
   proj <- project
 
   expr_mat <- as.matrix(.get_expr(proj))
   metadata <- .get_meta(proj)
   organism <- .get_organism(proj)
 
-  # ---------------------------
+  # ===========================================================================
   # 2) Validate input
-  # ---------------------------
+  # ===========================================================================
   if (is.null(metadata)) {
     stop("No normalized data found. Run rna.normalize() first.")
   }
@@ -145,18 +147,18 @@ rna.roc <- function(project,
     message("[rna.enrich] Using organism from project: ", organism)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 3) Gene annotation
-  # ---------------------------
+  # ===========================================================================
   gene_annotation <- .get_gene_annotation(proj)
   gene_map <- .align_gene_annotation(gene_annotation, expr_mat)
 
   gene_ids <- gene_map$gene_id
   gene_symbols <- gene_map$symbol
 
-  # ---------------------------
+  # ===========================================================================
   # 4) Select genes (FIXED)
-  # ---------------------------
+  # ===========================================================================
   if (is.null(genes)) {
     stop("Please provide at least one gene or 'all'.")
   }
@@ -206,9 +208,9 @@ rna.roc <- function(project,
     warning("[rna.roc] Large gene set detected. Results may be unstable.")
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 5) Prepare data
-  # ---------------------------
+  # ===========================================================================
   expr_mat <- expr_mat[genes_use, , drop = FALSE]
 
   df <- as.data.frame(t(expr_mat))
@@ -229,9 +231,9 @@ rna.roc <- function(project,
 
   df[[group_col]] <- stats::relevel(df[[group_col]], ref = levels(df[[group_col]])[1])
 
-  # ---------------------------
+  # ===========================================================================
   # 6) Method
-  # ---------------------------
+  # ===========================================================================
   n_genes <- length(genes_use)
 
   method <- if (n_genes == 1) {
@@ -242,9 +244,9 @@ rna.roc <- function(project,
     "signature"
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 7) Prediction
-  # ---------------------------
+  # ===========================================================================
   if (method == "single_gene") {
 
     pred <- df[[safe_gene_labels[1]]]
@@ -286,9 +288,9 @@ rna.roc <- function(project,
     message("[rna.roc] Using signature score: ", score_method_use)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 8) ROC
-  # ---------------------------
+  # ===========================================================================
 
   valid_idx <- which(!is.na(pred) & !is.na(df[[group_col]]))
 
@@ -335,16 +337,16 @@ rna.roc <- function(project,
     n_boot = 1000
   )
 
-  # ---------------------------
+  # ===========================================================================
   # 9) Plot
-  # ---------------------------
+  # ===========================================================================
   if (plot) {
 
     plot(
       1 - roc_obj$specificities,
       roc_obj$sensitivities,
       type = "l",
-      col = "#1f77b4",
+      col = colors,
       lwd = 3,
       main = paste("ROC -", toupper(method)),
       xlab = "False Positive Rate",
@@ -359,7 +361,7 @@ rna.roc <- function(project,
     text(
       0.8, 0.1,
       paste("AUC =", round(auc_val, 3)),
-      col = "#1f77b4",
+      col = colors,
       font = 2
     )
 
@@ -373,9 +375,9 @@ rna.roc <- function(project,
     grid()
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 10) Output
-  # ---------------------------
+  # ===========================================================================
   params = list(
     timestamp = Sys.time(),
     n_genes = length(gene_labels),
@@ -401,9 +403,9 @@ rna.roc <- function(project,
 
   class(obj) <- "roc_result"
 
-  # ---------------------------
+  # ===========================================================================
   # 11) Attach to project
-  # ---------------------------
+  # ===========================================================================
   if (save) {
 
   proj <- .attach_to_project(
@@ -427,9 +429,9 @@ rna.roc <- function(project,
 
 }
 
-# ---------------------------
+# ===========================================================================
 # 12) Print S3
-# ---------------------------
+# ===========================================================================
 #' @export
 print.roc_result <- function(x, ...) {
 

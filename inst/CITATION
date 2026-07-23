@@ -8,6 +8,6 @@ bibentry(
     comment = "Universidade Federal do Paraná"
   ),
   year    = "2026",
-  note    = "R package version 0.2.11",
+  note    = "R package version 0.2.12",
   url     = "https://github.com/Luiz-Garcia-R/autornaR"
 )

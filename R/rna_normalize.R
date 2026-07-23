@@ -177,14 +177,14 @@ rna.normalize <- function(project,
                           save = TRUE
 ) {
 
-  # ---------------------------
+  # ===========================================================================
   # 1) Get active project
-  # ---------------------------
+  # ===========================================================================
   proj <- project
 
-  # ---------------------------
+  # ===========================================================================
   # 2) Validate input
-  # ---------------------------
+  # ===========================================================================
   if (is.null(proj$input$imp_data)) {
     stop("No imported data found. Run rna.import() first.")
   }
@@ -235,9 +235,9 @@ rna.normalize <- function(project,
   metadata <- as.data.frame(imp_data$metadata)
   metadata <- metadata[match(colnames(counts), metadata$Sample), , drop = FALSE]
 
-  # ---------------------------
+  # ===========================================================================
   # 3) Filter low-expressed genes
-  # ---------------------------
+  # ===========================================================================
   removed_genes <- 0
   if (filter_low) {
     prop_expr <- rowMeans(counts >= min_expr, na.rm = TRUE)
@@ -250,9 +250,9 @@ rna.normalize <- function(project,
     }
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 4) Outlier detection
-  # ---------------------------
+  # ===========================================================================
   outliers_s <- integer(0)
   if (remove_outlier_samples) {
     lib_sizes <- colSums(counts)
@@ -290,9 +290,9 @@ rna.normalize <- function(project,
     }
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 5) Normalization
-  # ---------------------------
+  # ===========================================================================
   norm_counts <- counts
   if (method == "log2") {
     norm_counts <- log2(norm_counts + 1)
@@ -341,9 +341,9 @@ rna.normalize <- function(project,
     }
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 6) Quality metrics
-  # ---------------------------
+  # ===========================================================================
   QC_metrics <- data.frame(
     Sample = colnames(norm_counts),
     Library_size = colSums(norm_counts),
@@ -351,17 +351,17 @@ rna.normalize <- function(project,
     row.names = NULL
   )
 
-  # ---------------------------
+  # ===========================================================================
   # 7) Metadata alignment
-  # ---------------------------
+  # ===========================================================================
   metadata <- metadata[match(colnames(norm_counts), metadata$Sample), , drop = FALSE]
   if (!all(metadata$Sample == colnames(norm_counts))) {
     warning("Metadata and expression matrix were realigned to match sample order.")
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 8) Final object
-  # ---------------------------
+  # ===========================================================================
   obj <- list(
     timestamp = Sys.time(),
     expr_matrix = norm_counts,
@@ -375,9 +375,9 @@ rna.normalize <- function(project,
   )
   class(obj) <- "normalized_data"
 
-  # ---------------------------
+  # ===========================================================================
   # 9) Attach to project
-  # ---------------------------
+  # ===========================================================================
   if (save) {
 
   proj <- .attach_to_project(
@@ -396,9 +396,9 @@ rna.normalize <- function(project,
   )
 }
 
-  # ---------------------------
+  # ===========================================================================
   # 10) Return
-  # ---------------------------
+  # ===========================================================================
   .print_header("RNA Normalization")
 
   .print_block("Summary", function() {

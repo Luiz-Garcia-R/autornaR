@@ -187,9 +187,9 @@ rna.network <- function(project,
   community_method <- match.arg(community_method)
   layout <- match.arg(layout)
 
-  # ---------------------------
+  # ===========================================================================
   # 0) Basic checks
-  # ---------------------------
+  # ===========================================================================
   pkgs <- c(
     "igraph",
     "tidygraph",
@@ -204,9 +204,9 @@ rna.network <- function(project,
   old_seed <- .set_seed(seed)
   on.exit(.reset_seed(old_seed), add = TRUE)
 
-  # ---------------------------
+  # ===========================================================================
   # 1) Get active project
-  # ---------------------------
+  # ===========================================================================
   proj <- project
 
   expr_mat <- as.matrix(.get_expr(proj))
@@ -217,9 +217,9 @@ rna.network <- function(project,
   gsea_obj <- .get_gsea(proj)
   comp_obj <- .get_comp_obj(proj)
 
-  # ---------------------------
+  # ===========================================================================
   # 2) Validate input
-  # ---------------------------
+  # ===========================================================================
   # Validate layout
   valid_layouts <- c("fr","kk","stress","lgl","graphopt")
 
@@ -240,9 +240,9 @@ rna.network <- function(project,
     warning("No comparison results found.")
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 3) Select pathway
-  # ---------------------------
+  # ===========================================================================
   pathways <- gsea_obj$pathways
   gsea_top <- gsea_obj$gsea_top
 
@@ -263,9 +263,9 @@ rna.network <- function(project,
     stop("Pathway not found in GSEA results.")
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 4) Extract genes
-  # ---------------------------
+  # ===========================================================================
   genes_path <- pathways[[pathway]]
 
   # convert SYMBOL -> ENSEMBL if necessary
@@ -289,9 +289,9 @@ rna.network <- function(project,
     )
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 5) Select group
-  # ---------------------------
+  # ===========================================================================
   if (is.null(group)) {
 
     group <- unique(meta$Group)[1]
@@ -303,9 +303,9 @@ rna.network <- function(project,
 
   expr_sub <- expr_mat[genes_path, samples_group, drop = FALSE]
 
-  # ---------------------------
+  # ===========================================================================
   # 6) Correlation
-  # ---------------------------
+  # ===========================================================================
   edges <- weight <- layout_weight <- NULL
 
   n <- ncol(expr_sub)
@@ -343,9 +343,9 @@ rna.network <- function(project,
   edges_df$distance <- (1 - abs(edges_df$weight)) + 1e-6
   edges_df$sign <- ifelse(edges_df$weight > 0, "positive", "negative")
 
-  # ---------------------------
+  # ===========================================================================
   # 7) get nodes
-  # ---------------------------
+  # ===========================================================================
   nodes_df <- data.frame(
     name = rownames(expr_sub),
     stringsAsFactors = FALSE
@@ -369,9 +369,9 @@ rna.network <- function(project,
   nodes_df$expr_z <- as.numeric(scale(nodes_df$expr_mean))
 
 
-  # ---------------------------
+  # ===========================================================================
   # 8) Build network
-  # ---------------------------
+  # ===========================================================================
   g <- igraph::graph_from_data_frame(
     d = if (nrow(edges_df) == 0) NULL else edges_df,
     vertices = nodes_df,
@@ -388,9 +388,9 @@ rna.network <- function(project,
     warning("Network contains no edges at this threshold.")
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 8.1 Network metrics
-  # ---------------------------
+  # ===========================================================================
   nodes_df$degree <- igraph::degree(g)
 
   nodes_df$betweenness <- igraph::betweenness(
@@ -429,9 +429,9 @@ rna.network <- function(project,
 
   tg <- tidygraph::as_tbl_graph(g)
 
-  # ---------------------------
+  # ===========================================================================
   # 8.2 Node filter
-  # ---------------------------
+  # ===========================================================================
   if (node_filter == "top") {
 
     nodes_df$importance <- nodes_df$hub_score
@@ -490,9 +490,9 @@ rna.network <- function(project,
     tidygraph::activate(edges) |>
     dplyr::mutate(layout_weight = abs(weight))
 
-  # ---------------------------
+  # ===========================================================================
   # 8.3 Community detection
-  # ---------------------------
+  # ===========================================================================
   if (community_method == "louvain") {
     comm <- igraph::cluster_louvain(
       g,
@@ -520,9 +520,9 @@ rna.network <- function(project,
     nodes_df$community <- NA
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 9) Plot
-  # ---------------------------
+  # ===========================================================================
   if (layout %in% c("fr","kk","stress","lgl")) {
     p <- ggraph::ggraph(tg, layout = layout, weights = .data$layout_weight)
 
@@ -562,9 +562,9 @@ rna.network <- function(project,
     print(p)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 10) RNG handling
-  # ---------------------------
+  # ===========================================================================
 
   rng_state <- if (exists(".Random.seed", envir = .GlobalEnv)) .Random.seed else NULL
 
@@ -574,9 +574,9 @@ rna.network <- function(project,
     as.character(seed)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 11) Output
-  # ---------------------------
+  # ===========================================================================
   params = list(
     timestamp = Sys.time(),
     threshold = threshold,
@@ -598,9 +598,9 @@ rna.network <- function(project,
 
   class(obj) <- "rna_network"
 
-  # ---------------------------
+  # ===========================================================================
   # 12) Attach to project
-  # ---------------------------
+  # ===========================================================================
   if (save) {
 
     proj <- .attach_to_project(
@@ -620,9 +620,9 @@ rna.network <- function(project,
     )
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 13) Return
-  # ---------------------------
+  # ===========================================================================
   .print_header("RNA Pathway Network")
 
   .print_block("Summary", function() {

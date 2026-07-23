@@ -11,6 +11,7 @@ rna.boxplot(
   contrast = NULL,
   batch_col = NULL,
   style = c("boxplot", "violin"),
+  colors = NULL,
   show_signif = TRUE,
   seed = NULL,
   save = TRUE,
@@ -37,6 +38,8 @@ to include in the design matrix.}
 
 \item{style}{Character. Whether use \code{boxplot} or \code{violin} for data
 visualization.}
+
+\item{colors}{Character. Optional box colors.}
 
 \item{show_signif}{Logical. Whether to display significance annotation
 (asterisks based on p-value) on the plot.}
