@@ -184,9 +184,6 @@ proj <- rna.normalize(my_project,
 )
 }
 
-
-
-
 }
 \seealso{
 \code{\link{rna.import}}, \code{\link{rna.project}},  \code{\link{rna.qc}}

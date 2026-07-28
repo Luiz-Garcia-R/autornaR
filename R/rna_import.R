@@ -333,16 +333,32 @@ rna.import <- function(
     }
   }
 
-    # ---------------------------
-    # 8.1) Map annotation
-    # ---------------------------
-    gene_ids <- raw_data_counts[[gene_col]]
-    gene_ids <- sub("\\..*$", "", gene_ids)
+  # ---------------------------
+  # 8.1) Map annotation & Extract Length
+  # ---------------------------
+  gene_ids <- raw_data_counts[[gene_col]]
+  gene_ids_clean <- sub("\\..*$", "", gene_ids)
 
-    gene_annotation <- .map_gene_annotation(
-      gene_ids,
-      organism = organism
-    )
+  gene_annotation <- .map_gene_annotation(
+    gene_ids_clean,
+    organism = organism
+  )
+
+  if (is.null(gene_annotation)) {
+
+    gene_annotation <- data.frame(gene_id = gene_ids_clean, stringsAsFactors = FALSE)
+
+  }
+
+  possible_length_cols <- c("Length", "LENGTH", "length")
+  length_col_found <- intersect(possible_length_cols, colnames(raw_data))
+
+  if (length(length_col_found) > 0) {
+
+    idx <- match(raw_data_counts[[gene_col]], raw_data[[gene_col]])
+    gene_annotation$gene_length <- raw_data[[length_col_found[1]]][idx]
+
+  }
 
   # ---------------------------
   # 9) Clean sample names

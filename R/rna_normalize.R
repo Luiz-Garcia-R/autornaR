@@ -157,9 +157,6 @@
 #' )
 #' }
 #'
-#'
-#'
-#'
 #' @importFrom stats quantile sd
 #'
 #' @export
@@ -254,17 +251,25 @@ rna.normalize <- function(project,
   # 4) Outlier detection
   # ===========================================================================
   outliers_s <- integer(0)
+
   if (remove_outlier_samples) {
+
     lib_sizes <- colSums(counts)
+
     if (outlier_method == "iqr") {
+
       q <- quantile(lib_sizes, c(0.25, 0.75))
       iqr <- diff(q)
       outliers_s <- which(lib_sizes < (q[1] - 1.5 * iqr) | lib_sizes > (q[2] + 1.5 * iqr))
+
     } else {
+
       z <- (lib_sizes - mean(lib_sizes)) / sd(lib_sizes)
       outliers_s <- which(abs(z) > 3)
     }
+
     if (length(outliers_s) > 0) {
+
       removed_samples <- colnames(counts)[outliers_s]
       counts <- counts[, -outliers_s, drop = FALSE]
       metadata <- metadata[metadata$Sample %in% colnames(counts), , drop = FALSE]
@@ -274,16 +279,23 @@ rna.normalize <- function(project,
   }
 
   if (remove_outlier_genes && nrow(counts) > 2) {
+
     gene_sds <- apply(counts, 1, sd)
+
     if (outlier_method == "iqr") {
+
       q <- quantile(gene_sds, c(0.25, 0.75))
       iqr <- diff(q)
       outliers_g <- which(gene_sds < (q[1] - 1.5 * iqr) | gene_sds > (q[2] + 1.5 * iqr))
+
     } else {
+
       z <- (gene_sds - mean(gene_sds)) / sd(gene_sds)
       outliers_g <- which(abs(z) > 3)
     }
+
     if (length(outliers_g) > 0) {
+
       counts <- counts[-outliers_g, , drop = FALSE]
       removed_genes <- removed_genes + length(outliers_g)
       message(length(outliers_g), " outlier gene(s) removed.")
@@ -294,32 +306,51 @@ rna.normalize <- function(project,
   # 5) Normalization
   # ===========================================================================
   norm_counts <- counts
+
+  # Log2
   if (method == "log2") {
     norm_counts <- log2(norm_counts + 1)
+
+    # CPM
   } else if (method == "cpm") {
+
     lib_sizes <- colSums(counts)
     norm_counts <- t(t(counts) / lib_sizes * 1e6)
+
+    # TPM
   } else if (method == "tpm") {
-    if (is.null(imp_data$annotation) ||
-        !"gene_length" %in% colnames(imp_data$annotation)) {
-      stop("TPM normalization requires a 'gene_length' column in imp_data$annotation.")
+
+    if (is.null(imp_data$gene_annotation) ||
+        !"gene_length" %in% colnames(imp_data$gene_annotation)) {
+      stop("TPM normalization requires a 'gene_length' column in imp_data$gene_annotation.")
     }
 
-    ann <- imp_data$annotation
+    ann <- imp_data$gene_annotation
     ann <- ann[match(rownames(counts), ann$gene_id), ]
+
     if (any(is.na(ann$gene_length))) {
       stop("Gene length missing for some genes.")
     }
+
     rpk <- counts / (ann$gene_length / 1000)
     norm_counts <- t(t(rpk) / colSums(rpk) * 1e6)
+
+    # Quantile
   } else if (method == "quantile") {
+
     if (!requireNamespace("limma", quietly = TRUE))
       stop("Please install 'limma' to use quantile normalization.")
+
     norm_counts <- limma::normalizeQuantiles(as.matrix(counts))
+
   } else if (method == "upper-quartile") {
+
     uq <- apply(counts, 2, function(x) quantile(x[x > 0], 0.75))
     norm_counts <- t(t(counts) / uq * median(uq))
+
+    # rlog / vst
   } else if (method %in% c("rlog", "vst")) {
+
     if (!requireNamespace("DESeq2", quietly = TRUE))
       stop("DESeq2 not installed. Install with: BiocManager::install('DESeq2')")
 
