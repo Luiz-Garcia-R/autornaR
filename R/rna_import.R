@@ -136,95 +136,67 @@ rna.import <- function(
   }
 
   # ---------------------------
-  # 3) Validate input
+  # 3) Detect gene column & Handle rownames
   # ---------------------------
   if (!is.data.frame(raw_data)) {
     add_error("'raw_data' must be a data.frame.")
   }
 
-  # ---------------------------
-  # 3.5) Handle rownames as gene IDs
-  # ---------------------------
   if (is.null(colnames(raw_data)) || ncol(raw_data) == 0) {
     add_error("raw_data has no columns.")
   }
 
-  # Check column
   possible_gene_cols <- c(
-    "Gene_ID",
-    "Geneid",
-    "geneid",
-    "GeneID",
-    "GENEID",
-    "Ensembl_ID",
-    "ENSEMBL_ID",
-    "ensembl_id",
-    "Gene",
-    "gene",
-    "ID",
-    "id",
-    "Symbol",
-    "symbol"
+    "Gene_ID", "Geneid", "geneid", "GeneID", "GENEID",
+    "Ensembl_ID", "ENSEMBL_ID", "ensembl_id", "Gene", "gene",
+    "ID", "id", "Symbol", "symbol"
   )
+
+  if (!is.null(gene_col)) {
+    possible_gene_cols <- c(gene_col, possible_gene_cols)
+  }
 
   found <- intersect(possible_gene_cols, colnames(raw_data))
 
-  if (length(found) == 0) {
+  if (length(found) > 0) {
+    gene_col <- found[1]
 
+  } else {
     rn <- rownames(raw_data)
 
-    # Check rownames
     if (!is.null(rn) && length(rn) > 0) {
 
-      rn_sample <- rn[1:min(100, length(rn))]
+      is_sequential <- all(rn == as.character(seq_len(nrow(raw_data))))
 
-      looks_like_gene <- mean(
-        grepl("^ENS|^[A-Za-z0-9\\-\\.]+$", rn_sample)
-      ) > 0.8
+      if (!is_sequential) {
+        rn_sample <- rn[1:min(100, length(rn))]
 
-      if (looks_like_gene) {
+        looks_like_gene <- mean(grepl("^ENS|^[A-Za-z0-9\\-\\.]+$", rn_sample)) > 0.8
 
-        if (is.null(gene_col)) {
+        if (looks_like_gene) {
+          if (is.null(gene_col)) {
+            gene_col <- "GeneID"
+          }
 
-          stop(
-            "No gene identifier column detected. Please specify 'gene_col'."
-          )
-
+          raw_data[[gene_col]] <- rn
+          raw_data <- raw_data[, c(gene_col, setdiff(colnames(raw_data), gene_col))]
+          add_warning("Gene IDs detected in rownames and moved to column.")
         }
 
-        raw_data[[gene_col]] <- rn
+      } else {
 
-        raw_data <- raw_data[, c(
-          gene_col,
-          setdiff(colnames(raw_data), gene_col)
-        )]
+        if (!is.null(gene_col)) {
+          add_error(sprintf("The specified gene_col '%s' was not found in the data.", gene_col))
 
-        add_warning(
-          "Gene IDs detected in rownames and moved to column."
-        )
+        } else {
+          add_error("No gene identifier column detected in columns or rownames. Please specify 'gene_col'.")
+        }
       }
     }
   }
 
   # ---------------------------
-  # 4) Detect gene column
-  # ---------------------------
-  if (!is.null(gene_col)) {
-    possible_gene_cols <- c(gene_col, possible_gene_cols)
-  }
-
-  found <- intersect(
-    possible_gene_cols,
-    colnames(raw_data)
-  )
-
-  if (length(found) > 0) {
-    gene_col <- found[1]
-  }
-
-
-  # ---------------------------
-  # 5) Detect gene ID type
+  # 4) Detect gene ID type
   # ---------------------------
   .detect_gene_id_type <- function(ids) {
     ids <- na.omit(ids)
@@ -246,7 +218,7 @@ rna.import <- function(
   }
 
   # ---------------------------
-  # 6) Identify count columns
+  # 5) Identify count columns
   # ---------------------------
   if (format %in% c("hisat2", "star", "featureCounts")) {
     count.cols <- grep("\\.bam$|\\.counts$", colnames(raw_data), value = TRUE)
@@ -271,7 +243,7 @@ rna.import <- function(
   }
 
   # ---------------------------
-  # 7) Build matrix
+  # 6) Build matrix
   # ---------------------------
   if (length(errors) == 0) {
 
@@ -305,7 +277,7 @@ rna.import <- function(
   }
 
   # ---------------------------
-  # 8) Resolve organism
+  # 7) Resolve organism
   # ---------------------------
   if (organism == "auto") {
 
@@ -327,15 +299,18 @@ rna.import <- function(
     }
 
   } else {
-    # Manual definition
     if (!organism %in% c("human", "mouse", "zebrafish")) {
       add_error("Invalid organism. Must be 'human', 'mouse', or 'zebrafish'.")
     }
   }
 
   # ---------------------------
-  # 8.1) Map annotation & Extract Length
+  # 8) Map annotation & Extract Length
   # ---------------------------
+  if (length(errors) > 0 && strict) {
+    stop(paste(errors, collapse = "\n"))
+  }
+
   gene_ids <- raw_data_counts[[gene_col]]
   gene_ids_clean <- sub("\\..*$", "", gene_ids)
 
@@ -647,7 +622,7 @@ rna.import <- function(
   class(obj) <- "imp_data"
 
   # ---------------------------
-  # 13) Attach to project
+  # 14) Attach to project
   # ---------------------------
   if (save) {
 
@@ -671,7 +646,7 @@ rna.import <- function(
 }
 
   # ---------------------------
-  # 14) Return
+  # 15) Return
   # ---------------------------
   counts_only <- raw_data_counts[, setdiff(colnames(raw_data_counts), gene_col), drop = FALSE]
 
@@ -739,7 +714,7 @@ rna.import <- function(
     }
   })
 
-  # Warnings block (only if exists)
+  # Warnings block
   if (length(warnings_list) > 0) {
     .print_block("Warnings", function() {
       for (w in warnings_list) {

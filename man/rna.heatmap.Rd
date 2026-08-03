@@ -14,6 +14,7 @@ rna.heatmap(
   zscore = TRUE,
   cluster_rows = TRUE,
   cluster_cols = TRUE,
+  group_colors = NULL,
   show_rownames = FALSE,
   show_colnames = FALSE,
   show_regulation = FALSE,
@@ -48,6 +49,8 @@ prior to plotting (default: \code{TRUE}).}
 
 \item{cluster_cols}{Logical. Whether to cluster samples (columns)
 (default: \code{TRUE}).}
+
+\item{group_colors}{Character. Vector or named list for group colors.}
 
 \item{show_rownames}{Logical. Whether to display gene names
 (default: \code{FALSE}).}
