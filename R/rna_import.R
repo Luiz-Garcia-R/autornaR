@@ -114,17 +114,19 @@ rna.import <- function(
   organism <- match.arg(organism)
   format <- match.arg(format)
 
-  # ---------------------------
+  # ===========================================================================
   # 1) Get active project
-  # ---------------------------
+  # ===========================================================================
+
   if (is.null(project)) {
     stop("Project must be provided. Use rna.project() first.")
   }
   proj <- project
 
-  # ---------------------------
+  # ===========================================================================
   # 2) Setup validation
-  # ---------------------------
+  # ===========================================================================
+
   errors <- character()
   warnings_list <- character()
 
@@ -135,17 +137,26 @@ rna.import <- function(
     stop(paste(errors, collapse = "\n"))
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 3) Detect gene column & Handle rownames
-  # ---------------------------
+  # ===========================================================================
+
+  # Coerce matrix to data.frame to allow list-like column manipulation
   if (!is.data.frame(raw_data)) {
-    add_error("'raw_data' must be a data.frame.")
+    if (is.matrix(raw_data)) {
+      raw_data <- as.data.frame(raw_data)
+      # Optional: alert the user about the coercion
+      add_warning("'raw_data' provided as matrix. Coerced to data.frame.")
+    } else {
+      add_error("'raw_data' must be a data.frame or a numeric matrix.")
+    }
   }
 
   if (is.null(colnames(raw_data)) || ncol(raw_data) == 0) {
     add_error("raw_data has no columns.")
   }
 
+  # Expand search pool for typical column names
   possible_gene_cols <- c(
     "Gene_ID", "Geneid", "geneid", "GeneID", "GENEID",
     "Ensembl_ID", "ENSEMBL_ID", "ensembl_id", "Gene", "gene",
@@ -166,11 +177,13 @@ rna.import <- function(
 
     if (!is.null(rn) && length(rn) > 0) {
 
+      # Check if rownames are just default numeric sequences (1, 2, 3...)
       is_sequential <- all(rn == as.character(seq_len(nrow(raw_data))))
 
       if (!is_sequential) {
         rn_sample <- rn[1:min(100, length(rn))]
 
+        # Heuristic: looks for ENSEMBL prefix or general standard symbols
         looks_like_gene <- mean(grepl("^ENS|^[A-Za-z0-9\\-\\.]+$", rn_sample)) > 0.8
 
         if (looks_like_gene) {
@@ -178,8 +191,11 @@ rna.import <- function(
             gene_col <- "GeneID"
           }
 
+          # Now safe to execute because raw_data is guaranteed to be a data.frame
           raw_data[[gene_col]] <- rn
-          raw_data <- raw_data[, c(gene_col, setdiff(colnames(raw_data), gene_col))]
+
+          # Added drop = FALSE to prevent coercion to vector if there is only 1 sample
+          raw_data <- raw_data[, c(gene_col, setdiff(colnames(raw_data), gene_col)), drop = FALSE]
           add_warning("Gene IDs detected in rownames and moved to column.")
         }
 
@@ -195,9 +211,10 @@ rna.import <- function(
     }
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 4) Detect gene ID type
-  # ---------------------------
+  # ===========================================================================
+
   .detect_gene_id_type <- function(ids) {
     ids <- na.omit(ids)
     ids <- ids[1:min(length(ids), 100)]
@@ -217,9 +234,10 @@ rna.import <- function(
     return(NA_character_)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 5) Identify count columns
-  # ---------------------------
+  # ===========================================================================
+
   if (format %in% c("hisat2", "star", "featureCounts")) {
     count.cols <- grep("\\.bam$|\\.counts$", colnames(raw_data), value = TRUE)
 
@@ -242,9 +260,10 @@ rna.import <- function(
       add_error("No count columns found.")
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 6) Build matrix
-  # ---------------------------
+  # ===========================================================================
+
   if (length(errors) == 0) {
 
     raw_data_counts <- raw_data[, c(gene_col, count.cols), drop = FALSE]
@@ -276,9 +295,10 @@ rna.import <- function(
     }
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 7) Resolve organism
-  # ---------------------------
+  # ===========================================================================
+
   if (organism == "auto") {
 
     if (gene_id_type %in% c("SYMBOL", "ENTREZ")) {
@@ -304,9 +324,10 @@ rna.import <- function(
     }
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 8) Map annotation & Extract Length
-  # ---------------------------
+  # ===========================================================================
+
   if (length(errors) > 0 && strict) {
     stop(paste(errors, collapse = "\n"))
   }
@@ -335,9 +356,10 @@ rna.import <- function(
 
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 9) Clean sample names
-  # ---------------------------
+  # ===========================================================================
+
   if (clean_names && format %in% c("hisat2", "star", "featureCounts")) {
 
     clean_sample_names <- function(x) {
@@ -352,9 +374,10 @@ rna.import <- function(
     )
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 10) Sample names
-  # ---------------------------
+  # ===========================================================================
+
   if (length(errors) == 0) {
 
     sample.cols <- setdiff(colnames(raw_data_counts), gene_col)
@@ -375,9 +398,10 @@ rna.import <- function(
     sample.cols <- character(0)
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 11) Metadata
-  # ---------------------------
+  # ===========================================================================
+
   if (!is.null(metadata)) {
 
     if (!is.data.frame(metadata))
@@ -385,9 +409,10 @@ rna.import <- function(
 
     detected_sample_col <- NULL
 
-    # ---------------------------
+    # =======================================
     # 11.1) Try by column name
-    # ---------------------------
+    # =======================================
+
     possible_sample_cols <- c(
       "Sample", "sample", "SampleID", "sample_id",
       "Sample_Id", "sampleId", "ID", "id",
@@ -401,9 +426,10 @@ rna.import <- function(
       detected_sample_col <- found[1]
     }
 
-    # ---------------------------
+    # =======================================
     # 11.2) Try by matching values
-    # ---------------------------
+    # =======================================
+
     if (is.null(detected_sample_col)) {
 
       matches <- sapply(metadata, function(col) {
@@ -421,9 +447,10 @@ rna.import <- function(
       }
     }
 
-    # ---------------------------
+    # =======================================
     # 11.3) Final validation
-    # ---------------------------
+    # =======================================
+
     if (is.null(detected_sample_col)) {
       add_error("Could not detect sample column in metadata.")
     } else {
@@ -489,18 +516,20 @@ rna.import <- function(
       }
     }
 
-      # ---------------------------
+      # ===========================================================================
       # Match validation
-      # ---------------------------
-      missing <- setdiff(metadata$Sample, sample.cols)
+      # ===========================================================================
+
+    missing <- setdiff(metadata$Sample, sample.cols)
 
       if (length(missing) > 0)
         add_warning("Metadata samples not in matrix.")
     }
 
-  # ---------------------------
+  # ===========================================================================
   # 12) Group column validation
-  # ---------------------------
+  # ===========================================================================
+
   group_info <- NULL
 
   if (!is.null(metadata)) {
@@ -508,9 +537,10 @@ rna.import <- function(
     detected_group_col <- NULL
     original_group_levels <- NULL
 
-    # ---------------------------
+    # =======================================
     # 12.1) Manual override
-    # ---------------------------
+    # =======================================
+
     if (!is.null(group_col)) {
 
       if (group_col %in% colnames(metadata)) {
@@ -521,9 +551,10 @@ rna.import <- function(
 
     } else {
 
-      # ---------------------------
+      # =======================================
       # 12.2) Try common names
-      # ---------------------------
+      # =======================================
+
       possible_group_cols <- c(
         "Group", "group", "Condition", "condition",
         "Treatment", "treatment", "Class", "class",
@@ -539,9 +570,10 @@ rna.import <- function(
         ))
       }
 
-      # ---------------------------
+      # =======================================
       # 12.3) Heuristic fallback
-      # ---------------------------
+      # =======================================
+
       if (is.null(detected_group_col)) {
 
         candidates <- sapply(metadata, function(col) {
@@ -564,9 +596,10 @@ rna.import <- function(
       }
     }
 
-    # ---------------------------
+    # =======================================
     # 12.4) Build group info
-    # ---------------------------
+    # =======================================
+
     if (!is.null(detected_group_col)) {
 
       if (is.null(original_group_levels)) {
@@ -602,9 +635,10 @@ rna.import <- function(
     }
   }
 
-  # ---------------------------
+  # ===========================================================================
   # 13) Output object
-  # ---------------------------
+  # ===========================================================================
+
   obj <- list(
     timestamp = Sys.time(),
     data = raw_data_counts,
@@ -621,9 +655,10 @@ rna.import <- function(
 
   class(obj) <- "imp_data"
 
-  # ---------------------------
+  # ===========================================================================
   # 14) Attach to project
-  # ---------------------------
+  # ===========================================================================
+
   if (save) {
 
   proj <- .attach_to_project(
@@ -645,9 +680,10 @@ rna.import <- function(
   )
 }
 
-  # ---------------------------
+  # ===========================================================================
   # 15) Return
-  # ---------------------------
+  # ===========================================================================
+
   counts_only <- raw_data_counts[, setdiff(colnames(raw_data_counts), gene_col), drop = FALSE]
 
   .print_header("RNA Import")
