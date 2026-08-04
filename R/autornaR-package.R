@@ -66,10 +66,16 @@
 #' my_project <- rna.qc(my_project)
 #'
 #' # Gene ranking and exploratory analysis
-#' rna.compare(my_project, method = "limma")
+#' rna.compare(my_project,
+#'             method = "limma",
+#'             contrast = "Treatment", "Control")
+#'
 #' rna.roc(my_project, genes = c("G001","G002"))
+#'
 #' rna.boxplot(my_project, genes = "G001")
+#'
 #' rna.volcano(my_project)
+#'
 #' rna.sets(my_project)
 #'
 #' # Save rna_project object

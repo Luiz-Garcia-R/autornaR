@@ -32,7 +32,6 @@ If present in metadata, it is included in the design formula.}
 \itemize{
 \item A character vector of length 2: \code{c("test", "reference")}
 \item A list of such vectors for multiple contrasts
-\item \code{NULL}: automatically inferred if exactly two groups exist
 }}
 
 \item{plot}{Logical. If \code{TRUE}, displays diagnostic plots:
@@ -105,10 +104,7 @@ A summary is printed to the console including:
 
 \examples{
 \dontrun{
-# Basic usage (two groups automatically detected)
-rna.compare(project = my_project)
-
-# Explicit contrast
+# Basic usage
 rna.compare(my_project,
             contrast = c("treated", "control"))
 
@@ -122,10 +118,12 @@ rna.compare(my_project,
 
 # Using limma instead of DESeq2
 rna.compare(my_project,
+            contrast = c("treated", "control"),
             method = "limma")
 
 # Including batch effect
-rna.compare(my_project
+rna.compare(my_project,
+            contrast = c("treated", "control"),
             batch_col = "Batch")
 }
 

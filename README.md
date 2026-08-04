@@ -110,7 +110,8 @@ my_project <- rna.qc(my_project)
 my_project <- rna.dimred(my_project)
 
 # Differential expression
-my_project <- rna.compare(my_project)
+my_project <- rna.compare(my_project,
+                          comparison = c("Treatment", "Control"))
 
 # Evaluating top DEGs
 my_project <- rna.degs(my_project)
