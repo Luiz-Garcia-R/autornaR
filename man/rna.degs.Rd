@@ -6,7 +6,7 @@
 \usage{
 rna.degs(
   project,
-  contrast = NULL,
+  comparison_id = NULL,
   top_n = 10,
   padj_cutoff = 0.05,
   plot = TRUE,
@@ -17,7 +17,7 @@ rna.degs(
 \arguments{
 \item{project}{\code{rna_project} object created by \code{rna.project()}.}
 
-\item{contrast}{Identifier of the comparison to use. Can be:
+\item{comparison_id}{Identifier of the comparison to use. Can be:
 \itemize{
 \item A character string matching a stored comparison name
 \item A numeric index (position in stored comparisons)
@@ -41,7 +41,6 @@ significant genes (default: 0.05).}
 An object of class \code{"deg_result"} containing:
 \itemize{
 \item \code{comparison}: Comparison identifier
-\item \code{contrast}: Vector with \code{test} and \code{reference}
 \item \code{deg_table}: Full differential expression table
 \item \code{top_genes}: Data frame of selected top genes
 \item \code{plot}: \code{ggplot} object (or \code{NULL})
@@ -67,7 +66,7 @@ based on the organism defined in the active \code{rna_project}.
 The function ranks genes based on log2 fold-change and extracts the top
 \code{top_n} most upregulated and downregulated genes.
 
-\strong{Contrast interpretation:}
+\strong{comparison_id interpretation:}
 The log2 fold-change is defined as \strong{test − reference}, inherited
 from \code{rna.compare()}. Therefore:
 \itemize{
@@ -104,7 +103,7 @@ rna.degs(project = my_project)
 
 # Specify comparison by name
 rna.degs(my_project,
-         contrast = "treated_vs_control")
+         comparison_id = "treated_vs_control")
 
 # Select more genes
 rna.degs(my_project,

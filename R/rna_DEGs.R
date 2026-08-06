@@ -9,7 +9,7 @@
 #' based on the organism defined in the active \code{rna_project}.
 #'
 #' @param project \code{rna_project} object created by \code{rna.project()}.
-#' @param contrast Identifier of the comparison to use. Can be:
+#' @param comparison_id Identifier of the comparison to use. Can be:
 #'   \itemize{
 #'     \item A character string matching a stored comparison name
 #'     \item A numeric index (position in stored comparisons)
@@ -28,7 +28,7 @@
 #' The function ranks genes based on log2 fold-change and extracts the top
 #' \code{top_n} most upregulated and downregulated genes.
 #'
-#' \strong{Contrast interpretation:}
+#' \strong{comparison_id interpretation:}
 #' The log2 fold-change is defined as \strong{test − reference}, inherited
 #' from \code{rna.compare()}. Therefore:
 #' \itemize{
@@ -50,7 +50,6 @@
 #' An object of class \code{"deg_result"} containing:
 #' \itemize{
 #'   \item \code{comparison}: Comparison identifier
-#'   \item \code{contrast}: Vector with \code{test} and \code{reference}
 #'   \item \code{deg_table}: Full differential expression table
 #'   \item \code{top_genes}: Data frame of selected top genes
 #'   \item \code{plot}: \code{ggplot} object (or \code{NULL})
@@ -81,7 +80,7 @@
 #'
 #' # Specify comparison by name
 #' rna.degs(my_project,
-#'          contrast = "treated_vs_control")
+#'          comparison_id = "treated_vs_control")
 #'
 #' # Select more genes
 #' rna.degs(my_project,
@@ -97,7 +96,7 @@
 #' @export
 
 rna.degs <- function(project,
-                     contrast = NULL,
+                     comparison_id = NULL,
                      top_n = 10,
                      padj_cutoff = 0.05,
                      plot = TRUE,
@@ -122,17 +121,17 @@ rna.degs <- function(project,
   # ===========================================================================
   # 2) Validate input
   # ===========================================================================
-  contrast <- .get_last_or_selected(
+  comparison_id <- .get_last_or_selected(
     comps,
-    contrast,
+    comparison_id,
     what = "comparison"
   )
 
-  comp_obj <- .get_comp_obj(proj, contrast)
+  comp_obj <- .get_comp_obj(proj, comparison_id)
 
   df <- comp_obj$res
 
-  contrast <- c(
+  comparison_id <- c(
     comp_obj$groups$test,
     comp_obj$groups$reference
   )
@@ -207,7 +206,7 @@ rna.degs <- function(project,
   # ===========================================================================
   params <- list(
     top_n = top_n,
-    comparison = contrast,
+    comparison = comparison_id,
     timestamp = Sys.time()
   )
 
@@ -225,8 +224,7 @@ rna.degs <- function(project,
 
   obj <- list(
     timestamp = Sys.time(),
-    comparison = contrast,
-    contrast = contrast,
+    comparison = comparison_id,
     params = params,
     deg_table = df,
     top_genes = top_genes,
@@ -249,8 +247,7 @@ rna.degs <- function(project,
       subtype = "degs",
       prefix = "degs",
       log = list(
-        comparison = contrast,
-        contrast = contrast,
+        comparison = comparison_id,
         n_up = n_up,
         n_down = n_down,
         n_significant = n_significant
@@ -267,7 +264,7 @@ rna.degs <- function(project,
   .print_header("Differential Expression Summary")
 
   .print_block("Overview", function() {
-    cat("Comparison:        ", paste(contrast, collapse = " vs "), "\n")
+    cat("Comparison:        ", paste(comparison_id, collapse = " vs "), "\n")
     cat("Total genes:       ", nrow(df), "\n")
     cat("Upregulated:       ", n_up, "\n")
     cat("Downregulated:     ", n_down, "\n")

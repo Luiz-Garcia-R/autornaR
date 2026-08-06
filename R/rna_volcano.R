@@ -261,7 +261,7 @@ rna.volcano <- function(project,
         color = "Regulation",
         x = "log2 Fold Change",
         y = "-log10(padj)",
-        title = paste0(groups[1], " vs ", groups[2])) +
+        title = paste0(groups[2], " vs ", groups[1])) +
 
       ggplot2::geom_vline(
         xintercept = c(-log2fc_threshold, log2fc_threshold),
