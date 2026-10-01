@@ -1,17 +1,18 @@
 Package: autornaR
 Type: Package
 Title: Comprehensive RNAseq Data Analysis and Visualization
-Version: 0.2.17
+Version: 0.3.0
 Authors@R: 
     person("Luiz", "Garcia", 
            email = "luiz.cardoso@ufpr.br", 
            role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-9616-0927"))
 Description: Designed to streamline the analysis of RNA-seq data. 
-    It provides tools for importing and validating count matrices, normalizing expression data, 
-    performing quality control, exploratory analyses, dimensionality reduction (PCA/UMAP), 
-    differential expression analyses, enrichment, correlation, heatmaps, volcano plots, ROC curves, 
-    and statistical testing. The package is optimized for pairwise group comparisons 
+    It provides tools for importing and validating count matrices,
+    normalizing expression data, performing quality control, exploratory
+    analyses, dimensionality reduction (PCA/UMAP), differential expression
+    analyses, enrichment, correlation, heatmaps, volcano plots, ROC curves, and
+    statistical testing. The package is optimized for pairwise group comparisons 
     but can be applied to more complex experimental designs.
 License: MIT + file LICENSE
 Encoding: UTF-8

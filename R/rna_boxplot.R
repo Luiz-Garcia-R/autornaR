@@ -108,181 +108,159 @@ rna.boxplot <- function(project,
                         verbose = TRUE
 ) {
 
-  style <- match.arg(style)
+style <- match.arg(style)
 
-  # ===========================================================================
-  # 1) Required packages
-  # ===========================================================================
-  .check_dependencies(c("ggplot2","dplyr"))
-  .check_dependencies(c("limma","AnnotationDbi"), bioc = TRUE)
+# =============================================================================
+# 0. Check dependencies
+# =============================================================================
 
-  # ===========================================================================
-  # 2) Get active project
-  # ===========================================================================
-  proj <- project
+.check_dependencies(c("ggplot2","dplyr"))
+.check_dependencies(c("limma","AnnotationDbi"), bioc = TRUE)
 
-  expr_mat <- as.matrix(.get_expr(proj))
-  metadata <- .get_meta(proj)
-  norm_method <- .get_norm_method(proj)
+# =============================================================================
+# 1. Get active project
+# =============================================================================
 
-  gene_map <- .get_gene_annotation(proj)
-  gene_map <- .align_gene_annotation(gene_map, expr_mat)
+proj <- project
 
-  # ===========================================================================
-  # 4) Resolve gene ID
-  # ===========================================================================
-  gene_ids <- gene_map$gene_id
-  gene_symbols <- gene_map$symbol
+expr_mat <- as.matrix(.get_expr(proj))
+metadata <- .get_meta(proj)
+norm_method <- .get_norm_method(proj)
 
-  valid_idx <- which(
-    gene_map$gene_id %in% gene |
-      gene_map$symbol %in% gene
+gene_map <- .get_gene_annotation(proj)
+gene_map <- .align_gene_annotation(gene_map, expr_mat)
+
+# =============================================================================
+# 2. Resolve gene ID
+# =============================================================================
+
+gene_ids <- gene_map$gene_id
+gene_symbols <- gene_map$symbol
+
+valid_idx <- which(
+  gene_map$gene_id %in% gene |
+    gene_map$symbol %in% gene
+)
+
+if (length(valid_idx) == 0) {
+  stop("Gene not found in expression matrix or annotation.")
+}
+
+gene_use <- gene_ids[valid_idx[1]]
+
+gene_label <- gene_symbols[valid_idx[1]]
+if (is.na(gene_label) || gene_label == "") {
+  gene_label <- gene_use
+}
+
+# =============================================================================
+# 3. Build design + contrast
+# =============================================================================
+
+if (!(group_col %in% colnames(metadata))) {
+  stop(paste0("Column '", group_col, "' not found in metadata."))
+}
+
+# group factor
+metadata[[group_col]] <- as.factor(metadata[[group_col]])
+
+# =============================================================================
+# 4. Resolve contrast
+# =============================================================================
+
+if (is.null(contrast)) {
+
+  groups <- levels(metadata[[group_col]])
+
+  if (length(groups) != 2) {
+    stop("contrast must be specified when there are more than 2 groups.")
+  }
+
+  contrast_vec <- c(groups[2], groups[1])  # test vs reference
+
+} else if (is.character(contrast) && length(contrast) == 1) {
+
+  if (contrast == "last") {
+    stop("'last' not implemented yet.")
+  }
+
+  contrast_vec <- strsplit(contrast, "_vs_")[[1]]
+
+} else if (is.character(contrast) && length(contrast) == 2) {
+
+  contrast_vec <- contrast
+
+} else {
+  stop("Invalid contrast format.")
+}
+
+# Ensure factor order
+metadata[[group_col]] <- factor(metadata[[group_col]],
+                            levels = c(contrast_vec[2], contrast_vec[1]))
+
+# =============================================================================
+# 5. Design formula
+# =============================================================================
+
+if (!is.null(batch_col)) {
+
+  if (!(batch_col %in% colnames(metadata))) {
+    stop(paste0("Column '", batch_col, "' not found in metadata."))
+  }
+
+  design_formula <- as.formula(
+    paste0("~ ", batch_col, " + ", group_col)
   )
 
-  if (length(valid_idx) == 0) {
-    stop("Gene not found in expression matrix or annotation.")
-  }
-
-  gene_use <- gene_ids[valid_idx[1]]
-
-  gene_label <- gene_symbols[valid_idx[1]]
-  if (is.na(gene_label) || gene_label == "") {
-    gene_label <- gene_use
-  }
-
-  # ===========================================================================
-  # 4.1) Build design + contrast
-  # ===========================================================================
-
-  if (!(group_col %in% colnames(metadata))) {
-    stop(paste0("Column '", group_col, "' not found in metadata."))
-  }
-
-  # group factor
-  metadata[[group_col]] <- as.factor(metadata[[group_col]])
-
-  # ===========================================================================
-  # 4.2) Resolve contrast
-  # ===========================================================================
-  if (is.null(contrast)) {
-
-    groups <- levels(metadata[[group_col]])
-
-    if (length(groups) != 2) {
-      stop("contrast must be specified when there are more than 2 groups.")
-    }
-
-    contrast_vec <- c(groups[2], groups[1])  # test vs reference
-
-  } else if (is.character(contrast) && length(contrast) == 1) {
-
-    if (contrast == "last") {
-      stop("'last' not implemented yet.")
-    }
-
-    contrast_vec <- strsplit(contrast, "_vs_")[[1]]
-
-  } else if (is.character(contrast) && length(contrast) == 2) {
-
-    contrast_vec <- contrast
-
-  } else {
-    stop("Invalid contrast format.")
-  }
-
-  # Ensure factor order
-  metadata[[group_col]] <- factor(metadata[[group_col]],
-                              levels = c(contrast_vec[2], contrast_vec[1]))
-
-  # ===========================================================================
-  # 4.3) Design formula
-  # ===========================================================================
-  if (!is.null(batch_col)) {
-
-    if (!(batch_col %in% colnames(metadata))) {
-      stop(paste0("Column '", batch_col, "' not found in metadata."))
-    }
-
-    design_formula <- as.formula(
-      paste0("~ ", batch_col, " + ", group_col)
-    )
-
-  } else {
-    design_formula <- as.formula(
-      paste0("~ 0 + ", group_col)
-    )
-  }
-
-  design <- model.matrix(design_formula, data = metadata)
-
-  # ===========================================================================
-  # 4.4) Contrast matrix
-  # ===========================================================================
-  contrast_name <- paste0(
-    group_col, contrast_vec[1], " - ", group_col, contrast_vec[2]
+} else {
+  design_formula <- as.formula(
+    paste0("~ 0 + ", group_col)
   )
+}
 
-  contrast_matrix <- limma::makeContrasts(
-    contrasts = contrast_name,
-    levels = design
-  )
+design <- model.matrix(design_formula, data = metadata)
 
-  # ===========================================================================
-  # 5) Get limma result (cache or compute)
-  # ===========================================================================
-  limma_id <- paste(gene_use, group_col, sep = "_")
-  is_log <- norm_method %in% c("log2", "rlog", "vst")
+# =============================================================================
+# 6. Contrast matrix
+# =============================================================================
 
-  expr_mat_use <- if (is_log) expr_mat else log2(expr_mat + 1)
+contrast_name <- paste0(
+  group_col, contrast_vec[1], " - ", group_col, contrast_vec[2]
+)
 
-  if (save && !is.null(proj$analyses$gene_tests) &&
-      limma_id %in% names(proj$analyses$gene_tests)) {
+contrast_matrix <- limma::makeContrasts(
+  contrasts = contrast_name,
+  levels = design
+)
 
-    if (verbose)
-      message("[rna.boxplot] Limma result already saved. Using cached result.")
+# =============================================================================
+# 7. Get limma result (cache or compute)
+# =============================================================================
 
-    cached <- proj$analyses$gene_tests[[limma_id]]
+limma_id <- paste(gene_use, group_col, sep = "_")
+is_log <- norm_method %in% c("log2", "rlog", "vst")
 
-    gene_res <- cached$limma_res
+expr_mat_use <- if (is_log) expr_mat else log2(expr_mat + 1)
 
-    if (is.null(cached$scale) || cached$scale != "log2") {
+if (save && !is.null(proj$analyses$gene_tests) &&
+    limma_id %in% names(proj$analyses$gene_tests)) {
 
-      ci_low  <- as.numeric(cached$ci_low)
-      ci_high <- as.numeric(cached$ci_high)
+  if (verbose)
+    message("[rna.boxplot] Limma result already saved. Using cached result.")
 
-    } else {
+  cached <- proj$analyses$gene_tests[[limma_id]]
 
-      if (verbose)
-        message("[rna.boxplot] Old cache detected. Recomputing limma fit for CI.")
+  gene_res <- cached$limma_res
 
-      fit <- limma::lmFit(expr_mat_use, design)
-      fit <- limma::contrasts.fit(fit, contrast_matrix)
-      fit <- limma::eBayes(fit)
+  if (is.null(cached$scale) || cached$scale != "log2") {
 
-      tt <- limma::topTable(
-        fit,
-        coef = 1,
-        number = Inf,
-        sort.by = "none",
-        confint = TRUE
-      )
-
-      gene_res <- tt[gene_use, ]
-
-      ci_low  <- gene_res$CI.L
-      ci_high <- gene_res$CI.R
-    }
+    ci_low  <- as.numeric(cached$ci_low)
+    ci_high <- as.numeric(cached$ci_high)
 
   } else {
 
     if (verbose)
-      message("[rna.boxplot] No cached result. Running limma fit.")
-
-    if (!is_log) {
-      expr_mat_use <- log2(expr_mat + 1)
-    } else {
-      expr_mat_use <- expr_mat
-    }
+      message("[rna.boxplot] Old cache detected. Recomputing limma fit for CI.")
 
     fit <- limma::lmFit(expr_mat_use, design)
     fit <- limma::contrasts.fit(fit, contrast_matrix)
@@ -302,93 +280,180 @@ rna.boxplot <- function(project,
     ci_high <- gene_res$CI.R
   }
 
-  # ===========================================================================
-  # 6) Effect size (Cohen's d) and IC95
-  # ===========================================================================
-  value_vec <- expr_mat_use[gene_use, ]
+} else {
 
-  df_sub <- data.frame(
-    Sample = colnames(expr_mat),
-    Value  = as.numeric(value_vec)
-  )
+  if (verbose)
+    message("[rna.boxplot] No cached result. Running limma fit.")
 
-  df_sub <- dplyr::left_join(df_sub, metadata, by = "Sample")
-  df_sub <- df_sub[df_sub[[group_col]] %in% contrast_vec, ]
-
-  groups_split <- split(df_sub$Value, df_sub[[group_col]])
-
-  if (any(!contrast_vec %in% names(groups_split))) {
-    stop("One or more groups in contrast have no samples after filtering.")
-  }
-
-  x <- groups_split[[contrast_vec[1]]]
-  y_group <- groups_split[[contrast_vec[2]]]
-
-  nx <- sum(!is.na(x)); ny <- sum(!is.na(y_group))
-  mean_diff <- mean(x, na.rm = TRUE) - mean(y_group, na.rm = TRUE)
-  sd_pooled <- sqrt(((nx - 1) * sd(x, na.rm = TRUE)^2 + (ny - 1) * sd(y_group, na.rm = TRUE)^2)/(nx + ny - 2))
-  cohen_d <- mean_diff / sd_pooled
-  se_diff <- sd_pooled * sqrt(1/nx + 1/ny)
-  ic95 <- mean_diff + c(-1,1) * qt(0.975, df = nx+ny-2) * se_diff
-
-  # ===========================================================================
-  # 7) P-value annotation
-  # ===========================================================================
-  pval <- gene_res$P.Value
-  signif_label <- if (pval < 0.001) "***"
-  else if (pval < 0.01) "**"
-  else if (pval < 0.05) "*"
-  else "ns"
-
-  p_label <- if (pval < 0.001) {
-    "p < 0.001"
+  if (!is_log) {
+    expr_mat_use <- log2(expr_mat + 1)
   } else {
-    paste0("p = ", formatC(pval, format = "f", digits = 3))
+    expr_mat_use <- expr_mat
   }
 
-  # ===========================================================================
-  # 8) Plot
-  # ===========================================================================
-  df_long <- data.frame(
-    Sample = colnames(expr_mat),
-    Value  = as.numeric(value_vec)
+  fit <- limma::lmFit(expr_mat_use, design)
+  fit <- limma::contrasts.fit(fit, contrast_matrix)
+  fit <- limma::eBayes(fit)
+
+  tt <- limma::topTable(
+    fit,
+    coef = 1,
+    number = Inf,
+    sort.by = "none",
+    confint = TRUE
   )
 
-  df_long <- dplyr::left_join(df_long, metadata, by = "Sample")
-  df_long <- df_long[df_long[[group_col]] %in% contrast_vec, ]
-  df_long[[group_col]] <- droplevels(df_long[[group_col]])
+  gene_res <- tt[gene_use, ]
 
-  # Boxplot Plot
-  if (style == "boxplot") {
+  ci_low  <- gene_res$CI.L
+  ci_high <- gene_res$CI.R
+}
+
+# =============================================================================
+# 8. Effect size (Cohen's d) and CI95
+# =============================================================================
+
+value_vec <- expr_mat_use[gene_use, ]
+
+df_sub <- data.frame(
+  Sample = colnames(expr_mat),
+  Value  = as.numeric(value_vec)
+)
+
+df_sub <- dplyr::left_join(df_sub, metadata, by = "Sample")
+df_sub <- df_sub[df_sub[[group_col]] %in% contrast_vec, ]
+
+groups_split <- split(df_sub$Value, df_sub[[group_col]])
+
+if (any(!contrast_vec %in% names(groups_split))) {
+  stop("One or more groups in contrast have no samples after filtering.")
+}
+
+x <- groups_split[[contrast_vec[1]]]
+y_group <- groups_split[[contrast_vec[2]]]
+
+nx <- sum(!is.na(x)); ny <- sum(!is.na(y_group))
+mean_diff <- mean(x, na.rm = TRUE) - mean(y_group, na.rm = TRUE)
+sd_pooled <- sqrt(((nx - 1) * sd(x, na.rm = TRUE)^2 + (ny - 1) * sd(y_group, na.rm = TRUE)^2)/(nx + ny - 2))
+cohen_d <- mean_diff / sd_pooled
+se_diff <- sd_pooled * sqrt(1/nx + 1/ny)
+ic95 <- mean_diff + c(-1,1) * qt(0.975, df = nx+ny-2) * se_diff
+
+# =============================================================================
+# 9. P-value annotation
+# =============================================================================
+
+pval <- gene_res$P.Value
+signif_label <- if (pval < 0.001) "***"
+else if (pval < 0.01) "**"
+else if (pval < 0.05) "*"
+else "ns"
+
+p_label <- if (pval < 0.001) {
+  "p < 0.001"
+} else {
+  paste0("p = ", formatC(pval, format = "f", digits = 3))
+}
+
+# =============================================================================
+# 10. Plot
+# =============================================================================
+
+df_long <- data.frame(
+  Sample = colnames(expr_mat),
+  Value  = as.numeric(value_vec)
+)
+
+df_long <- dplyr::left_join(df_long, metadata, by = "Sample")
+df_long <- df_long[df_long[[group_col]] %in% contrast_vec, ]
+df_long[[group_col]] <- droplevels(df_long[[group_col]])
+
+# ===============================================
+# 10.1. Boxplot Plot
+# ===============================================
+
+if (style == "boxplot") {
+
+p <- ggplot2::ggplot(
+  df_long,
+  ggplot2::aes(x = .data[[group_col]],
+               y = Value, fill = .data[[group_col]])) +
+
+  ggplot2::geom_boxplot(
+    alpha = 0.75,
+    outlier.shape = NA,
+    width = 0.7,
+    linewidth = 0.7) +
+
+  ggplot2::geom_point(
+    ggplot2::aes(
+      color = .data[[group_col]]),
+    position = ggplot2::position_jitter(width = 0.1),
+    shape = 21,
+    color = "grey20",
+    size = 1.2,
+    alpha = 0.1) +
+
+  ggplot2::labs(
+    title = gene_label,
+    subtitle = paste0("log2FC = ", round(gene_res$logFC, 3), " | ", p_label),
+    x = "",
+    y = "Normalized expression") +
+
+  ggplot2::theme_bw(base_size = 12) +
+
+  ggplot2::theme(
+    legend.position = "none",
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+    axis.title.y = ggplot2::element_text(margin = ggplot2::margin(r = 12))
+  )
+
+if (!is.null(colors)) {
+  p <- p +
+    ggplot2::scale_fill_manual(values = colors)
+}
+
+if (show_signif) {
+  p <- p + ggplot2::annotation_custom(
+    grid::textGrob(
+      label = signif_label,
+      x = 0.5,
+      y = 0.92,
+      gp = grid::gpar(col = "grey20", fontsize = 16)
+    )
+  )
+}
+
+# ===============================================
+# 10.2. Violin Plot
+# ===============================================
+
+} else if (style == "violin") {
 
   p <- ggplot2::ggplot(
     df_long,
-    ggplot2::aes(x = .data[[group_col]],
-                 y = Value, fill = .data[[group_col]])) +
-
-    ggplot2::geom_boxplot(
-      alpha = 0.75,
-      outlier.shape = NA,
-      width = 0.7,
-      linewidth = 0.7) +
-
+    ggplot2::aes(x = .data[[group_col]], y = Value, fill = .data[[group_col]])
+  ) +
+    ggplot2::geom_violin(trim = FALSE, alpha = 0.5, color = NA) +
+    ggplot2::geom_boxplot(width = 0.2, outlier.shape = NA, linewidth = 0.4) +
     ggplot2::geom_point(
-      ggplot2::aes(
-        color = .data[[group_col]]),
+      ggplot2::aes(color = .data[[group_col]]),
       position = ggplot2::position_jitter(width = 0.1),
       shape = 21,
-      color = "grey20",
+      color = "black",
       size = 1.2,
-      alpha = 0.1) +
-
+      alpha = 0.2
+    ) +
     ggplot2::labs(
       title = gene_label,
-      subtitle = paste0("log2FC = ", round(gene_res$logFC, 3), " | ", p_label),
+      subtitle = paste0(
+        "log2FC = ", round(gene_res$logFC, 3),
+        " | ", p_label
+      ),
       x = "",
-      y = "Normalized expression") +
-
+      y = "Normalized expression"
+    ) +
     ggplot2::theme_bw(base_size = 12) +
-
     ggplot2::theme(
       legend.position = "none",
       axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
@@ -407,148 +472,96 @@ rna.boxplot <- function(project,
         x = 0.5,
         y = 0.92,
         gp = grid::gpar(col = "grey20", fontsize = 16)
+        )
       )
-    )
+    }
   }
 
-    # Violin Plot
-  } else if (style == "violin") {
+# =============================================================================
+# 11. Output
+# =============================================================================
 
-    p <- ggplot2::ggplot(
-      df_long,
-      ggplot2::aes(x = .data[[group_col]], y = Value, fill = .data[[group_col]])
-    ) +
-      ggplot2::geom_violin(trim = FALSE, alpha = 0.5, color = NA) +
-      ggplot2::geom_boxplot(width = 0.2, outlier.shape = NA, linewidth = 0.4) +
-      ggplot2::geom_point(
-        ggplot2::aes(color = .data[[group_col]]),
-        position = ggplot2::position_jitter(width = 0.1),
-        shape = 21,
-        color = "black",
-        size = 1.2,
-        alpha = 0.2
-      ) +
-      ggplot2::labs(
-        title = gene_label,
-        subtitle = paste0(
-          "log2FC = ", round(gene_res$logFC, 3),
-          " | ", p_label
-        ),
-        x = "",
-        y = "Normalized expression"
-      ) +
-      ggplot2::theme_bw(base_size = 12) +
-      ggplot2::theme(
-        legend.position = "none",
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
-        axis.title.y = ggplot2::element_text(margin = ggplot2::margin(r = 12))
-      )
+rng_state <- if (!is.null(seed)) .Random.seed else NULL
 
-    if (!is.null(colors)) {
-      p <- p +
-        ggplot2::scale_fill_manual(values = colors)
-    }
+params <- list(
+  timestamp = Sys.time(),
+  gene = gene_use,
+  gene_label = gene_label,
+  contrast = contrast_vec,
+  groups = list(
+    reference = contrast_vec[2],
+    test = contrast_vec[1]
+  ),
+  seed = seed,
+  rng_state = rng_state
+)
 
-    if (show_signif) {
-      p <- p + ggplot2::annotation_custom(
-        grid::textGrob(
-          label = signif_label,
-          x = 0.5,
-          y = 0.92,
-          gp = grid::gpar(col = "grey20", fontsize = 16)
-          )
-        )
-      }
-    }
+obj <- list(
+  params = params,
+  statistics = list(
+    logFC = gene_res$logFC,
+    CI_low = ci_low,
+    CI_high = ci_high,
+    p_value = pval,
+    cohen_d = cohen_d,
+    scale = ifelse(is_log, "log2", "log2_transformed")
+  ),
+  design = deparse(design_formula),
+  method = "limma"
+)
 
-  # ===========================================================================
-  # 9) Output
-  # ===========================================================================
-  rng_state <- if (!is.null(seed)) .Random.seed else NULL
+comparison_id <- paste(
+  gene_use,
+  contrast_vec[1],
+  "vs",
+  contrast_vec[2],
+  sep = "_"
+)
 
-  params <- list(
-    timestamp = Sys.time(),
-    gene = gene_use,
-    gene_label = gene_label,
-    contrast = contrast_vec,
-    groups = list(
-      reference = contrast_vec[2],
-      test = contrast_vec[1]
-    ),
-    seed = seed,
-    rng_state = rng_state
-  )
+# =============================================================================
+# 12. Attach to project
+# =============================================================================
 
-  obj <- list(
-    params = params,
-    statistics = list(
-      logFC = gene_res$logFC,
-      CI_low = ci_low,
-      CI_high = ci_high,
-      p_value = pval,
-      cohen_d = cohen_d,
-      scale = ifelse(is_log, "log2", "log2_transformed")
-    ),
-    design = deparse(design_formula),
-    method = "limma"
-  )
+if (save) {
 
-  comparison_id <- paste(
-    gene_use,
-    contrast_vec[1],
-    "vs",
-    contrast_vec[2],
-    sep = "_"
-  )
-
-  # ===========================================================================
-  # 10) Attach to project
-  # ===========================================================================
-  if (save) {
-
-    if (!is.null(proj$analyses$boxplot[[comparison_id]])) {
-      warning("Overwriting existing boxplot with same ID.")
-    }
-
-    proj <- .attach_to_project(
-      proj,
-      obj,
-      slot = "analyses",
-      subtype = "boxplot",
-      prefix = "boxplot",
-      id = comparison_id,
-      log = list(
+  proj <- .attach_to_project(
+    proj,
+    obj,
+    slot = "analyses",
+    subtype = "boxplot",
+    log = list(
+      gene = gene_use,
+      contrast = contrast_vec,
+      group_col = group_col,
+      design = deparse(design_formula),
+      method = "limma",
+      signature = list(
         gene = gene_use,
         contrast = contrast_vec,
         group_col = group_col,
-        design = deparse(design_formula),
-        method = "limma",
-        signature = list(
-          gene = gene_use,
-          contrast = contrast_vec,
-          group_col = group_col,
-          design = deparse(design_formula)
-        )
+        design = deparse(design_formula)
       )
     )
-  }
+  )
+}
 
-  print(p)
+print(p)
 
-  # ===========================================================================
-  # 11) Return
-  # ===========================================================================
-  .print_header("RNA Boxplot results")
+# =============================================================================
+# 13. Return
+# =============================================================================
 
-  .print_block("Results Summary", function() {
-    cat("Gene:               ", gene_use, "\n")
-    cat("Gene label:         ", gene_label, "\n")
-    cat("Contrast:           ", contrast_vec, "\n")
-    cat("CI high:            ", ci_high, "\n")
-    cat("CI low:             ", ci_low, "\n")
-    cat("Cohen d:            ", cohen_d, "\n")
-    cat("p-value:            ", pval, "\n")
-  })
+.print_header("RNA Boxplot results")
 
-  return(invisible(proj))
+.print_block("Results Summary", function() {
+  cat("Gene:               ", gene_use, "\n")
+  cat("Gene label:         ", gene_label, "\n")
+  cat("Contrast:           ", contrast_vec, "\n")
+  cat("CI high:            ", ci_high, "\n")
+  cat("CI low:             ", ci_low, "\n")
+  cat("Cohen d:            ", cohen_d, "\n")
+  cat("p-value:            ", pval, "\n")
+})
+
+return(invisible(proj))
 }

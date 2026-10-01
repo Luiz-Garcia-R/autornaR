@@ -21,11 +21,11 @@ rna.qc(
 \item{group_col}{Character. Column in metadata indicating biological groups
 (default: \code{"Group"}).}
 
-\item{display_corr_values}{Logical. If \code{TRUE}, overlays correlation coefficients
-on the heatmap (default: \code{FALSE}).}
+\item{display_corr_values}{Logical. If \code{TRUE}, overlays correlation
+coefficients on the heatmap (default: \code{FALSE}).}
 
-\item{highlight_outliers}{Logical. If \code{TRUE}, detects and highlights outlier samples
-based on library size (default: \code{TRUE}).}
+\item{highlight_outliers}{Logical. If \code{TRUE}, detects and highlights
+outlier samples based on library size (default: \code{TRUE}).}
 
 \item{cluster_rows}{Logical. Whether to cluster rows in the sample correlation
 heatmap (default: \code{FALSE}).}
@@ -60,7 +60,8 @@ consistency, helping identify technical artifacts and potential outliers
 before downstream analyses.
 }
 \details{
-This function evaluates RNA-seq data quality through multiple complementary perspectives:
+This function evaluates RNA-seq data quality through multiple complementary
+perspectives:
 
 \strong{1. Library size assessment}
 \itemize{
@@ -102,7 +103,8 @@ with downstream analyses.
 \section{Interpretation guide}{
 
 \itemize{
-\item \strong{High-quality data}: low library CV, high sample correlation, clear group structure
+\item \strong{High-quality data}: low library CV, high sample correlation, clear
+group structure
 \item \strong{Potential issues}:
 \itemize{
 \item High library size variation -> technical variability

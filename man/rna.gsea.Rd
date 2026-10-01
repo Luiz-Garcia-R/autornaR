@@ -6,9 +6,6 @@
 \usage{
 rna.gsea(
   project,
-  group_col = "Group",
-  sample_col = "Sample",
-  contrast = NULL,
   top_n = 10,
   geneset_collection = "C5",
   geneset_subcollection = "GO:BP",
@@ -23,15 +20,6 @@ rna.gsea(
 }
 \arguments{
 \item{project}{\code{rna_project} object created by \code{rna.project()}.}
-
-\item{group_col}{Character. Column name in \code{metadata} defining sample groups
-(default: \code{"Group"}). Used when computing rankings on-the-fly.}
-
-\item{sample_col}{Character. Column name in \code{metadata} matching sample names
-(default: \code{"Sample"}).}
-
-\item{contrast}{Character. Name of a comparison stored in the project.
-If \code{NULL}, the last comparison is used.}
 
 \item{top_n}{Integer. Number of top enriched pathways to retain (default: \code{10}).}
 

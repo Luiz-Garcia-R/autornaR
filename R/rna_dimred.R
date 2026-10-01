@@ -129,362 +129,374 @@ rna.dimred <- function(project,
                        verbose = TRUE
 ) {
 
-  # ===========================================================================
-  # 0) Basic checks
-  # ===========================================================================
-  .check_dependencies(c("dplyr", "ggplot2", "umap"))
+# =============================================================================
+# 0. Basic checks
+# =============================================================================
 
-  if (run_tsne) {
-    .check_dependencies("Rtsne")
-  }
+.check_dependencies(c("dplyr", "ggplot2", "umap"))
 
-  # --- Set seed ---
-  old_seed <- .set_seed(seed)
-  on.exit(.reset_seed(old_seed), add = TRUE)
+if (run_tsne) {
+  .check_dependencies("Rtsne")
+}
 
-  # ===========================================================================
-  # 1) Get active project
-  # ===========================================================================
-  proj <- project
+#  Set seed
+old_seed <- .set_seed(seed)
+on.exit(.reset_seed(old_seed), add = TRUE)
 
-  expr_mat <- .get_expr(proj)
-  metadata <- .get_meta(proj)
+# =============================================================================
+# 1. Get active project
+# =============================================================================
 
-  samples <- metadata$Sample
-  groups <- as.factor(metadata[[group_col]])
+proj <- project
 
-  # ===========================================================================
-  # 2) Validate input
-  # ===========================================================================
-  if (is.null(expr_mat)) {
-    stop("No expression matrix available.")
-  }
+expr_mat <- .get_expr(proj)
+metadata <- .get_meta(proj)
 
-  if (is.null(metadata)) {
-    stop("No metadata available.")
-  }
+samples <- metadata$Sample
+groups <- as.factor(metadata[[group_col]])
 
-  if (!"Sample" %in% colnames(metadata)) {
-    stop("metadata must contain a 'Sample' column.")
-  }
+# =============================================================================
+# 2. Validate input
+# =============================================================================
 
-  if (!group_col %in% colnames(metadata)) {
-    stop(
-      "Column '", group_col, "' not found in metadata.\n",
-      "Available columns: ", paste(colnames(metadata), collapse = ", ")
-    )
-  }
+if (is.null(expr_mat)) {
+  stop("No expression matrix available.")
+}
 
-  # ===========================================================================
-  # 3) Ensure sample order consistency
-  # ===========================================================================
-  if (!all(colnames(expr_mat) == samples))
-    expr_mat <- expr_mat[, samples, drop = FALSE]
+if (is.null(metadata)) {
+  stop("No metadata available.")
+}
 
-  if (nrow(expr_mat) < 50) {
-    warning("Low number of genes for dimensionality reduction.")
-  }
+if (!"Sample" %in% colnames(metadata)) {
+  stop("metadata must contain a 'Sample' column.")
+}
 
-  # --- Transpose matrix for reduction ---
-  expr_mat_t <- t(expr_mat)
-  n_samples <- nrow(expr_mat_t)
-  dist_mat <- dist(expr_mat_t)
-
-  # --- Build auxiliar object ---
-  ellipse_layer <- NULL
-
-  if (add_ellipse) {
-    group_sizes <- table(groups)
-
-    if (all(group_sizes >= 3)) {
-      ellipse_layer <- ggplot2::stat_ellipse(
-        ggplot2::aes(fill = Group),
-        geom = "polygon",
-        alpha = 0.15,
-        level = ellipse_level,
-        color = NA
-      )
-    } else if (verbose) {
-      message("[rna_dimred] Ellipse skipped: at least one group has < 3 samples.")
-    }
-  }
-
-  # ===========================================================================
-  # 4) PCA
-  # ===========================================================================
-  if (verbose) message("[rna_dimred] Running PCA...")
-
-  if (is.null(ncomp_pca)) {
-    ncomp_pca <- min(n_samples - 1, ncol(expr_mat_t))
-  }
-
-  pca_res <- stats::prcomp(expr_mat_t,
-                           center = TRUE,
-                           scale. = TRUE)
-  var_explained <- pca_res$sdev^2 / sum(pca_res$sdev^2)
-  cum_var <- cumsum(var_explained)
-
-  loadings <- pca_res$rotation
-
-  scree_df <- data.frame(
-    PC = seq_along(var_explained),
-    variance = var_explained,
-    cumulative = cum_var
+if (!group_col %in% colnames(metadata)) {
+  stop(
+    "Column '", group_col, "' not found in metadata.\n",
+    "Available columns: ", paste(colnames(metadata), collapse = ", ")
   )
+}
 
-  top_loadings <- do.call(
-    rbind,
-    lapply(1:min(5, ncol(loadings)), function(i) {
-      pc_load <- loadings[, i]
-      ord <- order(abs(pc_load), decreasing = TRUE)
+# =============================================================================
+# 3. Ensure sample order consistency
+# =============================================================================
 
-      top_n <- min(10, length(ord))
+if (!all(colnames(expr_mat) == samples))
+  expr_mat <- expr_mat[, samples, drop = FALSE]
 
-      data.frame(
-        gene = rownames(loadings)[ord][1:top_n],
-        loading = pc_load[ord][1:top_n],
-        PC = paste0("PC", i)
-      )
-    })
-  )
+if (nrow(expr_mat) < 50) {
+  warning("Low number of genes for dimensionality reduction.")
+}
 
-  # ===========================================================================
-  # 5) PCA preprocessing selection
-  # ===========================================================================
-  if (use_pca_preprocessing) {
+#  Transpose matrix for reduction
+expr_mat_t <- t(expr_mat)
+n_samples <- nrow(expr_mat_t)
+dist_mat <- dist(expr_mat_t)
 
-    if (pca_method == "auto") {
-      n_pcs <- which(cum_var >= pca_var_threshold)[1]
-      n_pcs <- min(n_pcs, pca_max_dims)
-      n_pcs <- max(n_pcs, pca_min_dims)
+#  Build auxiliar object
+ellipse_layer <- NULL
 
-    } else if (pca_method == "variance") {
-      n_pcs <- which(cum_var >= pca_var_threshold)[1]
+if (add_ellipse) {
+  group_sizes <- table(groups)
 
-    } else if (pca_method == "fixed") {
-      n_pcs <- ncomp_pca
-    }
-
-    if (verbose) {
-      message(sprintf("[rna_dimred] PCA preprocessing: using %d PCs (%s mode)",
-                      n_pcs, pca_method))
-    }
-
-    input_mat <- pca_res$x[, 1:n_pcs, drop = FALSE]
-
-  } else {
-    input_mat <- expr_mat_t
-    n_pcs <- NA
-  }
-
-  df_pca <- data.frame(
-    PC1 = pca_res$x[, 1],
-    PC2 = pca_res$x[, 2],
-    Group = groups,
-    Sample = samples
-  )
-
-  p_pca <- ggplot2::ggplot(
-    df_pca,
-    ggplot2::aes(PC1, PC2, color = Group)
-  ) +
-    ellipse_layer +
-    ggplot2::geom_point(size = point_size, alpha = 0.8) +
-    ggplot2::scale_fill_discrete() +
-    ggplot2::theme_minimal(base_size = 12) +
-    ggplot2::labs(
-      title = "PCA",
-      x = sprintf("PC1 (%.1f%%)", 100 * var_explained[1]),
-      y = sprintf("PC2 (%.1f%%)", 100 * var_explained[2])
+  if (all(group_sizes >= 3)) {
+    ellipse_layer <- ggplot2::stat_ellipse(
+      ggplot2::aes(fill = Group),
+      geom = "polygon",
+      alpha = 0.15,
+      level = ellipse_level,
+      color = NA
     )
-
-  if (!is.null(colors)) {
-    p_pca <- p_pca +
-      ggplot2::scale_color_manual(values = colors)
+  } else if (verbose) {
+    message("[rna_dimred] Ellipse skipped: at least one group has < 3 samples.")
   }
+}
 
-  # ===========================================================================
-  # 6) UMAP
-  # ===========================================================================
-  if (is.null(n_neighbors) || n_neighbors >= n_samples)
-    n_neighbors <- max(2, floor(n_samples / 2))
+# =============================================================================
+# 4. PCA
+# =============================================================================
 
-  if (verbose)
-    message(sprintf("[rna_dimred] UMAP n_neighbors set to %d", n_neighbors))
+if (verbose) message("[rna_dimred] Running PCA...")
 
-  umap_res <- umap::umap(input_mat, n_neighbors = n_neighbors, init = "random")
+if (is.null(ncomp_pca)) {
+  ncomp_pca <- min(n_samples - 1, ncol(expr_mat_t))
+}
 
-  df_umap <- data.frame(
-    UMAP1 = umap_res$layout[, 1],
-    UMAP2 = umap_res$layout[, 2],
-    Group = groups,
-    Sample = samples
-  )
+pca_res <- stats::prcomp(expr_mat_t,
+                         center = TRUE,
+                         scale. = TRUE)
+var_explained <- pca_res$sdev^2 / sum(pca_res$sdev^2)
+cum_var <- cumsum(var_explained)
 
-  p_umap <- ggplot2::ggplot(
-    df_umap,
-    ggplot2::aes(UMAP1, UMAP2, color = Group, label = Sample)
-  ) +
-    ggplot2::geom_point(size = point_size, alpha = 0.8) +
-    ggplot2::theme_minimal(base_size = 12) +
-    ggplot2::labs(title = "UMAP")
+loadings <- pca_res$rotation
 
-  if (!is.null(colors)) {
-    p_umap <- p_umap +
-      ggplot2::scale_color_manual(values = colors)
-  }
+scree_df <- data.frame(
+  PC = seq_along(var_explained),
+  variance = var_explained,
+  cumulative = cum_var
+)
 
-  # ===========================================================================
-  # 7) t-SNE
-  # ===========================================================================
-  tsne_res <- NULL
-  df_tsne <- NULL
-  p_tsne <- NULL
+top_loadings <- do.call(
+  rbind,
+  lapply(1:min(5, ncol(loadings)), function(i) {
+    pc_load <- loadings[, i]
+    ord <- order(abs(pc_load), decreasing = TRUE)
 
-  if (run_tsne && n_samples <= 5) {
-    if (verbose) {
-      message("[rna_dimred] t-SNE skipped: insufficient samples (<6).")
-    }
-    run_tsne <- FALSE
-  }
+    top_n <- min(10, length(ord))
 
-  if (run_tsne && n_samples > 5) {
-    tsne_perplexity <- min(tsne_perplexity, floor((n_samples - 1) / 3))
-
-    if (verbose) {
-      message(sprintf("[rna_dimred] Running t-SNE (perplexity = %d)...",
-                      tsne_perplexity))
-    }
-
-    tsne_res <- Rtsne::Rtsne(
-      input_mat,
-      perplexity = tsne_perplexity,
-      check_duplicates = FALSE,
-      verbose = FALSE
+    data.frame(
+      gene = rownames(loadings)[ord][1:top_n],
+      loading = pc_load[ord][1:top_n],
+      PC = paste0("PC", i)
     )
+  })
+)
 
-    df_tsne <- data.frame(
-      tSNE1 = tsne_res$Y[, 1],
-      tSNE2 = tsne_res$Y[, 2],
-      Group = groups,
-      Sample = samples
-    )
+# =============================================================================
+# 5. PCA preprocessing selection
+# =============================================================================
 
-    p_tsne <- ggplot2::ggplot(
-      df_tsne,
-      ggplot2::aes(tSNE1, tSNE2, color = Group, label = Sample)
-    ) +
-      ggplot2::geom_point(size = point_size, alpha = 0.8) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::labs(title = sprintf("t-SNE", tsne_perplexity))
+if (use_pca_preprocessing) {
 
-    if (!is.null(colors)) {
-      p_tsne <- p_tsne +
-        ggplot2::scale_color_manual(values = colors)
-    }
+  if (pca_method == "auto") {
+    n_pcs <- which(cum_var >= pca_var_threshold)[1]
+    n_pcs <- min(n_pcs, pca_max_dims)
+    n_pcs <- max(n_pcs, pca_min_dims)
 
+  } else if (pca_method == "variance") {
+    n_pcs <- which(cum_var >= pca_var_threshold)[1]
+
+  } else if (pca_method == "fixed") {
+    n_pcs <- ncomp_pca
   }
 
-  # ===========================================================================
-  # 8) Print plots
-  # ===========================================================================
   if (verbose) {
-    print(p_pca)
-    print(p_umap)
-    if (!is.null(p_tsne)) print(p_tsne)
+    message(sprintf("[rna_dimred] PCA preprocessing: using %d PCs (%s mode)",
+                    n_pcs, pca_method))
   }
 
-  # ===========================================================================
-  # 9) Output
-  # ===========================================================================
-  rng_state <- if (!is.null(seed)) .Random.seed else NULL
+  input_mat <- pca_res$x[, 1:n_pcs, drop = FALSE]
 
-  obj <- list(
-    summary = list(
-      timestamp = Sys.time(),
-      n_samples = n_samples,
-      n_genes = nrow(expr_mat),
-      group_col = group_col,
-      seed = seed,
-      rng_state = rng_state
-    ),
-    preprocessing = list(
-      pca_preprocessing = use_pca_preprocessing,
-      pca_method = pca_method,
-      n_pcs_used = n_pcs
-    ),
-    PCA = list(
-      model = pca_res,
-      variance_explained = var_explained,
-      scree = scree_df,
-      loadings = loadings,
-      top_loadings = top_loadings,
-      coordinates = df_pca
-    ),
-    UMAP = list(
-      model = umap_res,
-      coordinates = df_umap,
-      n_neighbors = n_neighbors
-    ),
-    tSNE = if (run_tsne) list(
-      model = tsne_res,
-      coordinates = df_tsne,
-      perplexity = tsne_perplexity
-    ) else NULL,
-    plots = list(
-      PCA = p_pca,
-      UMAP = p_umap,
-      tSNE = p_tsne
-    )
+} else {
+  input_mat <- expr_mat_t
+  n_pcs <- NA
+}
+
+df_pca <- data.frame(
+  PC1 = pca_res$x[, 1],
+  PC2 = pca_res$x[, 2],
+  Group = groups,
+  Sample = samples
+)
+
+p_pca <- ggplot2::ggplot(
+  df_pca,
+  ggplot2::aes(PC1, PC2, color = Group)
+) +
+  ellipse_layer +
+  ggplot2::geom_point(size = point_size, alpha = 0.8) +
+  ggplot2::scale_fill_discrete() +
+  ggplot2::theme_minimal(base_size = 12) +
+  ggplot2::labs(
+    title = "PCA",
+    x = sprintf("PC1 (%.1f%%)", 100 * var_explained[1]),
+    y = sprintf("PC2 (%.1f%%)", 100 * var_explained[2])
   )
 
-  class(obj) <- "dimred_result"
+if (!is.null(colors)) {
+  p_pca <- p_pca +
+    ggplot2::scale_color_manual(values = colors)
+}
 
-  # ===========================================================================
-  # 10) Attach to project
-  # ===========================================================================
-  if (save) {
+# =============================================================================
+# 6. UMAP
+# =============================================================================
 
-    proj <- .attach_to_project(
-      proj,
-      obj,
-      slot = "analyses",
-      subtype = "dimred",
-      prefix = "dimred",
-      log = list(
-        n_samples = n_samples,
-        method = paste0("PCA + UMAP", ifelse(run_tsne, " + tSNE", "")),
-        group_col = group_col,
-        pcs = n_pcs,
-        seed = seed
-      )
-    )
+if (is.null(n_neighbors) || n_neighbors >= n_samples)
+  n_neighbors <- max(2, floor(n_samples / 2))
+
+if (verbose)
+  message(sprintf("[rna_dimred] UMAP n_neighbors set to %d", n_neighbors))
+
+umap_res <- umap::umap(input_mat, n_neighbors = n_neighbors, init = "random")
+
+df_umap <- data.frame(
+  UMAP1 = umap_res$layout[, 1],
+  UMAP2 = umap_res$layout[, 2],
+  Group = groups,
+  Sample = samples
+)
+
+p_umap <- ggplot2::ggplot(
+  df_umap,
+  ggplot2::aes(UMAP1, UMAP2, color = Group, label = Sample)
+) +
+  ggplot2::geom_point(size = point_size, alpha = 0.8) +
+  ggplot2::theme_minimal(base_size = 12) +
+  ggplot2::labs(title = "UMAP")
+
+if (!is.null(colors)) {
+  p_umap <- p_umap +
+    ggplot2::scale_color_manual(values = colors)
+}
+
+# =============================================================================
+# 7. t-SNE
+# =============================================================================
+
+tsne_res <- NULL
+df_tsne <- NULL
+p_tsne <- NULL
+
+if (run_tsne && n_samples <= 5) {
+  if (verbose) {
+    message("[rna_dimred] t-SNE skipped: insufficient samples (<6).")
+  }
+  run_tsne <- FALSE
+}
+
+if (run_tsne && n_samples > 5) {
+  tsne_perplexity <- min(tsne_perplexity, floor((n_samples - 1) / 3))
+
+  if (verbose) {
+    message(sprintf("[rna_dimred] Running t-SNE (perplexity = %d)...",
+                    tsne_perplexity))
   }
 
-  # ===========================================================================
-  # 11) Return
-  # ===========================================================================
-  .print_header("RNA Dimensionality Reduction")
+  tsne_res <- Rtsne::Rtsne(
+    input_mat,
+    perplexity = tsne_perplexity,
+    check_duplicates = FALSE,
+    verbose = FALSE
+  )
 
-  .print_block("Summary", function() {
-    cat("Samples:            ", n_samples, "\n")
-    cat("Genes used:         ", nrow(expr_mat), "\n")
-    cat("Group column:       ", group_col, "\n")
-    cat("PCA components:     ", ncomp_pca, "\n")
-    cat("PCA preprocessing:  ", ifelse(use_pca_preprocessing, "Yes", "No"), "\n")
-    if (use_pca_preprocessing) {
-      cat("PCs used (UMAP/t-SNE): ", n_pcs, "(", pca_method, ")\n")
-    }
-    cat("Cumulative variance (PC1+PC2): ", round(100 * cum_var[2], 2), "%\n")
-    cat("UMAP neighbors:     ", n_neighbors, "\n")
-    cat("t-SNE performed:    ", ifelse(run_tsne, "Yes", "No"), "\n")
-    cat("Seed: ", seed, "\n")
-  })
+  df_tsne <- data.frame(
+    tSNE1 = tsne_res$Y[, 1],
+    tSNE2 = tsne_res$Y[, 2],
+    Group = groups,
+    Sample = samples
+  )
 
-  .print_block("PCA Variance Explained", function() {
-    n_show <- min(5, length(var_explained))
-    print(round(100 * var_explained[1:n_show], 2))
-  })
+  p_tsne <- ggplot2::ggplot(
+    df_tsne,
+    ggplot2::aes(tSNE1, tSNE2, color = Group, label = Sample)
+  ) +
+    ggplot2::geom_point(size = point_size, alpha = 0.8) +
+    ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::labs(title = sprintf("t-SNE", tsne_perplexity))
 
-  return(invisible(proj))
+  if (!is.null(colors)) {
+    p_tsne <- p_tsne +
+      ggplot2::scale_color_manual(values = colors)
+  }
+
+}
+
+# =============================================================================
+# 8. Print plots
+# =============================================================================
+
+if (verbose) {
+  print(p_pca)
+  print(p_umap)
+  if (!is.null(p_tsne)) print(p_tsne)
+}
+
+# =============================================================================
+# 9. Output
+# =============================================================================
+
+rng_state <- if (!is.null(seed)) .Random.seed else NULL
+
+obj <- list(
+  summary = list(
+    timestamp = Sys.time(),
+    n_samples = n_samples,
+    n_genes = nrow(expr_mat),
+    group_col = group_col,
+    seed = seed,
+    rng_state = rng_state
+  ),
+  preprocessing = list(
+    pca_preprocessing = use_pca_preprocessing,
+    pca_method = pca_method,
+    n_pcs_used = n_pcs
+  ),
+  PCA = list(
+    model = pca_res,
+    variance_explained = var_explained,
+    scree = scree_df,
+    loadings = loadings,
+    top_loadings = top_loadings,
+    coordinates = df_pca
+  ),
+  UMAP = list(
+    model = umap_res,
+    coordinates = df_umap,
+    n_neighbors = n_neighbors
+  ),
+  tSNE = if (run_tsne) list(
+    model = tsne_res,
+    coordinates = df_tsne,
+    perplexity = tsne_perplexity
+  ) else NULL,
+  plots = list(
+    PCA = p_pca,
+    UMAP = p_umap,
+    tSNE = p_tsne
+  )
+)
+
+class(obj) <- "dimred_result"
+
+# =============================================================================
+# 10. Attach to project
+# =============================================================================
+
+if (save) {
+
+  proj <- .attach_to_project(
+    proj,
+    obj,
+    slot = "analyses",
+    subtype = "dimred",
+    log = list(
+      n_samples = n_samples,
+      method = paste0("PCA + UMAP", ifelse(run_tsne, " + tSNE", "")),
+      group_col = group_col,
+      pcs = n_pcs,
+      seed = seed
+    )
+  )
+}
+
+# =============================================================================
+# 11. Return
+# =============================================================================
+
+.print_header("RNA Dimensionality Reduction")
+
+.print_block("Summary", function() {
+  cat("Samples:            ", n_samples, "\n")
+  cat("Genes used:         ", nrow(expr_mat), "\n")
+  cat("Group column:       ", group_col, "\n")
+  cat("PCA components:     ", ncomp_pca, "\n")
+  cat("PCA preprocessing:  ", ifelse(use_pca_preprocessing, "Yes", "No"), "\n")
+  if (use_pca_preprocessing) {
+    cat("PCs used (UMAP/t-SNE): ", n_pcs, "(", pca_method, ")\n")
+  }
+  cat("Cumulative variance (PC1+PC2): ", round(100 * cum_var[2], 2), "%\n")
+  cat("UMAP neighbors:     ", n_neighbors, "\n")
+  cat("t-SNE performed:    ", ifelse(run_tsne, "Yes", "No"), "\n")
+  cat("Seed: ", seed, "\n")
+})
+
+.print_block("PCA Variance Explained", function() {
+  n_show <- min(5, length(var_explained))
+  print(round(100 * var_explained[1:n_show], 2))
+})
+
+return(invisible(proj))
+
 }

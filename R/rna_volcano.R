@@ -28,8 +28,6 @@
 #' \code{rna_project} is used automatically.
 #'
 #' @param project \code{rna_project} object created by \code{rna.project()}.
-#' @param comparison Character. ID of the comparison to visualize.
-#'   If \code{NULL}, the most recent comparison is used.
 #' @param genes Optional character vector of genes to label on the plot.
 #'   Gene identifiers can be provided either as gene symbols (e.g. \code{"TP53"})
 #'   or as gene IDs matching the rownames of the differential expression results
@@ -114,7 +112,6 @@
 #' @export
 
 rna.volcano <- function(project,
-                        comparison = NULL,
                         genes = NULL,
                         top_genes = NULL,
                         padj_threshold = 0.05,
@@ -123,265 +120,313 @@ rna.volcano <- function(project,
                         save = TRUE,
                         verbose = TRUE) {
 
-  # ===========================================================================
-  # 0) Basic checks
-  # ===========================================================================
-  pkgs <- c("ggrepel", "ggplot2")
+# =============================================================================
+# 0. Basic checks
+# =============================================================================
 
-  .check_dependencies(pkgs)
+pkgs <- c("ggrepel", "ggplot2")
 
-  # ===========================================================================
-  # 1) Get active project
-  # ===========================================================================
-  proj <- project
+.check_dependencies(pkgs)
 
-  comp_obj <- .get_comp_obj(proj, comparison)
+# =============================================================================
+# 1. Get active project
+# =============================================================================
 
-  # ===========================================================================
-  # 2) Validate input
-  # ===========================================================================
-  if (!is.null(genes) && !is.null(top_genes)) {
-    stop("Use either 'genes' or 'top_genes', not both.")
+proj <- project
+
+comp_obj <- .get_comp(proj)
+
+# =============================================================================
+# 2. Validate input
+# =============================================================================
+
+if (is.null(proj$analyses$comparison)) {
+  stop("No comparison found. Run rna.compare() first.")
+}
+
+if (!inherits(comp_obj, "rnaCompare")) {
+  stop("Current comparison is not a valid comparison.")
+}
+
+res_df <- as.data.frame(comp_obj$res)
+
+if (is.null(rownames(res_df))) {
+
+  if (!"Gene" %in% colnames(res_df)) {
+    stop(
+      "Comparison result has neither row names nor a 'Gene' column."
+    )
   }
 
-  if (is.null(proj$analyses$comparison) ||
-      length(proj$analyses$comparison) == 0) {
-    stop("No comparisons found. Run rna.compare() first.")
-  }
+  rownames(res_df) <- res_df$Gene
+}
 
-  res_df <- comp_obj$res
-  groups <- c(comp_obj$groups$test, comp_obj$groups$reference)
-
+if (!"Gene" %in% colnames(res_df)) {
   res_df$Gene <- rownames(res_df)
-  res_df$highlight <- FALSE
-  label_df <- NULL
+}
 
-  required_cols <- c("log2FoldChange", "pvalue", "padj")
+groups <- c(
+  comp_obj$groups$test,
+  comp_obj$groups$reference
+)
 
-  if (!all(required_cols %in% colnames(res_df))) {
-    stop("Comparison results missing required columns: ",
-         paste(setdiff(required_cols, colnames(res_df)), collapse = ", "))
-  }
+if (length(groups) != 2) {
+  stop("rna.volcano() supports only 2-group comparisons.")
+}
 
-  # Define comparison
-  if (is.null(comparison)) {
-    comparison_id <- proj$analyses$comparison$last
-  } else {
-    comparison_id <- comparison
-  }
+comparison_label <- paste(
+  groups[1],
+  "vs",
+  groups[2]
+)
 
-  # ===========================================================================
-  # 3) Gene annotation
-  # ===========================================================================
-  if (is.null(rownames(res_df))) {
-    rownames(res_df) <- res_df$Gene
-  }
+# =============================================================================
+# 3. Gene annotation
+# =============================================================================
+
+if (is.null(rownames(res_df))) {
+  rownames(res_df) <- res_df$Gene
+}
+
+gene_annotation <- .get_gene_annotation(proj)
+gene_map <- .align_gene_annotation(gene_annotation, res_df)
+res_df$gene_symbol <- gene_map$symbol
+
+res_df$gene_symbol <- ifelse(
+  is.na(res_df$gene_symbol) | res_df$gene_symbol == "",
+  rownames(res_df),
+  res_df$gene_symbol
+)
+
+sig <- res_df[!is.na(res_df$padj) & res_df$padj < padj_threshold, ]
+
+is_up <- !is.na(res_df$padj) &
+  res_df$padj < padj_threshold &
+  res_df$log2FoldChange > log2fc_threshold
+
+is_down <- !is.na(res_df$padj) &
+  res_df$padj < padj_threshold &
+  res_df$log2FoldChange < -log2fc_threshold
+
+up <- res_df$Gene[is_up]
+down <- res_df$Gene[is_down]
+
+res_df$group_color <- factor(
+  ifelse(is_up, "Up",
+         ifelse(is_down, "Down", "NS"))
+)
+
+# =============================================================================
+# 4. Label selection
+# =============================================================================
+
+label_df <- NULL
+
+# ===============================================
+# 4.1. gene symbol -> gene ID
+# ===============================================
+if (!is.null(genes)) {
 
   gene_annotation <- .get_gene_annotation(proj)
   gene_map <- .align_gene_annotation(gene_annotation, res_df)
-  res_df$gene_symbol <- gene_map$symbol
 
-  res_df$gene_symbol <- ifelse(
-    is.na(res_df$gene_symbol) | res_df$gene_symbol == "",
-    rownames(res_df),
-    res_df$gene_symbol
+  genes_ensembl <- gene_map$gene_id[
+    match(genes, gene_map$symbol)
+  ]
+
+  genes_ensembl <- genes_ensembl[!is.na(genes_ensembl)]
+
+  genes_all <- unique(c(genes, genes_ensembl))
+
+  label_df <- res_df[
+    res_df$Gene %in% genes_all |
+      res_df$gene_symbol %in% genes,
+    ,
+    drop = FALSE
+  ]
+}
+
+# ===============================================
+# 4.2. Select top genes
+# ===============================================
+
+if (is.null(genes) && !is.null(top_genes)) {
+
+  label_df <- res_df[
+    order(
+      res_df$padj,
+      -abs(res_df$log2FoldChange),
+      na.last = TRUE
+    ),
+    ,
+    drop = FALSE
+  ]
+
+  label_df <- utils::head(
+    label_df,
+    min(top_genes, nrow(label_df))
   )
+}
 
-  sig <- res_df[!is.na(res_df$padj) & res_df$padj < padj_threshold, ]
+# ===============================================
+# 4.3. Highlight selected genes
+# ===============================================
 
-  is_up <- !is.na(res_df$padj) &
-    res_df$padj < padj_threshold &
-    res_df$log2FoldChange > log2fc_threshold
+res_df$highlight <- FALSE
 
-  is_down <- !is.na(res_df$padj) &
-    res_df$padj < padj_threshold &
-    res_df$log2FoldChange < -log2fc_threshold
+if (!is.null(label_df) && nrow(label_df) > 0) {
 
-  up <- res_df$Gene[is_up]
-  down <- res_df$Gene[is_down]
+  res_df$highlight <- res_df$Gene %in% label_df$Gene
+}
 
-  res_df$group_color <- factor(
-    ifelse(is_up, "Up",
-           ifelse(is_down, "Down", "NS"))
+# =============================================================================
+# 5) Plot
+# =============================================================================
+
+p <- ggplot2::ggplot(res_df,
+                     ggplot2::aes(x = log2FoldChange,
+                                  y = -log10(padj + 1e-300),
+                                  color = group_color)) +
+
+    ggplot2::geom_point(
+      na.rm = TRUE,
+      ggplot2::aes(
+        size = .data$highlight,
+        alpha = .data$highlight
+      )
+    ) +
+
+    ggplot2::scale_alpha_manual(values = c(0.4, 1), guide = "none") +
+
+    ggplot2::scale_size_identity() +
+
+    ggplot2::labs(
+      color = "Regulation",
+      x = "log2 Fold Change",
+      y = "-log10(padj)",
+      title = paste0(groups[2], " vs ", groups[1])) +
+
+    ggplot2::geom_vline(
+      xintercept = c(-log2fc_threshold, log2fc_threshold),
+      linetype = "dashed") +
+
+    ggplot2::geom_hline(
+      yintercept = -log10(padj_threshold),
+      linetype = "dashed") +
+
+    ggplot2::theme_minimal(
+      base_size = 12) +
+
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(hjust = 0.5),
+      panel.border = ggplot2::element_rect(color = "black", fill = NA, linewidth = 0.6),
+      plot.background = ggplot2::element_rect(fill = "white", color = NA),
+      panel.background = ggplot2::element_rect(fill = "white", color = NA))
+
+# Color
+if (is.null(colors)) {
+    p <- p +
+      ggplot2::scale_color_manual(
+        values = c("Up" = "#ff3333",
+                   "Down" = "#006699",
+                   "NS" = "darkgrey"))
+} else {
+  p <- p +
+    ggplot2::scale_color_manual(values = colors)
+  }
+
+
+if (!is.null(label_df)) {
+
+  p <- p +
+    ggrepel::geom_text_repel(
+      data = label_df,
+      ggplot2::aes(label = .data$gene_symbol),
+      size = 3,
+      max.overlaps = Inf,
+      na.rm = TRUE
+    )
+}
+
+if (verbose) {
+  print(p)
+  invisible(dev.flush())
+}
+
+# =============================================================================
+# 6. Output
+# =============================================================================
+
+selected_genes <- NULL
+
+if (!is.null(label_df)) {
+  selected_genes <- list(
+    gene_ids = label_df$Gene,
+    gene_symbols = label_df$gene_symbol
   )
+}
 
-  # ===========================================================================
-  # 4) Label selection
-  # ===========================================================================
-    # gene symbol -> ENSEMBL
-    if (!is.null(genes)) {
+# Final object
+obj <- list(
+  timestamp = Sys.time(),
+  plot = p,
+  thresholds = list(padj = padj_threshold, log2fc = log2fc_threshold),
+  DEGs = list(up = up, down = down),
+  selected_genes = selected_genes,
+  comparison = comparison_label
+)
 
-      gene_annotation <- .get_gene_annotation(proj)
-      gene_map <- .align_gene_annotation(gene_annotation, res_df)
+class(obj) <- "rna_volcano"
 
-      genes_ensembl <- gene_map$gene_id[
-        match(genes, gene_map$symbol)
-      ]
+# =============================================================================
+# 7. Attach to project
+# =============================================================================
 
-      genes_ensembl <- genes_ensembl[!is.na(genes_ensembl)]
+if (save) {
 
-      genes_all <- unique(c(genes, genes_ensembl))
-
-      label_df <- res_df[
-        res_df$Gene %in% genes_all |
-          res_df$gene_symbol %in% genes,
-      ]
-
-    }
-
-    # Select top genes
-    if (is.null(genes) && !is.null(top_genes)) {
-
-      label_df <- res_df[
-        order(res_df$padj, -abs(res_df$log2FoldChange)),
-      ][1:min(top_genes, nrow(res_df)), ]
-
-    }
-
-    res_df$highlight <- res_df$Gene %in% label_df$Gene
-
-  # ===========================================================================
-  # 5) Plot
-  # ===========================================================================
-  p <- ggplot2::ggplot(res_df, ggplot2::aes(x = log2FoldChange, y = -log10(padj + 1e-300), color = group_color)) +
-
-      ggplot2::geom_point(
-        na.rm = TRUE,
-        ggplot2::aes(
-          size = .data$highlight,
-          alpha = .data$highlight
-        )
-      ) +
-
-      ggplot2::scale_alpha_manual(values = c(0.4, 1), guide = "none") +
-
-      ggplot2::scale_size_identity() +
-
-      ggplot2::labs(
-        color = "Regulation",
-        x = "log2 Fold Change",
-        y = "-log10(padj)",
-        title = paste0(groups[2], " vs ", groups[1])) +
-
-      ggplot2::geom_vline(
-        xintercept = c(-log2fc_threshold, log2fc_threshold),
-        linetype = "dashed") +
-
-      ggplot2::geom_hline(
-        yintercept = -log10(padj_threshold),
-        linetype = "dashed") +
-
-      ggplot2::theme_minimal(
-        base_size = 12) +
-
-      ggplot2::theme(
-        plot.title = ggplot2::element_text(hjust = 0.5),
-        panel.border = ggplot2::element_rect(color = "black", fill = NA, linewidth = 0.6),
-        plot.background = ggplot2::element_rect(fill = "white", color = NA),
-        panel.background = ggplot2::element_rect(fill = "white", color = NA))
-
-  # Color
-  if (is.null(colors)) {
-      p <- p +
-        ggplot2::scale_color_manual(
-          values = c("Up" = "#ff3333",
-                     "Down" = "#006699",
-                     "NS" = "darkgrey"))
-  } else {
-    p <- p +
-      ggplot2::scale_color_manual(values = colors)
-    }
-
-
-  if (!is.null(label_df)) {
-
-    p <- p +
-      ggrepel::geom_text_repel(
-        data = label_df,
-        ggplot2::aes(label = .data$gene_symbol),
-        size = 3,
-        max.overlaps = Inf,
-        na.rm = TRUE
-      )
-  }
-
-  if (verbose) {
-    print(p)
-    invisible(dev.flush())
-  }
-
-  # ===========================================================================
-  # 6) Output
-  # ===========================================================================
-    selected_genes <- NULL
-
-    if (!is.null(label_df)) {
-      selected_genes <- list(
-        gene_ids = label_df$Gene,
-        gene_symbols = label_df$gene_symbol
-      )
-    }
-
-    obj <- list(
-      timestamp = Sys.time(),
-      plot = p,
-      thresholds = list(padj = padj_threshold, log2fc = log2fc_threshold),
-      DEGs = list(up = up, down = down),
-      selected_genes = selected_genes,
-      comparison = comparison_id
+  proj <- .attach_to_project(
+    proj,
+    obj,
+    slot = "analyses",
+    subtype = "volcano",
+    log = list(
+      comparison = comparison_label,
+      padj = padj_threshold,
+      log2fc = log2fc_threshold
     )
+  )
+}
 
-  class(obj) <- "rna_volcano"
+# ===============================================================================
+# 8. Return
+# =============================================================================
 
-  # ===========================================================================
-  # 7) Attach to project
-  # ===========================================================================
-  if (save) {
+if (verbose) {
 
-    proj <- .attach_to_project(
-      proj,
-      obj,
-      slot = "analyses",
-      subtype = "volcano",
-      prefix = "volc",
-      id = comparison_id,
-      log = list(
-        comparison = comparison_id,
-        padj = padj_threshold,
-        log2fc = log2fc_threshold
-      )
-    )
-  }
+  .print_header("RNA Volcano Plot")
 
-  # ===========================================================================
-  # 8) Return
-  # ===========================================================================
-  if (verbose) {
+  .print_block("Summary", function() {
+    cat("Comparison:   ", comparison_label, "\n")
+    cat("Groups:       ", groups[1], "vs", groups[2], "\n")
+    cat("Thresholds:    padj <", padj_threshold,
+        "| log2FC >", log2fc_threshold, "\n")
+    cat("DEGs:          Up =", length(up),
+        "| Down =", length(down), "\n")
+  })
 
-    .print_header("RNA Volcano Plot")
+  if (!is.null(selected_genes)) {
+    .print_block("Highlighted genes", function() {
+      n <- length(selected_genes$gene_symbols)
+      cat("n =", n, "\n")
 
-    .print_block("Summary", function() {
-      cat("Comparison:   ", comparison_id, "\n")
-      cat("Groups:       ", groups[1], "vs", groups[2], "\n")
-      cat("Thresholds:    padj <", padj_threshold,
-          "| log2FC >", log2fc_threshold, "\n")
-      cat("DEGs:          Up =", length(up),
-          "| Down =", length(down), "\n")
+      cat(paste(head(selected_genes$gene_symbols, 8), collapse = ", "), "\n")
+
+      if (n > 8) cat("...\n")
     })
-
-    if (!is.null(selected_genes)) {
-      .print_block("Highlighted genes", function() {
-        n <- length(selected_genes$gene_symbols)
-        cat("n =", n, "\n")
-
-        cat(paste(head(selected_genes$gene_symbols, 8), collapse = ", "), "\n")
-
-        if (n > 8) cat("...\n")
-      })
-    }
   }
+}
 
-  return(invisible(proj))
+return(invisible(proj))
 
 }
 

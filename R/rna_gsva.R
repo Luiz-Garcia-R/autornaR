@@ -45,242 +45,254 @@ rna.gsva <- function(
     save = TRUE
 ) {
 
-  source <- match.arg(source)
-  pathway_scope <- match.arg(pathway_scope)
-  method <- match.arg(method)
+source <- match.arg(source)
+pathway_scope <- match.arg(pathway_scope)
+method <- match.arg(method)
 
-  pathway_metadata <- NULL
+pathway_metadata <- NULL
 
-  # ===========================================================================
-  # Dependencies
-  # ===========================================================================
-  bioc_pkgs <- c(
-    "GSVA"
+# =============================================================================
+# 0. Basic checks
+# =============================================================================
+
+.check_dependencies("GSVA", bioc = TRUE)
+
+# =============================================================================
+# 1. Get active project
+# =============================================================================
+
+proj <- project
+
+expr <- as.matrix(.get_expr(proj))
+organism <- .get_organism(proj)
+gsea_obj <- .get_gsea(proj)
+
+# Harmonize gene identifiers
+expr <- .convert_expr_to_symbols(
+  expr = expr,
+  proj = proj
+)
+
+# =============================================================================
+# 2. Obtain pathways
+# =============================================================================
+
+if (source == "gsea") {
+
+  if (is.null(gsea_obj)) {
+    stop(
+      "No GSEA result found in project. Run rna.gsea() first."
+    )
+  }
+
+  if (pathway_scope == "all") {
+
+    pathways <- gsea_obj$pathways
+    pathway_metadata <- gsea_obj$gsea_full
+
+  } else if (pathway_scope == "significant") {
+
+    sig_names <- gsea_obj$gsea_full$pathway[
+      gsea_obj$gsea_full$padj <
+        gsea_obj$params$padj_gsea
+    ]
+
+    pathways <- gsea_obj$pathways[sig_names]
+
+    pathway_metadata <- gsea_obj$gsea_full[
+      gsea_obj$gsea_full$padj <
+        gsea_obj$params$padj_gsea,
+    ]
+
+  } else if (pathway_scope == "top") {
+
+    top_names <- gsea_obj$gsea_top$pathway
+    pathways <- gsea_obj$pathways[top_names]
+    pathway_metadata <- gsea_obj$gsea_top
+  }
+}
+
+# ===============================================
+# 2.1. msigdb
+# ===============================================
+
+if (source == "msigdb") {
+
+  .check_dependencies("msigdbr")
+
+  species_name <- switch(
+    organism,
+    human = "Homo sapiens",
+    mouse = "Mus musculus",
+    zebrafish = "Danio rerio"
   )
 
-  .check_dependencies(bioc_pkgs, bioc = TRUE)
+  if (is.null(geneset_subcollection)) {
 
-  # ===========================================================================
-  # Load project
-  # ===========================================================================
-  proj <- project
+    msig <- msigdbr::msigdbr(
+      species = species_name,
+      collection = geneset_collection
+    )
 
-  expr <- as.matrix(.get_expr(proj))
-  organism <- .get_organism(proj)
-  gsea_obj <- .get_gsea(proj)
+  } else {
 
-  # Harmonize gene identifiers
-  expr <- .convert_expr_to_symbols(
-    expr = expr,
-    proj = proj
+    msig <- msigdbr::msigdbr(
+      species = species_name,
+      collection = geneset_collection,
+      subcollection = geneset_subcollection
+    )
+
+  }
+
+  pathways <- split(
+    msig$gene_symbol,
+    msig$gs_name
   )
 
-  # ===========================================================================
-  # Obtain pathways
-  # ===========================================================================
-  if (source == "gsea") {
+  pathway_metadata <- data.frame(
+    pathway = names(pathways),
+    source = "MSigDB"
+  )
+}
 
-    if (is.null(gsea_obj)) {
-      stop(
-        "No GSEA result found in project. Run rna.gsea() first."
-      )
-    }
+# ===============================================
+# 2.2. Custom
+# ===============================================
 
-    if (pathway_scope == "all") {
+if (source == "custom") {
 
-      pathways <- gsea_obj$pathways
-      pathway_metadata <- gsea_obj$gsea_full
-
-    } else if (pathway_scope == "significant") {
-
-      sig_names <- gsea_obj$gsea_full$pathway[
-        gsea_obj$gsea_full$padj <
-          gsea_obj$params$padj_gsea
-      ]
-
-      pathways <- gsea_obj$pathways[sig_names]
-
-      pathway_metadata <- gsea_obj$gsea_full[
-        gsea_obj$gsea_full$padj <
-          gsea_obj$params$padj_gsea,
-      ]
-
-    } else if (pathway_scope == "top") {
-
-      top_names <- gsea_obj$gsea_top$pathway
-      pathways <- gsea_obj$pathways[top_names]
-      pathway_metadata <- gsea_obj$gsea_top
-    }
-  }
-
-  # msigdb
-  if (source == "msigdb") {
-
-    .check_dependencies("msigdbr")
-
-    species_name <- switch(
-      organism,
-      human = "Homo sapiens",
-      mouse = "Mus musculus",
-      zebrafish = "Danio rerio"
-    )
-
-    if (is.null(geneset_subcollection)) {
-
-      msig <- msigdbr::msigdbr(
-        species = species_name,
-        collection = geneset_collection
-      )
-
-    } else {
-
-      msig <- msigdbr::msigdbr(
-        species = species_name,
-        collection = geneset_collection,
-        subcollection = geneset_subcollection
-      )
-
-    }
-
-    pathways <- split(
-      msig$gene_symbol,
-      msig$gs_name
-    )
-
-    pathway_metadata <- data.frame(
-      pathway = names(pathways),
-      source = "MSigDB"
+  if (is.null(pathways)) {
+    stop(
+      "Provide 'pathways' when source = 'custom'."
     )
   }
+}
 
-  # Custom
-  if (source == "custom") {
+# =============================================================================
+# 3. Filter pathways
+# =============================================================================
 
-    if (is.null(pathways)) {
-      stop(
-        "Provide 'pathways' when source = 'custom'."
-      )
-    }
-  }
+pathways <- pathways[
+  lengths(pathways) >= min_size &
+    lengths(pathways) <= max_size
+]
 
-  # ===========================================================================
-  # Filter pathways
-  # ===========================================================================
-  pathways <- pathways[
-    lengths(pathways) >= min_size &
-      lengths(pathways) <= max_size
-  ]
+if (length(pathways) == 0) {
+  stop("No pathways remaining after filtering.")
+}
 
-  if (length(pathways) == 0) {
-    stop("No pathways remaining after filtering.")
-  }
+# =============================================================================
+# 4. Run GSVA
+# =============================================================================
 
-  # ===========================================================================
-  # Run GSVA
-  # ===========================================================================
-  if (method == "gsva") {
+# gsva
+if (method == "gsva") {
 
-    param <- GSVA::gsvaParam(
-      exprData = expr,
-      geneSets = pathways,
-      kcdf = kcdf
-    )
-
-  } else if (method == "ssgsea") {
-
-    param <- GSVA::ssgseaParam(
-      exprData = expr,
-      geneSets = pathways
-    )
-
-  } else if (method == "zscore") {
-
-    param <- GSVA::zscoreParam(
-      exprData = expr,
-      geneSets = pathways
-    )
-
-  } else if (method == "plage") {
-
-    param <- GSVA::plageParam(
-      exprData = expr,
-      geneSets = pathways
-    )
-
-  }
-
-  message(
-    "[rna.gsva] ",
-    length(pathways),
-    " pathways retained after size filtering."
+  param <- GSVA::gsvaParam(
+    exprData = expr,
+    geneSets = pathways,
+    kcdf = kcdf
   )
 
-  score_matrix <- GSVA::gsva(param)
+  # ssgsea
+} else if (method == "ssgsea") {
 
-  # ===========================================================================
-  # Output object
-  # ===========================================================================
-
-  params <- list(
-    timestamp = Sys.time(),
-    source = source,
-    method = method,
-    organism = organism,
-    geneset_collection = geneset_collection,
-    geneset_subcollection = geneset_subcollection,
-    pathway_scope = pathway_scope,
-    min_size = min_size,
-    max_size = max_size
+  param <- GSVA::ssgseaParam(
+    exprData = expr,
+    geneSets = pathways
   )
 
-  obj <- list(
-    params = params,
-    pathway_scores = score_matrix,
-    pathways = pathways,
-    pathway_metadata = pathway_metadata,
-    n_pathways = nrow(score_matrix),
-    n_samples = ncol(score_matrix)
+  # z-score
+} else if (method == "zscore") {
+
+  param <- GSVA::zscoreParam(
+    exprData = expr,
+    geneSets = pathways
   )
 
-  class(obj) <- "gsva_result"
+  # plage
+} else if (method == "plage") {
 
-  # ===========================================================================
-  # Save into project
-  # ===========================================================================
-  if (save) {
-
-    proj <- .attach_to_project(
-      proj,
-      obj,
-      slot = "analyses",
-      subtype = "gsva",
-      prefix = "gsva",
-      log = list(
-        source = source,
-        method = method,
-        n_pathways = nrow(score_matrix)
-      )
-    )
-  }
-
-  return(invisible(proj))
+  param <- GSVA::plageParam(
+    exprData = expr,
+    geneSets = pathways
+  )
 
 }
 
+message(
+  "[rna.gsva] ",
+  length(pathways),
+  " pathways retained after size filtering."
+)
 
-# ===========================================================================
-# Console summary
-# ===========================================================================
+score_matrix <- GSVA::gsva(param)
+
+# =============================================================================
+# 5. Return object
+# =============================================================================
+
+# Parameters
+params <- list(
+  timestamp = Sys.time(),
+  source = source,
+  method = method,
+  organism = organism,
+  geneset_collection = geneset_collection,
+  geneset_subcollection = geneset_subcollection,
+  pathway_scope = pathway_scope,
+  min_size = min_size,
+  max_size = max_size
+)
+
+# Final object
+obj <- list(
+  params = params,
+  pathway_scores = score_matrix,
+  pathways = pathways,
+  pathway_metadata = pathway_metadata,
+  n_pathways = nrow(score_matrix),
+  n_samples = ncol(score_matrix)
+)
+
+class(obj) <- "gsva_result"
+
+# =============================================================================
+# 6. Attach to project
+# =============================================================================
+
+if (save) {
+
+  proj <- .attach_to_project(
+    proj,
+    obj,
+    slot = "analyses",
+    subtype = "gsva",
+    log = list(
+      source = source,
+      method = method,
+      n_pathways = nrow(score_matrix)
+    )
+  )
+}
+
+return(invisible(proj))
+
+}
+
+# ===============================================================================
+# 7. Console summary
+# =============================================================================
 #' @method print gsva_result
 #' @export
 
-  print.gsva_result <- function(x, ...) {
+print.gsva_result <- function(x, ...) {
 
-    cat("\nGSVA Analysis\n")
-    cat("----------------------\n")
-    cat("Method: ", x$params$method, "\n", sep = "")
-    cat("Pathways: ", x$n_pathways, "\n", sep = "")
-    cat("Samples: ", x$n_samples, "\n", sep = "")
-    cat("\n")
+  cat("\nGSVA Analysis\n")
+  cat("----------------------\n")
+  cat("Method: ", x$params$method, "\n", sep = "")
+  cat("Pathways: ", x$n_pathways, "\n", sep = "")
+  cat("Samples: ", x$n_samples, "\n", sep = "")
+  cat("\n")
 
-  }
+}

@@ -13,8 +13,9 @@ labeling outputs and logs.}
 \value{
 Invisibly returns an object of class \code{"rna_project"}, containing:
 \describe{
-\item{project_info}{Metadata about the project (name, creation time, preprocessing steps, list of downstream analyses).}
-\item{input}{Raw imported data (e.g., count matrices, annotations).}
+\item{project_info}{Metadata about the project (name, creation time,
+preprocessing steps, list of downstream analyses).}
+\item{input}{Imported data (e.g., count matrices, annotations).}
 \item{data}{Processed data objects (e.g., normalized expression matrices).}
 \item{logs}{Execution logs for reproducibility and tracking.}
 \item{version}{Package version used to create the project.}

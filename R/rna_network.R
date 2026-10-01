@@ -182,475 +182,507 @@ rna.network <- function(project,
                         plot = TRUE,
                         save = TRUE) {
 
-  cor_method <- match.arg(cor_method)
-  node_filter <- match.arg(node_filter)
-  community_method <- match.arg(community_method)
-  layout <- match.arg(layout)
+cor_method <- match.arg(cor_method)
+node_filter <- match.arg(node_filter)
+community_method <- match.arg(community_method)
+layout <- match.arg(layout)
 
-  # ===========================================================================
-  # 0) Basic checks
-  # ===========================================================================
-  pkgs <- c(
-    "igraph",
-    "tidygraph",
-    "ggraph",
-    "ggrepel",
-    "ggplot2"
-  )
+# =============================================================================
+# 0. Basic checks
+# =============================================================================
 
-  .check_dependencies(pkgs)
+pkgs <- c(
+  "igraph",
+  "tidygraph",
+  "ggraph",
+  "ggrepel",
+  "ggplot2"
+)
 
-  # --- Set seed ---
-  old_seed <- .set_seed(seed)
-  on.exit(.reset_seed(old_seed), add = TRUE)
+.check_dependencies(pkgs)
 
-  # ===========================================================================
-  # 1) Get active project
-  # ===========================================================================
-  proj <- project
+# Set seed
+old_seed <- .set_seed(seed)
+on.exit(.reset_seed(old_seed), add = TRUE)
 
-  expr_mat <- as.matrix(.get_expr(proj))
-  meta <- .get_meta(proj)
+# =============================================================================
+# 1. Get active project
+# =============================================================================
 
-  organism <- .get_organism(proj)
-  gene_id_type <- .get_gene_id_type(proj)
-  gsea_obj <- .get_gsea(proj)
-  comp_obj <- .get_comp_obj(proj)
+proj <- project
 
-  # ===========================================================================
-  # 2) Validate input
-  # ===========================================================================
-  # Validate layout
-  valid_layouts <- c("fr","kk","stress","lgl","graphopt")
+expr_mat <- as.matrix(.get_expr(proj))
+meta <- .get_meta(proj)
 
-  if (!layout %in% valid_layouts) {
-    stop("Invalid layout. Choose one of: ",
-         paste(valid_layouts, collapse = ", "))
-  }
+organism <- .get_organism(proj)
+gene_id_type <- .get_gene_id_type(proj)
+gsea_obj <- .get_gsea(proj)
+comp_obj <- .get_comp(proj)
 
-  if (gene_id_type != "ENSEMBL") {
-    warning("Network currently assumes ENSEMBL gene IDs.")
-  }
+# =============================================================================
+# 2. Validate input
+# =============================================================================
 
-  if (is.null(gsea_obj)) {
-    stop("No GSEA result found in project. Run rna.gsea() first.")
-  }
+# Validate layout
+valid_layouts <- c("fr","kk","stress","lgl","graphopt")
 
-  if (is.null(comp_obj)) {
-    warning("No comparison results found.")
-  }
+if (!layout %in% valid_layouts) {
+  stop("Invalid layout. Choose one of: ",
+       paste(valid_layouts, collapse = ", "))
+}
 
-  # ===========================================================================
-  # 3) Select pathway
-  # ===========================================================================
-  pathways <- gsea_obj$pathways
-  gsea_top <- gsea_obj$gsea_top
+# Gene id type
+if (gene_id_type != "ENSEMBL") {
+  warning("Network currently assumes ENSEMBL gene IDs.")
+}
 
-  if (is.null(pathway)) {
+# GSEA object
+if (is.null(gsea_obj)) {
+  stop("No GSEA result found in project. Run rna.gsea() first.")
+}
 
-    pathway <- gsea_top$pathway[1]
-    message("[rna.network] Using top pathway: ", pathway)
+# Comparison object
+if (is.null(comp_obj)) {
+  warning("No comparison results found.")
+}
 
-  }
+# =============================================================================
+# 3. Select pathway
+# =============================================================================
 
-  else if (is.numeric(pathway)) {
+pathways <- gsea_obj$pathways
+gsea_top <- gsea_obj$gsea_top
 
-    pathway <- gsea_top$pathway[pathway]
+if (is.null(pathway)) {
 
-  }
+  pathway <- gsea_top$pathway[1]
+  message("[rna.network] Using top pathway: ", pathway)
 
-  if (!pathway %in% names(pathways)) {
-    stop("Pathway not found in GSEA results.")
-  }
+}
 
-  # ===========================================================================
-  # 4) Extract genes
-  # ===========================================================================
-  genes_path <- pathways[[pathway]]
+else if (is.numeric(pathway)) {
 
-  # convert SYMBOL -> ENSEMBL if necessary
-  if (gene_id_type == "ENSEMBL" && !grepl("^ENSG", genes_path[1])) {
+  pathway <- gsea_top$pathway[pathway]
 
-    genes_path <- .convert_gene_ids(
-      genes = genes_path,
-      from = "SYMBOL",
-      to = "ENSEMBL",
-      organism = organism
-    )
-  }
+}
 
-  genes_path <- intersect(genes_path, rownames(expr_mat))
+if (!pathway %in% names(pathways)) {
+  stop("Pathway not found in GSEA results.")
+}
 
-  if (length(genes_path) < 3) {
+# =============================================================================
+# 4. Extract genes
+# =============================================================================
 
-    stop(
-      "Too few genes from pathway present in expression matrix.\n",
-      "Possible gene ID mismatch (SYMBOL vs ENSEMBL)."
-    )
-  }
+genes_path <- pathways[[pathway]]
 
-  # ===========================================================================
-  # 5) Select group
-  # ===========================================================================
-  if (is.null(group)) {
+# convert SYMBOL -> ENSEMBL if necessary
+if (gene_id_type == "ENSEMBL" && !grepl("^ENSG", genes_path[1])) {
 
-    group <- unique(meta$Group)[1]
-    message("[rna.network] Using group: ", group)
-
-  }
-
-  samples_group <- meta$Sample[meta$Group == group]
-
-  expr_sub <- expr_mat[genes_path, samples_group, drop = FALSE]
-
-  # ===========================================================================
-  # 6) Correlation
-  # ===========================================================================
-  edges <- weight <- layout_weight <- NULL
-
-  n <- ncol(expr_sub)
-
-  if (cor_method == "auto") {
-    cor_method <- if (n < 8) "spearman" else "pearson"
-  }
-
-  message("[rna.network] Correlation method: ", cor_method)
-
-  cor_mat <- cor(t(expr_sub), method = cor_method)
-
-  # Calculate correlation p-value
-  t_stat <- cor_mat * sqrt((n - 2) / (1 - cor_mat^2))
-  p_mat <- 2 * pt(-abs(t_stat), df = n - 2)
-
-  sel <- which(
-    abs(cor_mat) >= threshold &
-      p_mat < cor_p &
-      upper.tri(cor_mat),
-    arr.ind = TRUE
-  )
-
-  cor_mat[cor_mat > 0.999999] <- 0.999999
-  cor_mat[cor_mat < -0.999999] <- -0.999999
-
-  edges_df <- data.frame(
-    source = rownames(cor_mat)[sel[,1]],
-    target = rownames(cor_mat)[sel[,2]],
-    weight = cor_mat[sel],
-    pvalue = p_mat[sel],
-    stringsAsFactors = FALSE
-  )
-
-  edges_df$distance <- (1 - abs(edges_df$weight)) + 1e-6
-  edges_df$sign <- ifelse(edges_df$weight > 0, "positive", "negative")
-
-  # ===========================================================================
-  # 7) get nodes
-  # ===========================================================================
-  nodes_df <- data.frame(
-    name = rownames(expr_sub),
-    stringsAsFactors = FALSE
-  )
-
-  symbols <- .convert_gene_ids(
-    genes = nodes_df$name,
-    from = "ENSEMBL",
-    to = "SYMBOL",
+  genes_path <- .convert_gene_ids(
+    genes = genes_path,
+    from = "SYMBOL",
+    to = "ENSEMBL",
     organism = organism
   )
+}
 
-  if (length(symbols) == length(nodes_df$name)) {
-    nodes_df$symbol <- symbols
-  } else {
-    nodes_df$symbol <- nodes_df$name
+genes_path <- intersect(genes_path, rownames(expr_mat))
+
+if (length(genes_path) < 3) {
+
+  stop(
+    "Too few genes from pathway present in expression matrix.\n",
+    "Possible gene ID mismatch (SYMBOL vs ENSEMBL)."
+  )
+}
+
+# =============================================================================
+# 5. Select group
+# =============================================================================
+
+if (is.null(group)) {
+
+  group <- unique(meta$Group)[1]
+  message("[rna.network] Using group: ", group)
+
+}
+
+samples_group <- meta$Sample[meta$Group == group]
+
+expr_sub <- expr_mat[genes_path, samples_group, drop = FALSE]
+
+# =============================================================================
+# 6. Correlation
+# =============================================================================
+
+edges <- weight <- layout_weight <- NULL
+
+n <- ncol(expr_sub)
+
+if (cor_method == "auto") {
+  cor_method <- if (n < 8) "spearman" else "pearson"
+}
+
+message("[rna.network] Correlation method: ", cor_method)
+
+cor_mat <- cor(t(expr_sub), method = cor_method)
+
+# ===============================================
+# 6.1. Calculate correlation p-value
+# ===============================================
+
+t_stat <- cor_mat * sqrt((n - 2) / (1 - cor_mat^2))
+p_mat <- 2 * pt(-abs(t_stat), df = n - 2)
+
+sel <- which(
+  abs(cor_mat) >= threshold &
+    p_mat < cor_p &
+    upper.tri(cor_mat),
+  arr.ind = TRUE
+)
+
+cor_mat[cor_mat > 0.999999] <- 0.999999
+cor_mat[cor_mat < -0.999999] <- -0.999999
+
+edges_df <- data.frame(
+  source = rownames(cor_mat)[sel[,1]],
+  target = rownames(cor_mat)[sel[,2]],
+  weight = cor_mat[sel],
+  pvalue = p_mat[sel],
+  stringsAsFactors = FALSE
+)
+
+edges_df$distance <- (1 - abs(edges_df$weight)) + 1e-6
+edges_df$sign <- ifelse(edges_df$weight > 0, "positive", "negative")
+
+# =============================================================================
+# 7. get nodes
+# =============================================================================
+
+nodes_df <- data.frame(
+  name = rownames(expr_sub),
+  stringsAsFactors = FALSE
+)
+
+symbols <- .convert_gene_ids(
+  genes = nodes_df$name,
+  from = "ENSEMBL",
+  to = "SYMBOL",
+  organism = organism
+)
+
+if (length(symbols) == length(nodes_df$name)) {
+  nodes_df$symbol <- symbols
+} else {
+  nodes_df$symbol <- nodes_df$name
+}
+
+# Nodes color
+nodes_df$expr_mean <- rowMeans(expr_sub)
+nodes_df$expr_z <- as.numeric(scale(nodes_df$expr_mean))
+
+
+# =============================================================================
+# 8. Build network
+# =============================================================================
+
+g <- igraph::graph_from_data_frame(
+  d = if (nrow(edges_df) == 0) NULL else edges_df,
+  vertices = nodes_df,
+  directed = FALSE
+)
+
+if (nrow(edges_df) > 0) {
+  igraph::E(g)$distance <- edges_df$distance
+  igraph::E(g)$weight <- edges_df$weight
+  igraph::E(g)$layout_weight <- abs(edges_df$weight)
+}
+
+if (igraph::ecount(g) == 0) {
+  warning("Network contains no edges at this threshold.")
+}
+
+# =============================================================================
+# 9. Network metrics
+# =============================================================================
+
+nodes_df$degree <- igraph::degree(g)
+
+nodes_df$betweenness <- igraph::betweenness(
+  g,
+  weights = igraph::E(g)$distance,
+  normalized = TRUE
+)
+
+nodes_df$closeness <- igraph::closeness(
+  g,
+  weights = igraph::E(g)$distance,
+  normalized = TRUE
+)
+
+# ===============================================
+# 9.1. Composed hub score
+# ===============================================
+
+nodes_df$hub_score <- scale(nodes_df$degree) +
+  scale(nodes_df$betweenness) +
+  scale(nodes_df$closeness)
+
+nodes_df$hub_score <- as.numeric(nodes_df$hub_score)
+
+nodes_df$expr_mean <- rowMeans(expr_sub)
+nodes_df$expr_z <- as.numeric(scale(nodes_df$expr_mean))
+
+# hub detection (top 10% degree)
+deg_cut <- mean(nodes_df$degree) + sd(nodes_df$degree)
+nodes_df$hub <- nodes_df$degree >= deg_cut
+
+nodes_df$label <- nodes_df$symbol
+
+igraph::vertex_attr(g, "degree") <- nodes_df$degree
+igraph::vertex_attr(g, "betweenness") <- nodes_df$betweenness
+igraph::vertex_attr(g, "closeness") <- nodes_df$closeness
+igraph::vertex_attr(g, "hub") <- nodes_df$hub
+igraph::vertex_attr(g, "label") <- nodes_df$label
+
+tg <- tidygraph::as_tbl_graph(g)
+
+# =============================================================================
+# 10.  Node filter
+# =============================================================================
+
+if (node_filter == "top") {
+
+  nodes_df$importance <- nodes_df$hub_score
+  cutoff <- quantile(nodes_df$importance, 1 - top_nodes, na.rm = TRUE)
+
+  keep_nodes <- nodes_df$name[nodes_df$importance >= cutoff]
+  keep_nodes <- intersect(keep_nodes, igraph::V(g)$name)
+
+  if (length(keep_nodes) < 2) {
+    stop("Too few nodes after filtering.")
   }
 
-  # Nodes color
-  nodes_df$expr_mean <- rowMeans(expr_sub)
-  nodes_df$expr_z <- as.numeric(scale(nodes_df$expr_mean))
+  # subgraph
+  g <- igraph::induced_subgraph(g, vids = keep_nodes)
 
+  # Rebuild graph
+  el <- igraph::as_data_frame(g, what = "edges")
 
-  # ===========================================================================
-  # 8) Build network
-  # ===========================================================================
-  g <- igraph::graph_from_data_frame(
-    d = if (nrow(edges_df) == 0) NULL else edges_df,
-    vertices = nodes_df,
-    directed = FALSE
+  # ===============================================
+  # 10.1. Ensure valid weights
+  # ===============================================
+
+  el$distance <- (1 - abs(el$weight)) + 1e-6
+  el$distance[is.na(el$distance)] <- 1e-6
+  el$distance[el$distance <= 0] <- 1e-6
+
+  igraph::E(g)$distance <- el$distance
+  igraph::E(g)$weight <- el$weight
+
+  # ===============================================
+  # 10.2. rebuild nodes
+  # ===============================================
+
+  nodes_df <- data.frame(
+    name = igraph::V(g)$name,
+    stringsAsFactors = FALSE
   )
 
-  if (nrow(edges_df) > 0) {
-    igraph::E(g)$distance <- edges_df$distance
-    igraph::E(g)$weight <- edges_df$weight
-    igraph::E(g)$layout_weight <- abs(edges_df$weight)
-  }
-
-  if (igraph::ecount(g) == 0) {
-    warning("Network contains no edges at this threshold.")
-  }
-
-  # ===========================================================================
-  # 8.1 Network metrics
-  # ===========================================================================
   nodes_df$degree <- igraph::degree(g)
 
   nodes_df$betweenness <- igraph::betweenness(
     g,
-    weights = igraph::E(g)$distance,
-    normalized = TRUE
+    weights = igraph::E(g)$distance
   )
 
   nodes_df$closeness <- igraph::closeness(
     g,
-    weights = igraph::E(g)$distance,
-    normalized = TRUE
+    weights = igraph::E(g)$distance
   )
 
-  # Composed hub score
   nodes_df$hub_score <- scale(nodes_df$degree) +
     scale(nodes_df$betweenness) +
     scale(nodes_df$closeness)
 
   nodes_df$hub_score <- as.numeric(nodes_df$hub_score)
-
-  nodes_df$expr_mean <- rowMeans(expr_sub)
-  nodes_df$expr_z <- as.numeric(scale(nodes_df$expr_mean))
-
-  # hub detection (top 10% degree)
-  deg_cut <- mean(nodes_df$degree) + sd(nodes_df$degree)
-  nodes_df$hub <- nodes_df$degree >= deg_cut
-
-  nodes_df$label <- nodes_df$symbol
-
-  igraph::vertex_attr(g, "degree") <- nodes_df$degree
-  igraph::vertex_attr(g, "betweenness") <- nodes_df$betweenness
-  igraph::vertex_attr(g, "closeness") <- nodes_df$closeness
-  igraph::vertex_attr(g, "hub") <- nodes_df$hub
-  igraph::vertex_attr(g, "label") <- nodes_df$label
+  nodes_df$symbol <- nodes_df$name
 
   tg <- tidygraph::as_tbl_graph(g)
+}
 
-  # ===========================================================================
-  # 8.2 Node filter
-  # ===========================================================================
-  if (node_filter == "top") {
+tg <- tg |>
+  tidygraph::activate(edges) |>
+  dplyr::mutate(layout_weight = abs(weight))
 
-    nodes_df$importance <- nodes_df$hub_score
-    cutoff <- quantile(nodes_df$importance, 1 - top_nodes, na.rm = TRUE)
+# =============================================================================
+# 11. Community detection
+# =============================================================================
 
-    keep_nodes <- nodes_df$name[nodes_df$importance >= cutoff]
-    keep_nodes <- intersect(keep_nodes, igraph::V(g)$name)
-
-    if (length(keep_nodes) < 2) {
-      stop("Too few nodes after filtering.")
-    }
-
-    # subgraph
-    g <- igraph::induced_subgraph(g, vids = keep_nodes)
-
-    # Rebuild graph
-    el <- igraph::as_data_frame(g, what = "edges")
-
-    # Ensure valid weights
-    el$distance <- (1 - abs(el$weight)) + 1e-6
-    el$distance[is.na(el$distance)] <- 1e-6
-    el$distance[el$distance <= 0] <- 1e-6
-
-    igraph::E(g)$distance <- el$distance
-    igraph::E(g)$weight <- el$weight
-
-    # rebuild nodes
-    nodes_df <- data.frame(
-      name = igraph::V(g)$name,
-      stringsAsFactors = FALSE
-    )
-
-    nodes_df$degree <- igraph::degree(g)
-
-    nodes_df$betweenness <- igraph::betweenness(
-      g,
-      weights = igraph::E(g)$distance
-    )
-
-    nodes_df$closeness <- igraph::closeness(
-      g,
-      weights = igraph::E(g)$distance
-    )
-
-    nodes_df$hub_score <- scale(nodes_df$degree) +
-      scale(nodes_df$betweenness) +
-      scale(nodes_df$closeness)
-
-    nodes_df$hub_score <- as.numeric(nodes_df$hub_score)
-    nodes_df$symbol <- nodes_df$name
-
-    tg <- tidygraph::as_tbl_graph(g)
-  }
-
-  tg <- tg |>
-    tidygraph::activate(edges) |>
-    dplyr::mutate(layout_weight = abs(weight))
-
-  # ===========================================================================
-  # 8.3 Community detection
-  # ===========================================================================
-  if (community_method == "louvain") {
-    comm <- igraph::cluster_louvain(
-      g,
-      weights = abs(igraph::E(g)$weight)
-    )
-  }
-
-  else if (community_method == "leiden") {
-    comm <- igraph::cluster_leiden(
-      g,
-      weights = abs(igraph::E(g)$weight)
-    )
-  }
-
-  else {
-    comm <- NULL
-  }
-
-  if (!is.null(comm)) {
-    nodes_df$community <- igraph::membership(comm)
-    igraph::vertex_attr(g, "community") <- nodes_df$community
-
-  } else {
-
-    nodes_df$community <- NA
-  }
-
-  # ===========================================================================
-  # 9) Plot
-  # ===========================================================================
-  if (layout %in% c("fr","kk","stress","lgl")) {
-    p <- ggraph::ggraph(tg, layout = layout, weights = .data$layout_weight)
-
-  } else {
-    p <- ggraph::ggraph(tg, layout = layout)
-
-  }
-
-  p <- p +
-    ggraph::geom_edge_link(
-      ggplot2::aes(width = abs(weight)),
-      colour = "grey70",
-      alpha = 0.7
-    ) +
-    ggraph::scale_edge_width(range = c(0.2, 2)) +
-    ggraph::geom_node_point(
-      ggplot2::aes(colour = .data$expr_z, size = degree)
-    ) +
-    ggplot2::scale_size(range = c(3,8), name = "Degree") +
-    ggplot2::scale_colour_gradient2(
-      low = "#3B4CC0",
-      mid = "white",
-      high = "#d7191c",
-      midpoint = 0,
-      name = "Expr (z-score)"
-    ) +
-    ggraph::geom_node_text(
-      ggplot2::aes(label = label),
-      repel = TRUE,
-      size = 3.5,
-      max.overlaps = Inf
-    ) +
-    ggplot2::theme_void() +
-    ggplot2::ggtitle(paste0(pathway, " - ", group))
-
-  if (plot && interactive()) {
-    print(p)
-  }
-
-  # ===========================================================================
-  # 10) RNG handling
-  # ===========================================================================
-
-  rng_state <- if (exists(".Random.seed", envir = .GlobalEnv)) .Random.seed else NULL
-
-  seed <- if (is.null(seed)) {
-    "not set"
-  } else {
-    as.character(seed)
-  }
-
-  # ===========================================================================
-  # 11) Output
-  # ===========================================================================
-  params = list(
-    timestamp = Sys.time(),
-    threshold = threshold,
-    group = group,
-    node_filter = node_filter,
-    top_nodes = top_nodes,
-    seed = seed,
-    rng_state = rng_state
+if (community_method == "louvain") {
+  comm <- igraph::cluster_louvain(
+    g,
+    weights = abs(igraph::E(g)$weight)
   )
+}
 
-  obj <- list(
-    params = params,
-    pathway = pathway,
-    genes = genes_path,
-    graph = g,
-    edges = edges_df,
-    nodes = nodes_df
+else if (community_method == "leiden") {
+  comm <- igraph::cluster_leiden(
+    g,
+    weights = abs(igraph::E(g)$weight)
   )
+}
 
-  class(obj) <- "rna_network"
+else {
+  comm <- NULL
+}
 
-  # ===========================================================================
-  # 12) Attach to project
-  # ===========================================================================
-  if (save) {
+if (!is.null(comm)) {
+  nodes_df$community <- igraph::membership(comm)
+  igraph::vertex_attr(g, "community") <- nodes_df$community
 
-    proj <- .attach_to_project(
-      proj,
-      obj,
-      slot = "analyses",
-      subtype = "network",
-      prefix = "network",
-      log = list(
-        pathway = pathway,
-        group = group,
-        threshold = threshold,
-        n_genes = length(genes_path),
-        n_edges = nrow(edges_df),
-        seed = seed
-      )
+} else {
+
+  nodes_df$community <- NA
+}
+
+# =============================================================================
+# 12. Plot
+# =============================================================================
+
+if (layout %in% c("fr","kk","stress","lgl")) {
+  p <- ggraph::ggraph(tg, layout = layout, weights = .data$layout_weight)
+
+} else {
+  p <- ggraph::ggraph(tg, layout = layout)
+
+}
+
+p <- p +
+  ggraph::geom_edge_link(
+    ggplot2::aes(width = abs(weight)),
+    colour = "grey70",
+    alpha = 0.7
+  ) +
+  ggraph::scale_edge_width(range = c(0.2, 2)) +
+  ggraph::geom_node_point(
+    ggplot2::aes(colour = .data$expr_z, size = degree)
+  ) +
+  ggplot2::scale_size(range = c(3,8), name = "Degree") +
+  ggplot2::scale_colour_gradient2(
+    low = "#3B4CC0",
+    mid = "white",
+    high = "#d7191c",
+    midpoint = 0,
+    name = "Expr (z-score)"
+  ) +
+  ggraph::geom_node_text(
+    ggplot2::aes(label = label),
+    repel = TRUE,
+    size = 3.5,
+    max.overlaps = Inf
+  ) +
+  ggplot2::theme_void() +
+  ggplot2::ggtitle(paste0(pathway, " - ", group))
+
+if (plot && interactive()) {
+  print(p)
+}
+
+# =============================================================================
+# 13. RNG handling
+# =============================================================================
+
+rng_state <- if (exists(".Random.seed", envir = .GlobalEnv)) .Random.seed else NULL
+
+seed <- if (is.null(seed)) {
+  "not set"
+} else {
+  as.character(seed)
+}
+
+# =============================================================================
+# 14. Output
+# =============================================================================
+
+# Paramenters
+params = list(
+  timestamp = Sys.time(),
+  threshold = threshold,
+  group = group,
+  node_filter = node_filter,
+  top_nodes = top_nodes,
+  seed = seed,
+  rng_state = rng_state
+)
+
+# Final object
+obj <- list(
+  params = params,
+  pathway = pathway,
+  genes = genes_path,
+  graph = g,
+  edges = edges_df,
+  nodes = nodes_df
+)
+
+class(obj) <- "rna_network"
+
+# =============================================================================
+# 15. Attach to project
+# =============================================================================
+
+if (save) {
+
+  proj <- .attach_to_project(
+    proj,
+    obj,
+    slot = "analyses",
+    subtype = "network",
+    log = list(
+      pathway = pathway,
+      group = group,
+      threshold = threshold,
+      n_genes = length(genes_path),
+      n_edges = nrow(edges_df),
+      seed = seed
     )
-  }
+  )
+}
 
-  # ===========================================================================
-  # 13) Return
-  # ===========================================================================
-  .print_header("RNA Pathway Network")
+# =============================================================================
+# 16. Return
+# =============================================================================
 
-  .print_block("Summary", function() {
+.print_header("RNA Pathway Network")
 
-    cat("Pathway:             ", pathway, "\n")
-    cat("Organism:            ", organism, "\n")
-    cat("Group used:          ", group, "\n")
-    cat("Correlation cut:     ", threshold, "\n")
-    cat("Layout:              ", layout, "\n")
-    cat("Seed:                ", seed, "\n")
-  })
+.print_block("Summary", function() {
 
-  .print_block("Network properties", function() {
+  cat("Pathway:             ", pathway, "\n")
+  cat("Organism:            ", organism, "\n")
+  cat("Group used:          ", group, "\n")
+  cat("Correlation cut:     ", threshold, "\n")
+  cat("Layout:              ", layout, "\n")
+  cat("Seed:                ", seed, "\n")
+})
 
-    cat("Nodes:               ", igraph::vcount(g), "\n")
-    cat("Edges:               ", igraph::ecount(g), "\n")
-    cat("Communities detected:", length(unique(nodes_df$community)), "\n")
-    cat("Hub genes:           ", sum(nodes_df$hub), "\n")
-    top_hubs <- nodes_df[order(-nodes_df$degree), ]
-    top_hubs <- head(top_hubs$symbol, 5)
+.print_block("Network properties", function() {
 
-    dens <- igraph::edge_density(g)
-    cat("Edge density:        ", round(dens, 3), "\n")
+  cat("Nodes:               ", igraph::vcount(g), "\n")
+  cat("Edges:               ", igraph::ecount(g), "\n")
+  cat("Communities detected:", length(unique(nodes_df$community)), "\n")
+  cat("Hub genes:           ", sum(nodes_df$hub), "\n")
+  top_hubs <- nodes_df[order(-nodes_df$degree), ]
+  top_hubs <- head(top_hubs$symbol, 5)
 
-    cat("Top hubs:            ", paste(top_hubs, collapse = ", "), "\n")
+  dens <- igraph::edge_density(g)
+  cat("Edge density:        ", round(dens, 3), "\n")
 
-  })
+  cat("Top hubs:            ", paste(top_hubs, collapse = ", "), "\n")
 
-  return(invisible(proj))
+})
+
+return(invisible(proj))
 
 }

@@ -6,7 +6,6 @@
 \usage{
 rna.volcano(
   project,
-  comparison = NULL,
   genes = NULL,
   top_genes = NULL,
   padj_threshold = 0.05,
@@ -18,9 +17,6 @@ rna.volcano(
 }
 \arguments{
 \item{project}{\code{rna_project} object created by \code{rna.project()}.}
-
-\item{comparison}{Character. ID of the comparison to visualize.
-If \code{NULL}, the most recent comparison is used.}
 
 \item{genes}{Optional character vector of genes to label on the plot.
 Gene identifiers can be provided either as gene symbols (e.g. \code{"TP53"})

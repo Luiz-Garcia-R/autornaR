@@ -6,7 +6,6 @@
 \usage{
 rna.sets(
   project,
-  comparison = NULL,
   padj_cutoff = 0.05,
   log2fc_cutoff = 0.5,
   direction = c("both", "up", "down"),
@@ -19,9 +18,6 @@ rna.sets(
 \arguments{
 \item{project}{\code{rna_project} object created by \code{rna.project()}.}
 
-\item{comparison}{Character. Name of a comparison stored in \code{rna_project}.
-If \code{NULL}, the most recent comparison is used.}
-
 \item{padj_cutoff}{Numeric. Adjusted p-value threshold used to define significance
 (default: \code{0.05}).}
 
@@ -33,13 +29,14 @@ Determines which genes are flagged as DEGs in the main output (default: \code{"b
 
 \item{colors}{Character. Optional bars colors.}
 
-\item{plot}{Logical. If \code{TRUE}, displays a barplot summarizing DEG counts per group
-(default: \code{FALSE}).}
+\item{plot}{Logical. If \code{TRUE}, displays a barplot summarizing
+DEG counts per group (default: \code{FALSE}).}
 
-\item{save}{Logical. Whether to store results in the active \code{rna_project}
-(default: \code{TRUE}).}
+\item{save}{Logical. Whether to store results in the
+active \code{rna_project} (default: \code{TRUE}).}
 
-\item{verbose}{Logical. If \code{TRUE}, prints a summary to the console (default: \code{TRUE}).}
+\item{verbose}{Logical. If \code{TRUE}, prints a summary to the
+console (default: \code{TRUE}).}
 }
 \value{
 An object of class \code{"rna_sets"} containing:

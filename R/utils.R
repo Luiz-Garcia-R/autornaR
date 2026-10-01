@@ -1,30 +1,50 @@
-# --- Auxiliary general functions ---
+# ============================================================================ #
+#                     ### Auxiliary general functions ###                      #
+# ============================================================================ #
 
-# ============================
-# Global cache environment
-# ============================
+# =============================================================================
+# 1. Global cache environment
+# =============================================================================
 #' @keywords internal
 
 .autornar_cache <- new.env(parent = emptyenv())
 .autornar_cache$gene_maps <- list()
 
-# ============================
-# Attach to project
-# ============================
+# =============================================================================
+# 2. Auxiliary print functions
+# =============================================================================
+#' @keywords internal
+
+.print_header <- function(title) {
+  cat("\n")
+  cat(strrep("=", 50), "\n")
+  cat(title, "\n")
+  cat(strrep("=", 50), "\n")
+}
+
+#' @keywords internal
+.print_block <- function(title, content, width = 40) {
+  cat("\n", title, "\n", sep = "")
+  cat(strrep("-", width), "\n")
+  content()
+  cat(strrep("-", width), "\n")
+}
+
+# =============================================================================
+# 3. Attach to project
+# =============================================================================
 #' @keywords internal
 
 .attach_to_project <- function(proj,
                                obj,
                                slot,
                                subtype,
-                               prefix,
-                               log = list(),
-                               id = NULL) {
+                               log = list()) {
 
   slot <- as.character(slot)
 
   if (!slot %in% c("input", "data", "analyses", "qc")) {
-    stop("Invalid slot")
+    stop("Invalid slot.")
   }
 
   # Ensure base structure
@@ -32,90 +52,28 @@
     proj[[slot]] <- list()
   }
 
-  if (is.null(proj[[slot]][[subtype]])) {
-    proj[[slot]][[subtype]] <- list()
+  # Replace previous object
+  proj[[slot]][[subtype]] <- obj
+
+  # ===============================================
+  # 3.1. Logs
+  # ===============================================
+
+  if (is.null(proj$logs)) {
+    proj$logs <- list()
   }
 
-  if (!is.list(proj[[slot]][[subtype]])) {
-    proj[[slot]][[subtype]] <- list(proj[[slot]][[subtype]])
-  }
-
-  if (is.null(id)) {
-    id <- paste0(prefix, "_", format(Sys.time(), "%Y%m%d_%H%M%S"))
-  }
-
-  # Ensure no structural collision
-  if (!is.list(proj[[slot]][[subtype]])) {
-    proj[[slot]][[subtype]] <- list()
-  }
-
-  proj[[slot]][[subtype]][[id]] <- obj
-  proj[[slot]][[subtype]]$last <- id
-
-  # Safe logs
-  if (is.null(proj$logs)) proj$logs <- list()
-  if (is.null(proj$logs[[subtype]])) proj$logs[[subtype]] <- list()
-
-  proj$logs[[subtype]][[id]] <- c(list(timestamp = Sys.time()), log)
-  proj$logs[[subtype]]$last <- id
+  proj$logs[[subtype]] <- c(
+    list(timestamp = Sys.time()),
+    log
+  )
 
   proj
 }
 
-# ============================
-# Get last or selected
-# ============================
-#' @keywords internal
-
-.get_last_or_selected <- function(x, id = NULL, what = "element") {
-
-  if (length(x) == 0) {
-    stop(sprintf("No %s found.", what))
-  }
-
-  ids <- setdiff(names(x), "last")
-
-  if (is.null(id)) {
-
-    if (!"last" %in% names(x)) {
-      stop(sprintf("No %s found.", what))
-    }
-
-    return("last")
-  }
-
-  if (is.numeric(id)) {
-
-    if (length(id) != 1) {
-      stop(sprintf("%s index must be a single number.", what))
-    }
-
-    if (id < 1 || id > length(ids)) {
-      stop(sprintf("%s index out of bounds.", what))
-    }
-
-    return(ids[id])
-  }
-
-  if (is.character(id)) {
-
-    if (length(id) != 1) {
-      stop(sprintf("%s id must be a single string.", what))
-    }
-
-    if (!id %in% names(x)) {
-      stop(sprintf("%s '%s' not found.", what, id))
-    }
-
-    return(id)
-  }
-
-  stop("Invalid 'id' argument.")
-}
-
-# ============================
-# Set seed
-# ============================
+# =============================================================================
+# 4. Set seed
+# =============================================================================
 #' @keywords internal
 
 .set_seed <- function(seed) {
@@ -131,9 +89,9 @@
   return(NULL)
 }
 
-# ============================
-# Reset seed
-# ============================
+# =============================================================================
+# 5. Reset seed
+# =============================================================================
 #' @keywords internal
 
 .reset_seed <- function(old_seed) {
@@ -142,9 +100,9 @@
   }
 }
 
-# ============================
-# Get Biomart dataset
-# ============================
+# =============================================================================
+# 6. Get Biomart dataset
+# =============================================================================
 #' @keywords internal
 
 .get_biomart_dataset <- function(organism) {
@@ -159,9 +117,9 @@
   )
 }
 
-# ============================
-# Order contrast levels
-# ============================
+# =============================================================================
+# 7. Order contrast levels
+# =============================================================================
 #' @keywords internal
 
 .order_contrast_levels <- function(levels_vec) {
@@ -188,9 +146,9 @@
   sort(levels_vec)
 }
 
-# ============================
-# Check dependencies
-# ============================
+# =============================================================================
+# 8. Check dependencies
+# =============================================================================
 #' @keywords internal
 
 .check_dependencies <- function(pkgs, bioc = FALSE) {
@@ -228,9 +186,9 @@
   }
 }
 
-# ============================
-# Smart pathway naming
-# ============================
+# =============================================================================
+# 9. Smart pathway naming
+# =============================================================================
 #' @keywords internal
 
 .smart_pathway_name <- function(x, max_words = 6) {
@@ -243,14 +201,14 @@
         return("Unknown_Pathway")
       }
 
-      # 1. Remove prefixos
+      # 1. Remove prefixes
       xx <- gsub("^(REACTOME_|KEGG_|HALLMARK_|GOBP_|GO_)", "", xx)
 
-      # 2. Normaliza
+      # 2. Normalize
       xx <- gsub("_", " ", xx)
       xx <- tolower(xx)
 
-      # 3. Substituições inteligentes (compressão semântica)
+      # 3. Smart substitution (semantic compression)
       xx <- gsub("positive regulation of", "+reg.", xx)
       xx <- gsub("negative regulation of", "-reg.", xx)
       xx <- gsub("regulation of", "reg.", xx)
@@ -300,29 +258,9 @@
   )
 }
 
-# ============================
-# Auxiliary print functions
-# ============================
-#' @keywords internal
-
-.print_header <- function(title) {
-  cat("\n")
-  cat(strrep("=", 50), "\n")
-  cat(title, "\n")
-  cat(strrep("=", 50), "\n")
-}
-
-#' @keywords internal
-.print_block <- function(title, content, width = 40) {
-  cat("\n", title, "\n", sep = "")
-  cat(strrep("-", width), "\n")
-  content()
-  cat(strrep("-", width), "\n")
-}
-
-# ============================
-# Go enrichment
-# ============================
+# =============================================================================
+# 10. Go enrichment
+# =============================================================================
 #' @keywords internal
 
 .run_go_enrichment <- function(
@@ -372,9 +310,9 @@
   return(ego)
 }
 
-# ============================
-# Heatmap gene selection
-# ============================
+# =============================================================================
+# 11. Heatmap gene selection
+# =============================================================================
 #' @keywords internal
 
 .select_heatmap_genes <- function(expr_mat,
@@ -425,9 +363,9 @@
   genes_sel
 }
 
-# ============================
-# Convert gene ids
-# ============================
+# =============================================================================
+# 12. Convert gene ids
+# =============================================================================
 #' @keywords internal
 
 .convert_gene_ids <- function(genes,
@@ -476,9 +414,9 @@
 }
 
 
-# ============================
-# Map gene symbols
-# ============================
+# =============================================================================
+# 13. Map gene symbols
+# =============================================================================
 #' @keywords internal
 
 .map_gene_annotation <- function(genes, organism = "human") {
@@ -519,9 +457,9 @@
   return(gene_map)
 }
 
-# ============================
-# Convert gene symbols
-# ============================
+# =============================================================================
+# 14. Convert gene symbols
+# =============================================================================
 #' @keywords internal
 
 .convert_expr_to_symbols <- function(expr, proj) {
@@ -558,9 +496,9 @@
   as.matrix(expr)
 }
 
-# ============================
-# Get gene annotation
-# ============================
+# =============================================================================
+# 15. Get gene annotation
+# =============================================================================
 #' @keywords internal
 
 .align_gene_annotation <- function(gene_annotation, expr_mat) {
@@ -586,9 +524,9 @@
   return(aligned)
 }
 
-# ============================
-# Detect organism
-# ============================
+# =============================================================================
+# 16. Detect organism
+# =============================================================================
 #' @keywords internal
 #' @importFrom stats na.omit
 
@@ -604,9 +542,9 @@
   return("unknown")
 }
 
-# ============================
-# Normalize sample names
-# ============================
+# =============================================================================
+# 17. Normalize sample names
+# =============================================================================
 #' @keywords internal
 
 .normalize_sample_names <- function(x) {
@@ -623,9 +561,9 @@
   x
 }
 
-# ============================
-# Get biomart gene info
-# ============================
+# =============================================================================
+# 18. Get biomart gene info
+# =============================================================================
 #' @keywords internal
 
 .get_biomart_gene_info <- function(gene_ids, organism) {
@@ -663,9 +601,9 @@
   return(gene_info)
 }
 
-# ============================
-# Clean gene ids
-# ============================
+# =============================================================================
+# 19. Clean gene ids
+# =============================================================================
 #' @keywords internal
 
 .clean_gene_ids <- function(expr_mat) {
@@ -680,9 +618,9 @@
 
 }
 
-# ============================
-# Bootstrap AUC
-# ============================
+# =============================================================================
+# 20. Bootstrap AUC
+# =============================================================================
 #' @keywords internal
 
 .bootstrap_auc <- function(df, group_col, safe_gene_labels, method, score_method, n_boot = 1000) {
@@ -698,7 +636,10 @@
 
     df_boot <- df[idx, , drop = FALSE]
 
-    # --- prediction ---
+    # ===============================================
+    # 20.1. prediction
+    # ===============================================
+
     if (method == "single_gene") {
 
       pred <- df_boot[[safe_gene_labels[1]]]
@@ -736,7 +677,10 @@
       }
     }
 
-    # --- ROC ---
+    # ===============================================
+    # 20.2. ROC
+    # ===============================================
+
     if (length(unique(pred)) < 2) {
       aucs[i] <- NA
       next
@@ -760,4 +704,3 @@
     ci_boot = ci_boot
   )
 }
-

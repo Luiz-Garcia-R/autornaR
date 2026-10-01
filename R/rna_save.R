@@ -81,143 +81,55 @@
 rna.save <- function(project,
                      file,
                      compress = "xz",
-                     verbose = TRUE
-) {
+                     verbose = TRUE) {
 
-  # ===========================================================================
-  # 1) Data validation
-  # ===========================================================================
+# =============================================================================
+# 1. Data validation
+# =============================================================================
 
-  if (!inherits(project, "rna_project")) {
-    stop("Input must be a 'rna_project' object")
-  }
-
-  proj <- project
-
-  get_last <- function(x) {
-    if (is.null(x)) return(NULL)
-
-    if (is.list(x) && "last" %in% names(x)) {
-      id <- x$last
-
-      if (!id %in% names(x)) {
-        warning("Invalid 'last' reference detected. Returning NULL.")
-        return(NULL)
-      }
-
-      return(x[[id]])
-    }
-
-    return(x)
-  }
-
-  # ===========================================================================
-  # 2) Extract contrast info
-  # ===========================================================================
-  comp <- get_last(proj$analyses$comparison)
-
-  condition_tested <- NA
-  reference_condition <- NA
-
-  if (!is.null(comp$contrast)) {
-
-    contrast_raw <- comp$contrast
-
-    contrast_clean <- gsub("^Group", "", contrast_raw)
-
-    split_pattern <- if (grepl(" - ", contrast_clean)) {
-      " - "
-    } else if (grepl("_vs_", contrast_clean)) {
-      "_vs_"
-    } else {
-      NULL
-    }
-
-    if (!is.null(split_pattern)) {
-      parts <- strsplit(contrast_clean, split_pattern)[[1]]
-
-      if (length(parts) == 2) {
-        condition_tested    <- parts[1]
-        reference_condition <- parts[2]
-      }
-    }
-  }
-
-  # ===========================================================================
-  # 3) study_info
-  # ===========================================================================
-  imp <- get_last(proj$input$imp_data)
-
-  study_info <- list(
-    project_name = proj$project_info$name,
-    organism     = imp$organism,
-    n_genes      = imp$n_genes,
-    n_samples    = imp$n_samples,
-    platform     = imp$detected_format,
-    gene_id_type = imp$gene_id_type,
-    condition_tested    = condition_tested,
-    reference_condition = reference_condition
-  )
-
-  # ===========================================================================
-  # 4) gene_info
-  # ===========================================================================
-  de_results <- comp$res
-
-  gene_info <- imp$gene_annotation
-
-  # ===========================================================================
-  # 5) DE results
-  # ===========================================================================
-  de_results$gene_id <- rownames(de_results)
-  rownames(de_results) <- NULL
-
-  colnames(de_results)[colnames(de_results) == "log2FoldChange"] <- "logFC"
-  colnames(de_results)[colnames(de_results) == "stat"] <- "statistic"
-
-  # ===========================================================================
-  # 6) GSEA (enrichment)
-  # ===========================================================================
-  gsea <- get_last(proj$analyses$gsea)
-
-  enrichment <- NULL
-  if (!is.null(gsea)) {
-    enrichment <- gsea$gsea_full
-  }
-
-  enrichment$leadingEdge <- NULL
-  colnames(enrichment)[colnames(enrichment) == "pval"] <- "pvalue"
-
-  # ===========================================================================
-  # 7) QC - Logs
-  # ===========================================================================
-
-  qc <- get_last(proj$logs$QC)
-
-  # ===========================================================================
-  # 8) Build clean object
-  # ===========================================================================
-
-  clean <- list(
-    study_info = study_info,
-    gene_info  = gene_info,
-    de_results = de_results,
-    enrichment = enrichment,
-    qc         = qc,
-    version    = proj$version
-  )
-
-  class(clean) <- "rna_project"
-
-  # ===========================================================================
-  # 9) Save
-  # ===========================================================================
-
-  saveRDS(clean, file = file, compress = compress)
-
-  if (verbose) {
-    message("rna_project saved: ", file)
-  }
-
-  invisible(clean)
+if (!inherits(project, "rna_project")) {
+  stop("Input must be a 'rna_project' object.")
 }
+
+# Create independent object for saving
+proj <- project
+
+# =============================================================================
+# 2. Remove heavy objects
+# =============================================================================
+
+# Raw imported data
+if (!is.null(proj$input$imp_data) &&
+    !is.null(proj$input$imp_data$data)) {
+
+  proj$input$imp_data$data <- NULL
+}
+
+# Normalized expression matrix
+if (!is.null(proj$data) &&
+    !is.null(proj$data$normalized_data) &&
+    !is.null(proj$data$normalized_data$expr_matrix)) {
+
+  proj$data$normalized_data$expr_matrix <- NULL
+}
+
+# =============================================================================
+# 3. Save
+# =============================================================================
+
+saveRDS(
+  proj,
+  file = file,
+  compress = compress
+)
+
+if (verbose) {
+  message("rna_project saved: ", file)
+}
+
+invisible(proj)
+
+}
+
+
+

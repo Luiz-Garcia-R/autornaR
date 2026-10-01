@@ -9,6 +9,7 @@
 # Version control / Git
 ^\\.git$
 ^\\.gitignore$
+^\.github$
 
 # Documentation / Markdown / Notes
 ^README\\.md$
@@ -34,3 +35,5 @@
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^\.*\\.Rproj$$
+
+

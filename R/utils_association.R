@@ -1,16 +1,17 @@
-# ============================
-# Auxiliary correlation functions
-# ============================
+# ============================================================================ #
+#                     ### Auxiliary correlation functions ###                  #
+# ============================================================================ #
 
-# ============================
+# =============================================================================
 # Diagnosis
-# ============================
+# =============================================================================
 #' @keywords internal
+
 .run_corr_diagnostics <- function(x, y, method) {
 
-  # ---------------------------
+  # ===============================================
   # Basic metrics
-  # ---------------------------
+  # ===============================================
   n_x <- length(x)
 
   has_ties <- anyDuplicated(x) > 0 || anyDuplicated(y) > 0
@@ -23,9 +24,9 @@
     tryCatch(stats::shapiro.test(y)$p.value > 0.05,
              error = function(e) FALSE)
 
-  # ---------------------------
+  # ===============================================
   # Outlier detection (IQR rule)
-  # ---------------------------
+  # ===============================================
   detect_outliers <- function(v) {
     q <- stats::quantile(v, probs = c(0.25, 0.75), na.rm = TRUE)
     iqr <- q[2] - q[1]
@@ -37,9 +38,9 @@
     length(detect_outliers(y)) / length(y)
   )
 
-  # ---------------------------
+  # ===============================================
   # Method selection
-  # ---------------------------
+  # ===============================================
   if (method == "auto") {
 
     # Extreme outliers → Kendall
@@ -66,9 +67,9 @@
     method_used <- method
   }
 
-  # ---------------------------
+  # ===============================================
   # Return structured object
-  # ---------------------------
+  # ===============================================
   return(list(
     method_used = method_used,
     diagnostics = list(
@@ -80,16 +81,14 @@
   ))
 }
 
-# ============================
+# =============================================================================
 # Resolve features
-# ============================
+# =============================================================================
 #' @keywords internal
-
-# TODO:
+# TODO: ####
 # In future versions allow mixed feature types
 # (gene + metadata + pathway + cell_score)
 # for regression-like workflows.
-
 
 .resolve_features <- function(project,
                               expr_mat,
@@ -98,9 +97,9 @@
                               type = "auto",
                               format = "continuous") {
 
-  # ---------------------------
+  # ===============================================
   # Auto-detection
-  # ---------------------------
+  # ===============================================
 
   if (type == "auto") {
 
@@ -128,9 +127,9 @@
 
     is_metadata <- features %in% colnames(metadata)
 
-    # ---------------------------
+    # ===============================================
     # Ambiguous features
-    # ---------------------------
+    # ===============================================
 
     ambiguous <- is_gene & is_metadata
 
@@ -144,9 +143,9 @@
       )
     }
 
-    # ---------------------------
+    # ===============================================
     # Unresolved features
-    # ---------------------------
+    # ===============================================
 
     unresolved <- !(is_gene | is_metadata)
 
@@ -159,9 +158,9 @@
       )
     }
 
-    # ---------------------------
+    # ===============================================
     # Determine feature class
-    # ---------------------------
+    # ===============================================
 
     detected <- ifelse(
       is_gene,
@@ -181,9 +180,9 @@
     type <- unique(detected)
   }
 
-  # ---------------------------
+  # ===============================================
   # Gene features
-  # ---------------------------
+  # ===============================================
 
   if (type == "gene") {
 
@@ -265,9 +264,9 @@
     return(out)
   }
 
-  # ---------------------------
+  # ===============================================
   # Metadata features
-  # ---------------------------
+  # ===============================================
 
   if (type == "metadata") {
 
@@ -317,9 +316,10 @@
     return(out)
   }
 
-  # ---------------------------
+  # ===============================================
   # GSVA features
-  # ---------------------------
+  # ===============================================
+
   if (type == "gsva") {
 
     scores <- .get_gsva_scores(project)
@@ -355,165 +355,169 @@
   )
 }
 
-# ============================
+# ==========================================================
 # Compute mi
-# ============================
+# ==========================================================
 #' @importFrom stats complete.cases
 
-  .compute_mi <- function(x, y, method = c("knn", "discrete"), bins = 10, k = 5) {
+.compute_mi <- function(x, y, method = c("knn", "discrete"), bins = 10, k = 5) {
 
 
-  method <- match.arg(method)
+method <- match.arg(method)
 
-  # Remove NA
-  df <- data.frame(x = x, y = y)
-  df <- df[complete.cases(df), ]
+# Remove NA
+df <- data.frame(x = x, y = y)
+df <- df[complete.cases(df), ]
 
-  x <- df$x
-  y <- df$y
+x <- df$x
+y <- df$y
 
-  if (length(x) < 10) {
-    warning("Too few observations to estimate mutual information reliably.")
-    return(NA_real_)
-  }
+if (length(x) < 10) {
+  warning("Too few observations to estimate mutual information reliably.")
+  return(NA_real_)
+}
 
-  if (method == "discrete") {
+if (method == "discrete") {
 
-    # ---------------------------
-    # Discretization-based MI
-    # ---------------------------
+  # =============================================
+  # Discretization-based MI
+  # =============================================
 
-    # Equal-frequency bins
-    x_disc <- cut(x,
-                  breaks = quantile(x, probs = seq(0, 1, length.out = bins + 1), na.rm = TRUE),
-                  include.lowest = TRUE,
-                  labels = FALSE)
+  # Equal-frequency bins
+  x_disc <- cut(x,
+                breaks = quantile(x, probs = seq(0, 1, length.out = bins + 1), na.rm = TRUE),
+                include.lowest = TRUE,
+                labels = FALSE)
 
-    y_disc <- cut(y,
-                  breaks = quantile(y, probs = seq(0, 1, length.out = bins + 1), na.rm = TRUE),
-                  include.lowest = TRUE,
-                  labels = FALSE)
+  y_disc <- cut(y,
+                breaks = quantile(y, probs = seq(0, 1, length.out = bins + 1), na.rm = TRUE),
+                include.lowest = TRUE,
+                labels = FALSE)
 
-    # Joint distribution
-    joint <- table(x_disc, y_disc)
-    joint <- joint / sum(joint)
+  # Joint distribution
+  joint <- table(x_disc, y_disc)
+  joint <- joint / sum(joint)
 
-    px <- rowSums(joint)
-    py <- colSums(joint)
+  px <- rowSums(joint)
+  py <- colSums(joint)
 
-    mi <- 0
+  mi <- 0
 
-    for (i in seq_len(nrow(joint))) {
-      for (j in seq_len(ncol(joint))) {
+  for (i in seq_len(nrow(joint))) {
+    for (j in seq_len(ncol(joint))) {
 
-        if (joint[i, j] > 0) {
-          mi <- mi + joint[i, j] * log(joint[i, j] / (px[i] * py[j]))
-        }
+      if (joint[i, j] > 0) {
+        mi <- mi + joint[i, j] * log(joint[i, j] / (px[i] * py[j]))
       }
     }
-
-    return(as.numeric(mi))
   }
 
-  if (method == "knn") {
+  return(as.numeric(mi))
+}
 
-    # ---------------------------
-    # KNN-based MI
-    # ---------------------------
-    if (!requireNamespace("FNN", quietly = TRUE)) {
-      stop("Package 'FNN' is required for method = 'knn'.")
-    }
+if (method == "knn") {
 
-    # KNN distance
-    xy <- cbind(x, y)
+  # =============================================
+  # KNN-based MI
+  # =============================================
 
-    nn <- FNN::get.knn(xy, k = k)
+  if (!requireNamespace("FNN", quietly = TRUE)) {
+    stop("Package 'FNN' is required for method = 'knn'.")
+  }
 
-    # Compute distance
-    eps <- nn$nn.dist[, k]
+  # KNN distance
+  xy <- cbind(x, y)
 
-    # Marginal count
-    nx <- sapply(seq_along(x), function(i) {
-      sum(abs(x - x[i]) < eps[i]) - 1
-    })
+  nn <- FNN::get.knn(xy, k = k)
 
-    ny <- sapply(seq_along(y), function(i) {
-      sum(abs(y - y[i]) < eps[i]) - 1
-    })
+  # Compute distance
+  eps <- nn$nn.dist[, k]
 
-    n <- length(x)
+  # Marginal count
+  nx <- sapply(seq_along(x), function(i) {
+    sum(abs(x - x[i]) < eps[i]) - 1
+  })
 
-    # Kraskov estimator (simplified)
-    mi <- digamma(k) + digamma(n) -
-      mean(digamma(nx + 1) + digamma(ny + 1))
+  ny <- sapply(seq_along(y), function(i) {
+    sum(abs(y - y[i]) < eps[i]) - 1
+  })
 
-    return(as.numeric(mi))
+  n <- length(x)
+
+  # Kraskov estimator (simplified)
+  mi <- digamma(k) + digamma(n) -
+    mean(digamma(nx + 1) + digamma(ny + 1))
+
+  return(as.numeric(mi))
+}
+}
+
+# ===============================================
+# Classify relationship
+# ===============================================
+
+.classify_relationship <- function(r, mi_signal, non_linear_signal) {
+
+  if (is.null(mi_signal)) return(NULL)
+
+  r_abs <- abs(r)
+
+  if (mi_signal < 0.05) {
+
+    return("no clear association")
+
+  } else if (r_abs > 0.8 && non_linear_signal < 0.1) {
+
+    return("strong linear relationship")
+
+  } else if (r_abs > 0.8 && non_linear_signal >= 0.1) {
+
+    return("strong linear with non-linear component")
+
+  } else if (r_abs > 0.4 && mi_signal > 0.2) {
+
+    return("monotonic (possibly non-linear)")
+
+  } else if (r_abs < 0.3 && mi_signal > 0.2) {
+
+    return("non-linear complex relationship")
+
+  } else {
+
+    return("weak or ambiguous relationship")
   }
 }
 
-  # ============================
-  # Classify relationship
-  # ============================
-  .classify_relationship <- function(r, mi_signal, non_linear_signal) {
+# ===============================================
+# Compute entropy
+# ===============================================
 
-    if (is.null(mi_signal)) return(NULL)
+.compute_entropy <- function(x, method = "discrete", bins = 10) {
 
-    r_abs <- abs(r)
+  if (method == "discrete") {
 
-    if (mi_signal < 0.05) {
+    x_disc <- cut(x, breaks = bins, labels = FALSE)
+    p <- table(x_disc) / length(x_disc)
 
-      return("no clear association")
-
-    } else if (r_abs > 0.8 && non_linear_signal < 0.1) {
-
-      return("strong linear relationship")
-
-    } else if (r_abs > 0.8 && non_linear_signal >= 0.1) {
-
-      return("strong linear with non-linear component")
-
-    } else if (r_abs > 0.4 && mi_signal > 0.2) {
-
-      return("monotonic (possibly non-linear)")
-
-    } else if (r_abs < 0.3 && mi_signal > 0.2) {
-
-      return("non-linear complex relationship")
-
-    } else {
-
-      return("weak or ambiguous relationship")
-    }
+  } else {
+    stop("Entropy currently implemented only for 'discrete' method.")
   }
 
-  # ============================
-  # Compute entropy
-  # ============================
-  .compute_entropy <- function(x, method = "discrete", bins = 10) {
+  p <- p[p > 0]
 
-    if (method == "discrete") {
+  -sum(p * log(p))
+}
 
-      x_disc <- cut(x, breaks = bins, labels = FALSE)
-      p <- table(x_disc) / length(x_disc)
+# ===============================================
+# Normalize mi
+# ===============================================
 
-    } else {
-      stop("Entropy currently implemented only for 'discrete' method.")
-    }
+.normalize_mi <- function(mi, x, y, method = "discrete") {
 
-    p <- p[p > 0]
+  hx <- .compute_entropy(x, method = method)
+  hy <- .compute_entropy(y, method = method)
 
-    -sum(p * log(p))
-  }
+  if (hx == 0 || hy == 0) return(NA)
 
-  # ============================
-  # Normalize mi
-  # ============================
-  .normalize_mi <- function(mi, x, y, method = "discrete") {
-
-    hx <- .compute_entropy(x, method = method)
-    hy <- .compute_entropy(y, method = method)
-
-    if (hx == 0 || hy == 0) return(NA)
-
-    mi / sqrt(hx * hy)
-  }
+  mi / sqrt(hx * hy)
+}

@@ -174,275 +174,322 @@ rna.normalize <- function(project,
                           save = TRUE
 ) {
 
-  # ===========================================================================
-  # 1) Get active project
-  # ===========================================================================
-  proj <- project
+# =============================================================================
+# 1. Get active project
+# =============================================================================
 
-  # ===========================================================================
-  # 2) Validate input
-  # ===========================================================================
-  if (is.null(proj$input$imp_data)) {
-    stop("No imported data found. Run rna.import() first.")
-  }
+proj <- project
 
-  # --- Access last imp_data ---
-  imp_container <- proj$input$imp_data
+# =============================================================================
+# 2. Validate input
+# =============================================================================
 
-  if (is.null(imp_container$last)) {
-    stop("No active import found in 'imp_data$last'")
-  }
+if (is.null(proj$input$imp_data)) {
+  stop("No imported data found. Run rna.import() first.")
+}
 
-  imp_data <- imp_container[[imp_container$last]]
+# =============================================================================
+# 3. Access imported data
+# =============================================================================
 
-  method <- match.arg(method)
-  outlier_method <- match.arg(outlier_method)
+imp_data <- .get_imp(proj)
 
-  data_df <- as.data.frame(imp_data$data)
-  gene_col <- grep("^geneid$", colnames(data_df), ignore.case = TRUE, value = TRUE)
-  if (length(gene_col) == 0)
-    stop("Gene identifier column not found (expected: Geneid, GeneID, or geneID).")
+method <- match.arg(method)
+outlier_method <- match.arg(outlier_method)
 
-  gene_ids <- data_df[[gene_col]]
-  counts <- data_df[, setdiff(colnames(data_df), gene_col), drop = FALSE]
-  counts <- data.frame(
-    lapply(counts, function(col) as.numeric(col)),
-    check.names = FALSE
+data_df <- as.data.frame(imp_data$data)
+
+gene_col <- grep(
+  "^geneid$",
+  colnames(data_df),
+  ignore.case = TRUE,
+  value = TRUE
+)
+
+if (length(gene_col) == 0)
+  stop(
+    "Gene identifier column not found (expected: Geneid, GeneID, or geneID)."
   )
-  rownames(counts) <- gene_ids
 
-  if (!is.null(proj$data) && !is.null(proj$data$normalized_data)) {
-    warning("Overwriting existing normalized data.")
+gene_ids <- data_df[[gene_col]]
+
+counts <- data_df[
+  , setdiff(colnames(data_df), gene_col),
+  drop = FALSE
+]
+
+counts <- data.frame(
+  lapply(counts, function(col) as.numeric(col)),
+  check.names = FALSE
+)
+
+rownames(counts) <- gene_ids
+
+if (!is.null(proj$data) &&
+    !is.null(proj$data$normalized_data)) {
+
+  warning("Overwriting existing normalized data.")
+}
+
+# ===============================================
+# 3.1. Gene ID version cleanup
+# ===============================================
+
+if (clean_gene_versions && imp_data$gene_id_type == "ENSEMBL") {
+  gene_ids_clean <- sub(paste0(gene_id_sep, ".*$"), "", rownames(counts))
+
+  if (anyDuplicated(gene_ids_clean)) {
+    message("Gene ID version removal produced duplicated IDs. Aggregating counts by gene.")
+
+    # Aggregation by sum
+    counts <- rowsum(counts, group = gene_ids_clean)
+  } else {
+    rownames(counts) <- gene_ids_clean
+  }
+}
+
+metadata <- as.data.frame(imp_data$metadata)
+metadata <- metadata[match(colnames(counts), metadata$Sample), , drop = FALSE]
+
+# =============================================================================
+# 4. Filter low-expressed genes
+# =============================================================================
+
+removed_genes <- 0
+if (filter_low) {
+  prop_expr <- rowMeans(counts >= min_expr, na.rm = TRUE)
+  keep <- prop_expr >= filter_min_prop
+  removed_genes <- sum(!keep)
+  counts <- counts[keep, , drop = FALSE]
+  if (removed_genes > 0) {
+    message(removed_genes, " gene(s) removed (min count >= ", min_expr,
+            " in >= ", filter_min_prop * 100, "% of samples).")
+  }
+}
+
+# =============================================================================
+# 5. Outlier detection
+# =============================================================================
+
+outliers_s <- integer(0)
+
+if (remove_outlier_samples) {
+
+  lib_sizes <- colSums(counts)
+
+  if (outlier_method == "iqr") {
+
+    q <- quantile(lib_sizes, c(0.25, 0.75))
+    iqr <- diff(q)
+    outliers_s <- which(lib_sizes < (q[1] - 1.5 * iqr) | lib_sizes > (q[2] + 1.5 * iqr))
+
+  } else {
+
+    z <- (lib_sizes - mean(lib_sizes)) / sd(lib_sizes)
+    outliers_s <- which(abs(z) > 3)
   }
 
-  # --- Gene ID version cleanup ---
-  if (clean_gene_versions && imp_data$gene_id_type == "ENSEMBL") {
-    gene_ids_clean <- sub(paste0(gene_id_sep, ".*$"), "", rownames(counts))
+  if (length(outliers_s) > 0) {
 
-    if (anyDuplicated(gene_ids_clean)) {
-      message("Gene ID version removal produced duplicated IDs. Aggregating counts by gene.")
+    removed_samples <- colnames(counts)[outliers_s]
+    counts <- counts[, -outliers_s, drop = FALSE]
+    metadata <- metadata[metadata$Sample %in% colnames(counts), , drop = FALSE]
+    message(length(outliers_s), " outlier sample(s) removed: ",
+            paste(removed_samples, collapse = ", "))
+  }
+}
 
-      # --- Aggregation by sum ---
-      counts <- rowsum(counts, group = gene_ids_clean)
-    } else {
-      rownames(counts) <- gene_ids_clean
-    }
+if (remove_outlier_genes && nrow(counts) > 2) {
+
+  gene_sds <- apply(counts, 1, sd)
+
+  if (outlier_method == "iqr") {
+
+    q <- quantile(gene_sds, c(0.25, 0.75))
+    iqr <- diff(q)
+    outliers_g <- which(gene_sds < (q[1] - 1.5 * iqr) | gene_sds > (q[2] + 1.5 * iqr))
+
+  } else {
+
+    z <- (gene_sds - mean(gene_sds)) / sd(gene_sds)
+    outliers_g <- which(abs(z) > 3)
   }
 
-  metadata <- as.data.frame(imp_data$metadata)
-  metadata <- metadata[match(colnames(counts), metadata$Sample), , drop = FALSE]
+  if (length(outliers_g) > 0) {
 
-  # ===========================================================================
-  # 3) Filter low-expressed genes
-  # ===========================================================================
-  removed_genes <- 0
-  if (filter_low) {
-    prop_expr <- rowMeans(counts >= min_expr, na.rm = TRUE)
-    keep <- prop_expr >= filter_min_prop
-    removed_genes <- sum(!keep)
-    counts <- counts[keep, , drop = FALSE]
-    if (removed_genes > 0) {
-      message(removed_genes, " gene(s) removed (min count >= ", min_expr,
-              " in >= ", filter_min_prop * 100, "% of samples).")
-    }
+    counts <- counts[-outliers_g, , drop = FALSE]
+    removed_genes <- removed_genes + length(outliers_g)
+    message(length(outliers_g), " outlier gene(s) removed.")
   }
+}
 
-  # ===========================================================================
-  # 4) Outlier detection
-  # ===========================================================================
-  outliers_s <- integer(0)
+# =============================================================================
+# 6. Normalization
+# =============================================================================
 
-  if (remove_outlier_samples) {
+norm_counts <- counts
 
-    lib_sizes <- colSums(counts)
+# ===============================================
+# 6.1. Log2
+# ===============================================
+if (method == "log2") {
+  norm_counts <- log2(norm_counts + 1)
 
-    if (outlier_method == "iqr") {
+  # ===============================================
+  # 6.2. CPM
+  # ===============================================
 
-      q <- quantile(lib_sizes, c(0.25, 0.75))
-      iqr <- diff(q)
-      outliers_s <- which(lib_sizes < (q[1] - 1.5 * iqr) | lib_sizes > (q[2] + 1.5 * iqr))
-
-    } else {
-
-      z <- (lib_sizes - mean(lib_sizes)) / sd(lib_sizes)
-      outliers_s <- which(abs(z) > 3)
-    }
-
-    if (length(outliers_s) > 0) {
-
-      removed_samples <- colnames(counts)[outliers_s]
-      counts <- counts[, -outliers_s, drop = FALSE]
-      metadata <- metadata[metadata$Sample %in% colnames(counts), , drop = FALSE]
-      message(length(outliers_s), " outlier sample(s) removed: ",
-              paste(removed_samples, collapse = ", "))
-    }
-  }
-
-  if (remove_outlier_genes && nrow(counts) > 2) {
-
-    gene_sds <- apply(counts, 1, sd)
-
-    if (outlier_method == "iqr") {
-
-      q <- quantile(gene_sds, c(0.25, 0.75))
-      iqr <- diff(q)
-      outliers_g <- which(gene_sds < (q[1] - 1.5 * iqr) | gene_sds > (q[2] + 1.5 * iqr))
-
-    } else {
-
-      z <- (gene_sds - mean(gene_sds)) / sd(gene_sds)
-      outliers_g <- which(abs(z) > 3)
-    }
-
-    if (length(outliers_g) > 0) {
-
-      counts <- counts[-outliers_g, , drop = FALSE]
-      removed_genes <- removed_genes + length(outliers_g)
-      message(length(outliers_g), " outlier gene(s) removed.")
-    }
-  }
-
-  # ===========================================================================
-  # 5) Normalization
-  # ===========================================================================
-  norm_counts <- counts
-
-  # Log2
-  if (method == "log2") {
-    norm_counts <- log2(norm_counts + 1)
-
-    # CPM
   } else if (method == "cpm") {
 
-    lib_sizes <- colSums(counts)
-    norm_counts <- t(t(counts) / lib_sizes * 1e6)
+  lib_sizes <- colSums(counts)
+  norm_counts <- t(t(counts) / lib_sizes * 1e6)
 
-    # TPM
+  # ===============================================
+  # 6.3. TPM
+  # ===============================================
+
   } else if (method == "tpm") {
 
-    if (is.null(imp_data$gene_annotation) ||
-        !"gene_length" %in% colnames(imp_data$gene_annotation)) {
-      stop("TPM normalization requires a 'gene_length' column in imp_data$gene_annotation.")
-    }
+  if (is.null(imp_data$gene_annotation) ||
+      !"gene_length" %in% colnames(imp_data$gene_annotation)) {
+    stop("TPM normalization requires a 'gene_length' column in imp_data$gene_annotation.")
+  }
 
-    ann <- imp_data$gene_annotation
-    ann <- ann[match(rownames(counts), ann$gene_id), ]
+  ann <- imp_data$gene_annotation
+  ann <- ann[match(rownames(counts), ann$gene_id), ]
 
-    if (any(is.na(ann$gene_length))) {
-      stop("Gene length missing for some genes.")
-    }
+  if (any(is.na(ann$gene_length))) {
+    stop("Gene length missing for some genes.")
+  }
 
-    rpk <- counts / (ann$gene_length / 1000)
-    norm_counts <- t(t(rpk) / colSums(rpk) * 1e6)
+  rpk <- counts / (ann$gene_length / 1000)
+  norm_counts <- t(t(rpk) / colSums(rpk) * 1e6)
 
-    # Quantile
+  # ===============================================
+  # 6.4.Quantile
+  # ===============================================
+
   } else if (method == "quantile") {
 
-    if (!requireNamespace("limma", quietly = TRUE))
-      stop("Please install 'limma' to use quantile normalization.")
+  if (!requireNamespace("limma", quietly = TRUE))
+    stop("Please install 'limma' to use quantile normalization.")
 
-    norm_counts <- limma::normalizeQuantiles(as.matrix(counts))
+  norm_counts <- limma::normalizeQuantiles(as.matrix(counts))
 
   } else if (method == "upper-quartile") {
 
-    uq <- apply(counts, 2, function(x) quantile(x[x > 0], 0.75))
-    norm_counts <- t(t(counts) / uq * median(uq))
+  uq <- apply(counts, 2, function(x) quantile(x[x > 0], 0.75))
+  norm_counts <- t(t(counts) / uq * median(uq))
 
-    # rlog / vst
+  # ===============================================
+  # 6.5. rlog / vst
+  # ===============================================
+
   } else if (method %in% c("rlog", "vst")) {
 
-    if (!requireNamespace("DESeq2", quietly = TRUE))
-      stop("DESeq2 not installed. Install with: BiocManager::install('DESeq2')")
+  if (!requireNamespace("DESeq2", quietly = TRUE))
+    stop("DESeq2 not installed. Install with: BiocManager::install('DESeq2')")
 
-    counts <- round(counts)
+  counts <- round(counts)
 
-    # --- Create object DESeq2 ---
-    dds <- DESeq2::DESeqDataSetFromMatrix(
-      countData = counts,
-      colData = metadata,
-      design = ~ 1
-    )
+  # ===============================================
+  # 6.6. Create object DESeq2
+  # ===============================================
+  dds <- DESeq2::DESeqDataSetFromMatrix(
+    countData = counts,
+    colData = metadata,
+    design = ~ 1
+  )
 
-    if (method == "vst") {
-      norm_counts <- DESeq2::vst(dds, blind = TRUE)
-      norm_counts <- SummarizedExperiment::assay(norm_counts)
-    } else {
-      norm_counts <- DESeq2::rlog(dds, blind = TRUE)
-      norm_counts <- SummarizedExperiment::assay(norm_counts)
-    }
+  if (method == "vst") {
+    norm_counts <- DESeq2::vst(dds, blind = TRUE)
+    norm_counts <- SummarizedExperiment::assay(norm_counts)
+  } else {
+    norm_counts <- DESeq2::rlog(dds, blind = TRUE)
+    norm_counts <- SummarizedExperiment::assay(norm_counts)
   }
-
-  # ===========================================================================
-  # 6) Quality metrics
-  # ===========================================================================
-  QC_metrics <- data.frame(
-    Sample = colnames(norm_counts),
-    Library_size = colSums(norm_counts),
-    Genes_detected = colSums(norm_counts > 0),
-    row.names = NULL
-  )
-
-  # ===========================================================================
-  # 7) Metadata alignment
-  # ===========================================================================
-  metadata <- metadata[match(colnames(norm_counts), metadata$Sample), , drop = FALSE]
-  if (!all(metadata$Sample == colnames(norm_counts))) {
-    warning("Metadata and expression matrix were realigned to match sample order.")
-  }
-
-  # ===========================================================================
-  # 8) Final object
-  # ===========================================================================
-  obj <- list(
-    timestamp = Sys.time(),
-    expr_matrix = norm_counts,
-    metadata = metadata,
-    method = method,
-    removed_genes = removed_genes,
-    removed_samples = length(outliers_s),
-    QC_metrics = QC_metrics,
-    gene_id_version_cleaned = clean_gene_versions,
-    gene_id_type = imp_data$gene_id_type
-  )
-  class(obj) <- "normalized_data"
-
-  # ===========================================================================
-  # 9) Attach to project
-  # ===========================================================================
-  if (save) {
-
-  proj <- .attach_to_project(
-    proj,
-    obj,
-    slot = "data",
-    subtype = "normalized_data",
-    prefix = "norm",
-    log = list(
-      method = method,
-      n_genes = nrow(obj$expr_matrix),
-      n_samples = ncol(obj$expr_matrix),
-      removed_genes = removed_genes,
-      removed_samples = length(outliers_s)
-    )
-  )
 }
 
-  # ===========================================================================
-  # 10) Return
-  # ===========================================================================
-  .print_header("RNA Normalization")
+# =============================================================================
+# 7. Quality metrics
+# =============================================================================
 
-  .print_block("Summary", function() {
-    cat("Method:            ", method, "\n")
-    cat("Samples:           ", ncol(obj$expr_matrix), "\n")
-    cat("Genes:             ", nrow(obj$expr_matrix), "\n")
-    cat("Removed genes:     ", removed_genes, "\n")
-    cat("Removed samples:   ", length(outliers_s), "\n")
-  })
+QC_metrics <- data.frame(
+  Sample = colnames(norm_counts),
+  Library_size = colSums(norm_counts),
+  Genes_detected = colSums(norm_counts > 0),
+  row.names = NULL
+)
 
-  .print_block("QC Metrics (first 5 samples)", function() {
-    print(utils::head(obj$QC_metrics, 5))
-  })
+# =============================================================================
+# 8. Metadata alignment
+# =============================================================================
 
-  return(invisible(proj))
+metadata <- metadata[match(colnames(norm_counts),
+                           metadata$Sample), , drop = FALSE]
+
+if (!all(metadata$Sample == colnames(norm_counts))) {
+  warning("Metadata and expression matrix were realigned to match sample order.")
+}
+
+# =============================================================================
+# 9. Final object
+# =============================================================================
+
+# Final object
+obj <- list(
+  timestamp = Sys.time(),
+  expr_matrix = norm_counts,
+  metadata = metadata,
+  method = method,
+  removed_genes = removed_genes,
+  removed_samples = length(outliers_s),
+  QC_metrics = QC_metrics,
+  gene_id_version_cleaned = clean_gene_versions,
+  gene_id_type = imp_data$gene_id_type
+)
+
+class(obj) <- "normalized_data"
+
+# =============================================================================
+# 10. Attach to project
+# =============================================================================
+
+if (save) {
+
+proj <- .attach_to_project(
+  proj,
+  obj,
+  slot = "data",
+  subtype = "normalized_data",
+  log = list(
+    method = method,
+    n_genes = nrow(obj$expr_matrix),
+    n_samples = ncol(obj$expr_matrix),
+    removed_genes = removed_genes,
+    removed_samples = length(outliers_s)
+  )
+)
+}
+
+# =============================================================================
+# 11. Return
+# =============================================================================
+
+.print_header("RNA Normalization")
+
+.print_block("Summary", function() {
+  cat("Method:            ", method, "\n")
+  cat("Samples:           ", ncol(obj$expr_matrix), "\n")
+  cat("Genes:             ", nrow(obj$expr_matrix), "\n")
+  cat("Removed genes:     ", removed_genes, "\n")
+  cat("Removed samples:   ", length(outliers_s), "\n")
+})
+
+.print_block("QC Metrics (first 5 samples)", function() {
+  print(utils::head(obj$QC_metrics, 5))
+})
+
+return(invisible(proj))
+
 }

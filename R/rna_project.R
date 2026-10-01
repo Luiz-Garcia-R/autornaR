@@ -19,8 +19,9 @@
 #' @return
 #' Invisibly returns an object of class \code{"rna_project"}, containing:
 #' \describe{
-#'   \item{project_info}{Metadata about the project (name, creation time, preprocessing steps, list of downstream analyses).}
-#'   \item{input}{Raw imported data (e.g., count matrices, annotations).}
+#'   \item{project_info}{Metadata about the project (name, creation time,
+#'   preprocessing steps, list of downstream analyses).}
+#'   \item{input}{Imported data (e.g., count matrices, annotations).}
 #'   \item{data}{Processed data objects (e.g., normalized expression matrices).}
 #'   \item{logs}{Execution logs for reproducibility and tracking.}
 #'   \item{version}{Package version used to create the project.}
@@ -72,24 +73,38 @@
 
 rna.project <- function(project_name = NULL) {
 
+  # Object creation
   obj <- list(
     project_info = list(
-      name = if (is.null(project_name)) "rna_project" else project_name,
+      name = if (is.null(project_name)) {
+        "rna_project"
+      } else {
+        project_name
+      },
       created = Sys.time(),
       preprocessing = NULL,
       analyses = list()
     ),
+
     input = list(
       imp_data = NULL
     ),
+
     data = NULL,
+
     logs = list(),
-    version = as.character(utils::packageVersion("autornaR"))
+
+    version = as.character(
+      utils::packageVersion("autornaR")
+    )
   )
 
+  # Object class
   class(obj) <- "rna_project"
 
+  # Message
   message("New RNA project initialized.")
 
   return(invisible(obj))
+
 }

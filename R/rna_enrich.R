@@ -115,250 +115,259 @@ rna.enrich <- function(project,
                        save = TRUE
 ) {
 
-  plot_style <- match.arg(plot_style)
+plot_style <- match.arg(plot_style)
 
-  # ===========================================================================
-  # 0) Basic checks
-  # ===========================================================================
-  ont <- match.arg(ont, several.ok = TRUE)
+# =============================================================================
+# 0. Basic checks
+# =============================================================================
 
-  .check_dependencies("clusterProfiler")
+ont <- match.arg(ont, several.ok = TRUE)
 
-  if (plot) {
-    .check_dependencies("ggplot2")
-  }
+.check_dependencies("clusterProfiler")
 
-  if (plot && plot_style == "dotplot") {
-    .check_dependencies("enrichplot")
-  }
-
-  # ===========================================================================
-  # 1) Get active project
-  # ===========================================================================
-  proj <- project
-
-  organism <- .get_organism(proj)
-  gene_id_type <- .get_gene_id_type(proj)
-  comps <- .get_comp(proj)
-
-  # ===========================================================================
-  # 2) Validate input
-  # ===========================================================================
-  if (is.null(use_comparison)) {
-    use_comparison <- tail(setdiff(names(comps), "last"), 1)
-    msg <- "[rna.enrich] Using last comparison: "
-  } else {
-    if (is.numeric(use_comparison)) {
-      ids <- setdiff(names(comps), "last")
-      use_comparison <- ids[use_comparison]
-    }
-    msg <- "[rna.enrich] Using stored comparison: "
-  }
-
-  message(msg, use_comparison)
-
-  comp_obj <- .get_comp_obj(proj, use_comparison)
-
-  # ===========================================================================
-  # 3) Validate organism
-  # ===========================================================================
-  message("[rna.enrich] Using organism from project: ", organism)
-
-  org_pkg <- switch(
-    organism,
-    human = "org.Hs.eg.db",
-    mouse = "org.Mm.eg.db",
-    zebrafish = "org.Dr.eg.db",
-    stop("`organism` must be 'human', 'mouse' or 'zebrafish'.")
-  )
-
-  .check_dependencies(c("clusterProfiler", "enrichplot", "ggplot2", org_pkg))
-
-  # --- Select organism database ---
-  OrgDb <- switch(
-    organism,
-    human = org.Hs.eg.db::org.Hs.eg.db,
-    mouse = org.Mm.eg.db::org.Mm.eg.db,
-    zebrafish = org.Dr.eg.db::org.Dr.eg.db
-  )
-
-  # ===========================================================================
-  # 3) Validate input
-  # ===========================================================================
-  res <- as.data.frame(comp_obj$res)
-
-  contrast <- c(
-    comp_obj$groups$reference,
-    comp_obj$groups$test
-  )
-
-  # --- Gene ID sanity check ---
-  gene_ids <- rownames(res)
-
-  if (any(grepl("\\.", gene_ids))) {
-    stop(
-      "[rna_enrich] Gene IDs contain version suffixes (e.g. ENSG...\\.6).\n",
-      "This function expects cleaned Ensembl IDs.\n",
-      "Please run rna.normalize(clean_gene_versions = TRUE) upstream."
-    )
-  }
-
-  # ===========================================================================
-  # 4) Filter up- and down-regulated genes
-  # ===========================================================================
-  up_genes <- res[!is.na(res$padj) &
-                    res$padj < padj_cutoff &
-                    res$log2FoldChange > log2fc_cutoff, ]
-
-  down_genes <- res[!is.na(res$padj) &
-                      res$padj < padj_cutoff &
-                      res$log2FoldChange < -log2fc_cutoff, ]
-
-  .run_direction <- function(gene_table, direction_label) {
-
-    if (nrow(gene_table) == 0) {
-      return(NULL)
-    }
-
-    res_list <- lapply(ont, function(o) {
-      .run_go_enrichment(
-        gene_ids = rownames(gene_table),
-        OrgDb = OrgDb,
-        from_type = gene_id_type,
-        ont = o,
-        p_cutoff = enrich_p_cutoff
-      )
-    })
-
-    names(res_list) <- ont
-
-    # Dotplot
-    if (plot) {
-      for (o in names(res_list)) {
-        ego <- res_list[[o]]
-
-        if (is.null(ego)) next
-
-        df <- as.data.frame(ego)
-
-        if (nrow(df) == 0) next
-
-          if (plot_style == "dotplot") {
-
-            print(
-              enrichplot::dotplot(ego, showCategory = top_terms) +
-                ggplot2::ggtitle(
-                  paste0("GO ", o, " (", direction_label, " genes)")
-                ) +
-                ggplot2::theme_minimal()
-            )
-
-            # Barplot
-          } else if (plot_style == "barplot") {
-
-            df <- as.data.frame(ego)
-
-            df <- df[order(df$p.adjust), ]
-            df <- head(df, top_terms)
-
-            df$Description <- factor(df$Description, levels = rev(df$Description))
-
-            p <- ggplot2::ggplot(
-              df,
-              ggplot2::aes(x = -log10(p.adjust),
-                           y = .data$Description,
-                           fill = p.adjust)
-            ) +
-
-              ggplot2::geom_col() +
-
-              ggplot2::scale_fill_gradient(
-                low = "#DD6765",
-                high = "#327EBA"
-              ) +
-              ggplot2::labs(
-                title = paste0("GO ", o, " (", direction_label, " genes)"),
-                x = expression(-log[10]("adjusted p-value")),
-                y = NULL
-              ) +
-
-              ggplot2::theme_minimal() +
-
-              ggplot2::theme(
-                axis.text.y = ggplot2::element_text(size = 10)
-              )
-
-            print(p)
-          }
-        }
-      }
-
-    res_list
-  }
-
-  if (nrow(up_genes) == 0 && nrow(down_genes) == 0) {
-    message("[rna_enrich] No significant genes found with the given thresholds.")
-    return(invisible(NULL))
-  }
-
-
-  # ===========================================================================
-  # 5) enrichment + plotting
-  # ===========================================================================
-  ego_up   <- .run_direction(up_genes, "up-regulated")
-  ego_down <- .run_direction(down_genes, "down-regulated")
-
-  # ===========================================================================
-  # 6) Output
-  # ===========================================================================
-
-  params <- list(
-    timestamp = Sys.time(),
-    padj_cutoff = padj_cutoff,
-    log2fc_cutoff = log2fc_cutoff,
-    ont = ont,
-    top_terms = top_terms
-  )
-
-  obj <- list(
-    comparison = use_comparison,
-    contrast = contrast,
-    organism = proj$input$imp_data$organism,
-    gene_id_type = gene_id_type,
-    up = ego_up,
-    down = ego_down,
-    params = params
-  )
-
-  class(obj) <- "enrich_result"
-
-  # ===========================================================================
-  # 7) Attach to project
-  # ===========================================================================
-  if (save) {
-
-    proj <- .attach_to_project(
-      proj,
-      obj,
-      slot = "analyses",
-      subtype = "enrichment",
-      prefix = "enrich",
-      log = list(
-        comparison = use_comparison,
-        organism = proj$input$imp_data$organism,
-        padj_cutoff = padj_cutoff,
-        log2fc_cutoff = log2fc_cutoff,
-        ont = ont
-      )
-    )
-  }
-
-  return(invisible(proj))
+if (plot) {
+  .check_dependencies("ggplot2")
 }
 
-# ===========================================================================
-# 8) Print S3
-# ===========================================================================
+if (plot && plot_style == "dotplot") {
+  .check_dependencies("enrichplot")
+}
+
+# =============================================================================
+# 1. Get active project
+# =============================================================================
+
+proj <- project
+
+organism <- .get_organism(proj)
+gene_id_type <- .get_gene_id_type(proj)
+comp_obj <- .get_comp(proj)
+
+# =============================================================================
+# 2. Validate input
+# =============================================================================
+
+if (is.null(comp_obj$res)) {
+  stop(
+    "Current comparison does not contain differential expression results."
+  )
+}
+
+if (!inherits(comp_obj, "rnaCompare")) {
+  stop("Current comparison is not a valid comparison.")
+}
+
+# =============================================================================
+# 3. Validate organism
+# =============================================================================
+
+message("[rna.enrich] Using organism from project: ", organism)
+
+org_pkg <- switch(
+  organism,
+  human = "org.Hs.eg.db",
+  mouse = "org.Mm.eg.db",
+  zebrafish = "org.Dr.eg.db",
+  stop("`organism` must be 'human', 'mouse' or 'zebrafish'.")
+)
+
+.check_dependencies(c("clusterProfiler", "enrichplot", "ggplot2", org_pkg))
+
+# Select organism database
+OrgDb <- switch(
+  organism,
+  human = org.Hs.eg.db::org.Hs.eg.db,
+  mouse = org.Mm.eg.db::org.Mm.eg.db,
+  zebrafish = org.Dr.eg.db::org.Dr.eg.db
+)
+
+# =============================================================================
+# 4. Validate input
+# =============================================================================
+
+res <- as.data.frame(comp_obj$res)
+
+contrast <- c(
+  comp_obj$groups$reference,
+  comp_obj$groups$test
+)
+
+#  Gene ID sanity check
+gene_ids <- rownames(res)
+
+if (any(grepl("\\.", gene_ids))) {
+  stop(
+    "[rna_enrich] Gene IDs contain version suffixes (e.g. ENSG...\\.6).\n",
+    "This function expects cleaned Ensembl IDs.\n",
+    "Please run rna.normalize(clean_gene_versions = TRUE) upstream."
+  )
+}
+
+# =============================================================================
+# 5. Filter up- and down-regulated genes
+# =============================================================================
+
+up_genes <- res[!is.na(res$padj) &
+                  res$padj < padj_cutoff &
+                  res$log2FoldChange > log2fc_cutoff, ]
+
+down_genes <- res[!is.na(res$padj) &
+                    res$padj < padj_cutoff &
+                    res$log2FoldChange < -log2fc_cutoff, ]
+
+.run_direction <- function(gene_table, direction_label) {
+
+  if (nrow(gene_table) == 0) {
+    return(NULL)
+  }
+
+  res_list <- lapply(ont, function(o) {
+    .run_go_enrichment(
+      gene_ids = rownames(gene_table),
+      OrgDb = OrgDb,
+      from_type = gene_id_type,
+      ont = o,
+      p_cutoff = enrich_p_cutoff
+    )
+  })
+
+  names(res_list) <- ont
+
+  # ===============================================
+  # 5.1. Dotplot
+  # ===============================================
+
+  if (plot) {
+    for (o in names(res_list)) {
+      ego <- res_list[[o]]
+
+      if (is.null(ego)) next
+
+      df <- as.data.frame(ego)
+
+      if (nrow(df) == 0) next
+
+        if (plot_style == "dotplot") {
+
+          print(
+            enrichplot::dotplot(ego, showCategory = top_terms) +
+              ggplot2::ggtitle(
+                paste0("GO ", o, " (", direction_label, " genes)")
+              ) +
+              ggplot2::theme_minimal()
+          )
+
+          # ===============================================
+          # 5.2. Barplot
+          # ===============================================
+
+        } else if (plot_style == "barplot") {
+
+          df <- as.data.frame(ego)
+
+          df <- df[order(df$p.adjust), ]
+          df <- head(df, top_terms)
+
+          df$Description <- factor(df$Description, levels = rev(df$Description))
+
+          p <- ggplot2::ggplot(
+            df,
+            ggplot2::aes(x = -log10(p.adjust),
+                         y = .data$Description,
+                         fill = p.adjust)
+          ) +
+
+            ggplot2::geom_col() +
+
+            ggplot2::scale_fill_gradient(
+              low = "#DD6765",
+              high = "#327EBA"
+            ) +
+            ggplot2::labs(
+              title = paste0("GO ", o, " (", direction_label, " genes)"),
+              x = expression(-log[10]("adjusted p-value")),
+              y = NULL
+            ) +
+
+            ggplot2::theme_minimal() +
+
+            ggplot2::theme(
+              axis.text.y = ggplot2::element_text(size = 10)
+            )
+
+          print(p)
+        }
+      }
+    }
+
+  res_list
+}
+
+if (nrow(up_genes) == 0 && nrow(down_genes) == 0) {
+  message("[rna_enrich] No significant genes found with the given thresholds.")
+  return(invisible(NULL))
+}
+
+
+# =============================================================================
+# 6. enrichment + plotting
+# =============================================================================
+
+ego_up   <- .run_direction(up_genes, "up-regulated")
+ego_down <- .run_direction(down_genes, "down-regulated")
+
+# =============================================================================
+# 7. Output
+# =============================================================================
+
+params <- list(
+  timestamp = Sys.time(),
+  padj_cutoff = padj_cutoff,
+  log2fc_cutoff = log2fc_cutoff,
+  ont = ont,
+  top_terms = top_terms
+)
+
+obj <- list(
+  comparison = use_comparison,
+  contrast = contrast,
+  organism = proj$input$imp_data$organism,
+  gene_id_type = gene_id_type,
+  up = ego_up,
+  down = ego_down,
+  params = params
+)
+
+class(obj) <- "enrich_result"
+
+# =============================================================================
+# 8. Attach to project
+# =============================================================================
+
+if (save) {
+
+  proj <- .attach_to_project(
+    proj,
+    obj,
+    slot = "analyses",
+    subtype = "enrichment",
+    log = list(
+      comparison = use_comparison,
+      organism = proj$input$imp_data$organism,
+      padj_cutoff = padj_cutoff,
+      log2fc_cutoff = log2fc_cutoff,
+      ont = ont
+    )
+  )
+}
+
+return(invisible(proj))
+
+}
+
+# =============================================================================
+# 9. Print S3
+# =============================================================================
 #' Print method for \code{enrich_result} objects
 #'
 #' Displays a concise summary of Gene Ontology (GO) enrichment results,
@@ -380,31 +389,31 @@ rna.enrich <- function(project,
 
 print.enrich_result <- function(x, ...) {
 
-  .print_header("GO Enrichment Result")
+.print_header("GO Enrichment Result")
 
-  .print_block("Overview", function() {
-    cat("Class: enrich_result\n")
-    cat("Comparison: ", x$comparison, "\n", sep = "")
-    cat("Contrast: ", paste(x$contrast, collapse = " vs "), "\n", sep = "")
-    cat("Organism: ", x$organism, "\n", sep = "")
+.print_block("Overview", function() {
+  cat("Class: enrich_result\n")
+  cat("Comparison: ", x$comparison, "\n", sep = "")
+  cat("Contrast: ", paste(x$contrast, collapse = " vs "), "\n", sep = "")
+  cat("Organism: ", x$organism, "\n", sep = "")
 
-    up_n <- if (!is.null(x$up)) {
-      sum(sapply(x$up, function(e) {
-        if (is.null(e)) 0 else nrow(as.data.frame(e))
-      }))
-    } else 0
+  up_n <- if (!is.null(x$up)) {
+    sum(sapply(x$up, function(e) {
+      if (is.null(e)) 0 else nrow(as.data.frame(e))
+    }))
+  } else 0
 
-    down_n <- if (!is.null(x$down)) {
-      sum(sapply(x$down, function(e) {
-        if (is.null(e)) 0 else nrow(as.data.frame(e))
-      }))
-    } else 0
+  down_n <- if (!is.null(x$down)) {
+    sum(sapply(x$down, function(e) {
+      if (is.null(e)) 0 else nrow(as.data.frame(e))
+    }))
+  } else 0
 
-    cat("Significant GO terms (up): ", up_n, "\n", sep = "")
-    cat("Significant GO terms (down): ", down_n, "\n", sep = "")
-  })
+  cat("Significant GO terms (up): ", up_n, "\n", sep = "")
+  cat("Significant GO terms (down): ", down_n, "\n", sep = "")
+})
 
-  invisible(x)
+invisible(x)
 }
 
 #' Summary method for \code{enrich_result} objects
@@ -430,26 +439,26 @@ print.enrich_result <- function(x, ...) {
 #' @rdname enrich_result
 
 summary.enrich_result <- function(object,
-                                  direction = c("up", "down"),
-                                  ont = NULL,
-                                  ...) {
+                                direction = c("up", "down"),
+                                ont = NULL,
+                                ...) {
 
-  direction <- match.arg(direction)
-  ego_list <- object[[direction]]
+direction <- match.arg(direction)
+ego_list <- object[[direction]]
 
-  if (is.null(ego_list)) {
-    message("No enrichment results for ", direction)
-    return(invisible(NULL))
-  }
+if (is.null(ego_list)) {
+  message("No enrichment results for ", direction)
+  return(invisible(NULL))
+}
 
-  if (is.null(ont)) {
-    return(ego_list)
-  }
+if (is.null(ont)) {
+  return(ego_list)
+}
 
-  if (!ont %in% names(ego_list)) {
-    stop("Ontology not found. Available: ",
-         paste(names(ego_list), collapse = ", "))
-  }
+if (!ont %in% names(ego_list)) {
+  stop("Ontology not found. Available: ",
+       paste(names(ego_list), collapse = ", "))
+}
 
-  as.data.frame(ego_list[[ont]])
+as.data.frame(ego_list[[ont]])
 }

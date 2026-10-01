@@ -1,135 +1,170 @@
-# ============================
-# Internal helpers for object access
-# ============================
+# ============================================================================ #
+#                   ### Internal helpers for object access ###                 #
+# ============================================================================ #
 
-# --- General helper ---
-.get_from_container <- function(container, id = NULL, name = NULL) {
+# =============================================================================
+# 1. General project object accessor
+# =============================================================================
+#' @keywords internal
 
-  if (is.null(container)) {
-    stop("Container not found.")
+.get_project_object <- function(project,
+                                slot,
+                                subtype,
+                                name = NULL) {
+
+  if (is.null(project[[slot]])) {
+    stop(sprintf("Project slot '%s' not found.", slot))
   }
 
-  # --- resolve id ---
-  if (is.null(id) || identical(id, "last")) {
+  obj <- project[[slot]][[subtype]]
 
-    if (is.null(container$last)) {
-      stop("No 'last' entry available in container.")
-    }
-
-    obj <- container[[container$last]]
-
-  } else if (is.numeric(id)) {
-
-    if (length(id) != 1) {
-      stop("'id' must be a single numeric index.")
-    }
-
-    ids <- setdiff(names(container), "last")
-
-    if (id < 1 || id > length(ids)) {
-      stop("Index out of bounds.")
-    }
-
-    obj <- container[[ids[id]]]
-
-  } else if (is.character(id)) {
-
-    if (!id %in% names(container)) {
-      stop("Invalid ID.")
-    }
-
-    obj <- container[[id]]
-
-  } else {
-    stop("Invalid 'id' argument.")
+  if (is.null(obj)) {
+    stop(sprintf(
+      "No '%s' object found in project.",
+      subtype
+    ))
   }
 
-  # --- optional extraction ---
   if (!is.null(name)) {
-    if (!name %in% names(obj)) {
-      stop(paste0("Field '", name, "' not found in object."))
+
+    if (!is.list(obj) || is.null(obj[[name]])) {
+      stop(sprintf(
+        "Field '%s' not found in '%s'.",
+        name,
+        subtype
+      ))
     }
+
     return(obj[[name]])
   }
 
-  return(obj)
+  obj
 }
 
-# ============================
-# 1) Normalized data
-# ============================
-# --- expr_matrix ---
-.get_expr <- function(project, id = NULL) {
-  .get_from_container(project$data$normalized_data, id, "expr_matrix")
-  }
+# =============================================================================
+# 2. Normalized data
+# =============================================================================
 
-# --- metadata ---
-  .get_meta <- function(project, id = NULL) {
-    .get_from_container(project$data$normalized_data, id, "metadata")
-  }
+# Expr. data
+.get_expr <- function(project) {
+  .get_project_object(
+    project,
+    slot = "data",
+    subtype = "normalized_data",
+    name = "expr_matrix"
+  )
+}
 
-# --- norm_method ---
-  .get_norm_method <- function(project, id = NULL) {
-    .get_from_container(project$data$normalized_data, id, "method")
-  }
+# Metadata
+.get_meta <- function(project) {
+  .get_project_object(
+    project,
+    slot = "data",
+    subtype = "normalized_data",
+    name = "metadata"
+  )
+}
 
-# ============================
-# 2) Input data
-# ============================
-# --- imp_data ---
-  .get_imp <- function(project, id = NULL) {
-    .get_from_container(project$input$imp_data, id)
-  }
+# Normalized datra
+.get_norm_method <- function(project) {
+  .get_project_object(
+    project,
+    slot = "data",
+    subtype = "normalized_data",
+    name = "method"
+  )
+}
 
-# --- organism ---
-  .get_organism <- function(project, id = NULL) {
-    .get_from_container(project$input$imp_data, id, "organism")
-  }
+# =============================================================================
+# 3. Input data
+# =============================================================================
 
-# --- gene_id_type ---
-  .get_gene_id_type <- function(project, id = NULL) {
-    .get_from_container(project$input$imp_data, id, "gene_id_type")
-  }
+# Imp data
+.get_imp <- function(project) {
+  .get_project_object(
+    project,
+    slot = "input",
+    subtype = "imp_data"
+  )
+}
 
-# ============================
-# 3) Analyses
-# ============================
-# --- dimred_data ---
-  .get_dimred <- function(project, id = NULL) {
-    .get_from_container(project$analyses$dimred, id)
-  }
+# Organism
+.get_organism <- function(project) {
+  .get_project_object(
+    project,
+    slot = "input",
+    subtype = "imp_data",
+    name = "organism"
+  )
+}
 
-# --- comp_data (Whole container) ---
-  .get_comp <- function(project) {
-    project$analyses$comparison
-  }
+# Gene ID type
+.get_gene_id_type <- function(project) {
+  .get_project_object(
+    project,
+    slot = "input",
+    subtype = "imp_data",
+    name = "gene_id_type"
+  )
+}
 
-# --- comp_data (Unique object) ---
-  .get_comp_obj <- function(project, id = NULL) {
-    .get_from_container(project$analyses$comparison, id)
-  }
+# Annotation
+.get_gene_annotation <- function(project) {
+  .get_project_object(
+    project,
+    slot = "input",
+    subtype = "imp_data",
+    name = "gene_annotation"
+  )
+}
 
-# --- gene_annotation ---
-  .get_gene_annotation <- function(project, id = NULL) {
-    .get_from_container(project$input$imp_data, id, "gene_annotation")
-  }
+# =============================================================================
+# 4. Analyses
+# =============================================================================
 
-# --- gsea ---
-  .get_gsea <- function(project, id = NULL) {
-    .get_from_container(project$analyses$gsea, id)
-  }
+# PCA / UMAP / T-SNE
+.get_dimred <- function(project) {
+  .get_project_object(
+    project,
+    slot = "analyses",
+    subtype = "dimred"
+  )
+}
 
-# --- gsva ---
-  .get_gsva <- function(project, id = NULL) {
-    .get_from_container(
-      project$analyses$gsva, id)
-  }
+# DESeq2 / LIMMA
+.get_comp <- function(project) {
+  .get_project_object(
+    project,
+    slot = "analyses",
+    subtype = "comparison"
+  )
+}
 
-# --- gsva scores ---
-  .get_gsva_scores <- function(project, id = NULL) {
-    .get_from_container(
-      project$analyses$gsva,
-      id,
-      "pathway_scores"
-    )
-  }
+# GSEA
+.get_gsea <- function(project) {
+  .get_project_object(
+    project,
+    slot = "analyses",
+    subtype = "gsea"
+  )
+}
+
+# GSVA
+.get_gsva <- function(project) {
+  .get_project_object(
+    project,
+    slot = "analyses",
+    subtype = "gsva"
+  )
+}
+
+# Pathway scores
+.get_gsva_scores <- function(project) {
+  .get_project_object(
+    project,
+    slot = "analyses",
+    subtype = "gsva",
+    name = "pathway_scores"
+  )
+}
+

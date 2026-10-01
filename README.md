@@ -2,11 +2,25 @@
 
 <!-- badges: start --> <!-- badges: end -->
 
-**autornaR** is an R package designed to streamline RNA-seq data analysis, from raw count import to normalization, quality control, statistical testing, and visualization.  
+<table>
+<tr>
+<td width="72%" valign="top">
+
+**RNA-seq analysis, from data to biology.**
+
+autornaR is an R package designed to streamline RNA-seq data analysis, from raw count import to normalization, quality control, statistical testing, and visualization.
+
 It provides functions for filtering, imputation, outlier detection, gene ranking, ROC curves, dimensionality reduction, correlation, and differential expression analysis.
 
-**Note:** The package is primarily optimized for pairwise analyses (e.g., Control vs. Treatment).  
-Workflows involving multiple groups are possible, but most functions are tuned for two-group comparisons yet.
+</td>
+
+<td width="28%" align="center" valign="middle">
+
+<img src=".github/images/logo_autornaR.png" width="130">
+
+</td>
+</tr>
+</table>
 
 ## Installation
 
@@ -69,7 +83,8 @@ For deeper insights and pairwise comparisons:
   - rna.degs() - Identify differentially expressed genes
   - rna.dimred() - Perform PCA and UMAP for dimensionality reduction
   - rna.heatmap() - Visualize top variable genes with heatmaps
-  - rna.gsea() - Perform a GSEA rank to visualize top enriched pathways
+  - rna.gsea() - Perform a GSEA rank to visualize top enriched pathway
+  - rna.gsva() - Perform a GSVA to visualize individual enriched pathway
   - rna.network() - Build a gene-gene network using pathways identified by rna.gsea()
   - rna.roc() - Assess discriminatory power of specific genes
   - rna.boxplot() - Perform Limma t-tests for gene-level differences
@@ -117,6 +132,9 @@ my_project <- rna.compare(my_project,
 my_project <- rna.degs(my_project)
 
 ```
+
+**Note:** The package is primarily optimized for pairwise analyses (e.g., Control vs. Treatment).  
+Workflows involving multiple groups are possible, but most functions involving measures like log2FC are tuned for two-group comparisons yet.
 
 ## Contact
 

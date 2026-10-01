@@ -8,8 +8,7 @@
 #' Optionally, a summary plot of up- and down-regulated genes can be generated.
 #'
 #' @param project \code{rna_project} object created by \code{rna.project()}.
-#' @param comparison Character. Name of a comparison stored in \code{rna_project}.
-#'   If \code{NULL}, the most recent comparison is used.
+
 #' @param padj_cutoff Numeric. Adjusted p-value threshold used to define significance
 #'   (default: \code{0.05}).
 #' @param log2fc_cutoff Numeric. Log2 fold-change threshold for directional classification
@@ -17,11 +16,12 @@
 #' @param direction Character. One of \code{"both"}, \code{"up"}, or \code{"down"}.
 #'   Determines which genes are flagged as DEGs in the main output (default: \code{"both"}).
 #' @param colors Character. Optional bars colors.
-#' @param plot Logical. If \code{TRUE}, displays a barplot summarizing DEG counts per group
-#'   (default: \code{FALSE}).
-#' @param save Logical. Whether to store results in the active \code{rna_project}
-#'   (default: \code{TRUE}).
-#' @param verbose Logical. If \code{TRUE}, prints a summary to the console (default: \code{TRUE}).
+#' @param plot Logical. If \code{TRUE}, displays a barplot summarizing
+#' DEG counts per group (default: \code{FALSE}).
+#' @param save Logical. Whether to store results in the
+#' active \code{rna_project} (default: \code{TRUE}).
+#' @param verbose Logical. If \code{TRUE}, prints a summary to the
+#' console (default: \code{TRUE}).
 #'
 #' @return
 #' An object of class \code{"rna_sets"} containing:
@@ -123,7 +123,6 @@
 #' @export
 
 rna.sets <- function(project,
-                     comparison = NULL,
                      padj_cutoff = 0.05,
                      log2fc_cutoff = 0.5,
                      direction = c("both", "up", "down"),
@@ -132,243 +131,277 @@ rna.sets <- function(project,
                      save = TRUE,
                      verbose = TRUE) {
 
-  direction <- match.arg(direction)
+direction <- match.arg(direction)
 
-  # ===========================================================================
-  # 0) Basic checks
-  # ===========================================================================
-  .check_dependencies("ggplot2")
+# =============================================================================
+# 0. Basic checks
+# =============================================================================
 
-  # ===========================================================================
-  # 1) Get active project
-  # ===========================================================================
-  proj <- project
+.check_dependencies("ggplot2")
 
-  expr <- as.matrix(.get_expr(proj))
-  metadata <- .get_meta(proj)
-  comp_data <- .get_comp_obj(proj, comparison)
+# =============================================================================
+# 1. Get active project
+# =============================================================================
 
-  # ===========================================================================
-  # 2) Validate input
-  # ===========================================================================
-  if (is.null(proj$data$normalized_data)) {
-    stop("No normalization results found in rna_project. Run rna.normalize() first.")
-  }
+proj <- project
 
-  if (is.null(proj$analyses$comparison) ||
-      length(proj$analyses$comparison) == 0) {
-    stop("No comparisons found. Run rna.compare() first.")
-  }
+comp_data <- .get_comp(proj)
 
-  # ===========================================================================
-  # 3) Accessing comp object
-  # ===========================================================================
-  comparison_id <- if (is.null(comparison)) {
-    proj$analyses$comparison$last
-  } else {
-    comparison
-  }
+# =============================================================================
+# 2. Validate input
+# =============================================================================
 
-  if (is.null(comp_data) || !inherits(comp_data, "rnaCompare")) {
-    stop("Selected object is not a valid comparison.")
-  }
+if (is.null(comp_data) ||
+    !inherits(comp_data, "rnaCompare")) {
 
-  res <- as.data.frame(comp_data$res)
-  res$Gene <- rownames(res)
+  stop("Current comparison is not a valid comparison.")
+}
 
-  group_levels <- c(
-    comp_data$groups$test,
-    comp_data$groups$reference
+if (is.null(comp_data$res)) {
+  stop(
+    "Current comparison does not contain differential expression results."
   )
+}
 
-  if (length(group_levels) != 2) {
-    stop("rna.sets() supports only 2-group comparisons.")
-  }
+# =============================================================================
+# 3. Access comparison object
+# =============================================================================
 
-  # Comparison label
-  comparison_label <- paste(
-    group_levels[1],
-    "vs",
-    group_levels[2]
+res <- as.data.frame(comp_data$res)
+res$Gene <- rownames(res)
+
+group_levels <- c(
+  comp_data$groups$test,
+  comp_data$groups$reference
+)
+
+if (length(group_levels) != 2) {
+  stop("rna.sets() supports only 2-group comparisons.")
+}
+
+# Comparison label
+comparison_label <- paste(
+  group_levels[1],
+  "vs",
+  group_levels[2]
+)
+
+# =============================================================================
+# 4. Align genes
+# =============================================================================
+
+common_genes <- rownames(res)
+
+if (length(common_genes) == 0) {
+  stop("No genes found in the current comparison.")
+}
+
+res <- res[common_genes, , drop = FALSE]
+
+# =============================================================================
+# 5. Detection filter
+# =============================================================================
+
+keep_genes <- rep(TRUE, length(common_genes))
+names(keep_genes) <- common_genes
+
+detection_matrix <- NULL
+
+# =============================================================================
+# 6. DEG classification
+# =============================================================================
+
+base_sig <- res$padj < padj_cutoff & !is.na(res$padj)
+
+up_sig <- (
+  base_sig &
+    res$log2FoldChange > log2fc_cutoff
+)
+
+down_sig <- (
+  base_sig &
+    res$log2FoldChange < -log2fc_cutoff
+)
+
+# Apply detection filter
+up_sig <- up_sig & keep_genes
+down_sig <- down_sig & keep_genes
+
+# Full DEG universe
+deg_all <- up_sig | down_sig
+
+# Optional directional filter for returned DEG column
+if (direction == "up") {
+
+  deg_filtered <- up_sig
+
+} else if (direction == "down") {
+
+  deg_filtered <- down_sig
+
+} else {
+
+  deg_filtered <- deg_all
+}
+
+deg_membership <- data.frame(
+  DEG = deg_filtered,
+  row.names = common_genes
+)
+
+# =============================================================================
+# 7. One-hot by group detection
+# =============================================================================
+
+one_hot <- matrix(
+  FALSE,
+  nrow = length(common_genes),
+  ncol = length(group_levels),
+  dimnames = list(
+    common_genes,
+    group_levels
   )
+)
 
-  # ===========================================================================
-  # 4) Align genes
-  # ===========================================================================
-  common_genes <- intersect(rownames(expr), rownames(res))
-  expr <- expr[common_genes, , drop = FALSE]
-  res  <- res[common_genes, , drop = FALSE]
+one_hot[, group_levels[1]] <- up_sig
+one_hot[, group_levels[2]] <- down_sig
 
-  # ===========================================================================
-  # 5) Detection filter
-  # ===========================================================================
-  keep_genes <- rep(TRUE, length(common_genes))
-  names(keep_genes) <- common_genes
-  detection_matrix <- NULL
+one_hot_df <- as.data.frame(one_hot)
 
-  # ===========================================================================
-  # 6) DEG classification
-  # ===========================================================================
-  base_sig <- res$padj < padj_cutoff & !is.na(res$padj)
+# =============================================================================
+# 8. Optional DEG summary plot
+# =============================================================================
 
-  up_sig   <- base_sig & res$log2FoldChange >  log2fc_cutoff
-  down_sig <- base_sig & res$log2FoldChange < -log2fc_cutoff
+if (plot) {
 
-  # --- Apply detection filter ---
-  up_sig   <- up_sig   & keep_genes
-  down_sig <- down_sig & keep_genes
+  n_up_test <- sum(up_sig & keep_genes)
+  n_up_ref <- sum(down_sig & keep_genes)
 
-  # --- Full DEG universe ---
-  deg_all <- up_sig | down_sig
-
-  # --- Optional directional filter for returned DEG column ---
-  if (direction == "up") {
-    deg_filtered <- up_sig
-  } else if (direction == "down") {
-    deg_filtered <- down_sig
-  } else {
-    deg_filtered <- deg_all
-  }
-
-  deg_membership <- data.frame(
-    DEG = deg_filtered,
-    row.names = common_genes
-  )
-
-  # ===========================================================================
-  # 7) One-hot by group detection
-  # ===========================================================================
-  one_hot <- matrix(
-    FALSE,
-    nrow = length(common_genes),
-    ncol = length(group_levels),
-    dimnames = list(common_genes, group_levels)
-  )
-
-  one_hot[, group_levels[1]] <- up_sig   # test
-  one_hot[, group_levels[2]] <- down_sig # reference
-
-  one_hot_df <- as.data.frame(one_hot)
-
-  # ===========================================================================
-  # 8) Optional DEG summary plot
-  # ===========================================================================
-  if (plot) {
-
-    n_up_test <- sum(up_sig & keep_genes)
-    n_up_ref  <- sum(down_sig & keep_genes)
-
-    plot_df <- data.frame(
-      group = c(
-        paste0("Up in ", group_levels[2]),
-        paste0("Up in ", group_levels[1])
-      ),
-      value = c(n_up_test, n_up_ref)
-    )
-
-
-    if (is.null(colors)) {
-      colors <- scales::hue_pal()(length(unique(plot_df$group)))
-    }
-
-    g <- ggplot2::ggplot(plot_df,
-                         ggplot2::aes(x = .data$group,
-                                      y = .data$value,
-                                      fill = .data$group)) +
-      ggplot2::geom_col(alpha = 0.8) +
-      ggplot2::geom_text(
-        ggplot2::aes(label = .data$value),
-        vjust = -0.2,
-        size = 4
-      ) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::scale_fill_manual(values = colors) +
-      ggplot2::labs(
-        title = paste("DEG Summary -", comparison_label),
-        x = "",
-        y = "DEGs count"
-      ) +
-      ggplot2::theme(
-        legend.position = "none",
-        axis.text.x = ggplot2::element_text(
-          angle = 45,
-          hjust = 1,
-          size = 12
-        )
-      )
-
-    print(g)
-  }
-
-  # ===========================================================================
-  # 9) Output
-  # ===========================================================================
-  obj <- list(
-    params = list(
-      timestamp = Sys.time(),
-      comparison = comparison_id,
-      comparison_label = comparison_label,
-      total_genes = length(common_genes),
-      total_deg = sum(deg_all),
-      padj_cutoff = padj_cutoff,
-      log2fc_cutoff = log2fc_cutoff,
-      direction = direction
+  plot_df <- data.frame(
+    group = c(
+      paste0("Up in ", group_levels[2]),
+      paste0("Up in ", group_levels[1])
     ),
-    membership = list(
-      deg = deg_membership,
-      deg_all = deg_all,
-      up = up_sig,
-      down = down_sig,
-      one_hot = one_hot_df
+    value = c(
+      n_up_test,
+      n_up_ref
     )
   )
 
-  class(obj) <- "rna_sets"
-
-  # ===========================================================================
-  # 10) Attach to project
-  # ===========================================================================
-  if (save) {
-
-    proj <- .attach_to_project(
-      proj,
-      obj,
-      slot = "analyses",
-      subtype = "sets",
-      prefix = "sets",
-      log = list(
-        comparison = comparison_id,
-        direction = direction,
-        log2fc_cutoff = log2fc_cutoff,
-        padj_cutoff = padj_cutoff,
-        total_deg = sum(deg_all)
-      )
+  if (is.null(colors)) {
+    colors <- scales::hue_pal()(
+      length(unique(plot_df$group))
     )
   }
 
-  # ===========================================================================
-  # 11) Return
-  # ===========================================================================
-  if (verbose) {
-    .print_header("RNA DEG Sets")
+  g <- ggplot2::ggplot(
+    plot_df,
+    ggplot2::aes(
+      x = .data$group,
+      y = .data$value,
+      fill = .data$group
+    )
+  ) +
+    ggplot2::geom_col(alpha = 0.8) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = .data$value),
+      vjust = -0.2,
+      size = 4
+    ) +
+    ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::scale_fill_manual(values = colors) +
+    ggplot2::labs(
+      title = paste(
+        "DEG Summary -",
+        comparison_label
+      ),
+      x = "",
+      y = "DEGs count"
+    ) +
+    ggplot2::theme(
+      legend.position = "none",
+      axis.text.x = ggplot2::element_text(
+        angle = 45,
+        hjust = 1,
+        size = 12
+      )
+    )
 
-    .print_block("Comparison", function() {
-      cat(comparison_label, "\n")
-    })
+  print(g)
+}
 
-    .print_block("DEG Summary", function() {
-      cat("Genes tested:      ", length(common_genes), "\n")
-      cat("Total DEGs:        ", sum(deg_all), "\n")
-      cat("Up in ", group_levels[2], ":           ", sum(up_sig), "\n", sep = "")
-      cat("Up in ", group_levels[1], ":           ", sum(down_sig), "\n", sep = "")
+# =============================================================================
+# 9. Output
+# =============================================================================
 
-      if (direction != "both") {
-        cat("Directional filter:      ", direction, "\n")
-        cat("Returned DEGs:           ", sum(deg_filtered), "\n")
-      }
-    })
-  }
+obj <- list(
+  params = list(
+    timestamp = Sys.time(),
+    comparison = comparison_label,
+    comparison_label = comparison_label,
+    total_genes = length(common_genes),
+    total_deg = sum(deg_all),
+    padj_cutoff = padj_cutoff,
+    log2fc_cutoff = log2fc_cutoff,
+    direction = direction
+  ),
 
-  return(invisible(proj))
+  membership = list(
+    deg = deg_membership,
+    deg_all = deg_all,
+    up = up_sig,
+    down = down_sig,
+    one_hot = one_hot_df
+  )
+)
+
+class(obj) <- "rna_sets"
+
+# =============================================================================
+# 10. Attach to project
+# =============================================================================
+
+if (save) {
+
+  proj <- .attach_to_project(
+    proj,
+    obj,
+    slot = "analyses",
+    subtype = "sets",
+    log = list(
+      comparison = comparison_label,
+      direction = direction,
+      log2fc_cutoff = log2fc_cutoff,
+      padj_cutoff = padj_cutoff,
+      total_deg = sum(deg_all)
+    )
+  )
+}
+
+# =============================================================================
+# 11. Return
+# =============================================================================
+
+if (verbose) {
+  .print_header("RNA DEG Sets")
+
+  .print_block("Comparison", function() {
+    cat(comparison_label, "\n")
+  })
+
+  .print_block("DEG Summary", function() {
+    cat("Genes tested:      ", length(common_genes), "\n")
+    cat("Total DEGs:        ", sum(deg_all), "\n")
+    cat("Up in ", group_levels[2], ":           ", sum(up_sig), "\n", sep = "")
+    cat("Up in ", group_levels[1], ":           ", sum(down_sig), "\n", sep = "")
+
+    if (direction != "both") {
+      cat("Directional filter:      ", direction, "\n")
+      cat("Returned DEGs:           ", sum(deg_filtered), "\n")
+    }
+  })
+}
+
+return(invisible(proj))
 
 }

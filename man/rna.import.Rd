@@ -6,7 +6,7 @@
 \usage{
 rna.import(
   project,
-  raw_data,
+  count_matrix,
   metadata = NULL,
   format = c("clean", "hisat2", "star", "featureCounts", "tximport"),
   gene_col = NULL,
@@ -23,7 +23,7 @@ rna.import(
 \arguments{
 \item{project}{\code{rna_project} object created by \code{rna.project()}.}
 
-\item{raw_data}{Data frame containing raw counts and gene identifiers.}
+\item{count_matrix}{Data frame containing raw counts and gene identifiers.}
 
 \item{metadata}{Optional data frame with sample information. The sample
 column is automatically detected based on column names or matching values
@@ -107,18 +107,18 @@ The function does not perform normalization or transformation of counts.
 \dontrun{
 # Basic import with metadata
   rna.import(project = my_project,
-             raw_data = counts_df,
+             count_matrix = counts_df,
              metadata = meta_df)
 
 # Import with metadata and specifying an organism
   rna.import(my_project,
-             raw_data = counts_df,
+             count_matrix = counts_df,
              metadata = meta_df,
              organism = "mouse")
 
 # Import with a specific format
   rna.import(my_project,
-             raw_data = counts_df,
+             count_matrix = counts_df,
              metadata = meta_df,
              format = "star")
  }

@@ -12,12 +12,6 @@
 #' organism-specific \pkg{org.*.eg.db} databases.
 #'
 #' @param project \code{rna_project} object created by \code{rna.project()}.
-#' @param group_col Character. Column name in \code{metadata} defining sample groups
-#'   (default: \code{"Group"}). Used when computing rankings on-the-fly.
-#' @param sample_col Character. Column name in \code{metadata} matching sample names
-#'   (default: \code{"Sample"}).
-#' @param contrast Character. Name of a comparison stored in the project.
-#' If \code{NULL}, the last comparison is used.
 #' @param top_n Integer. Number of top enriched pathways to retain (default: \code{10}).
 #' @param geneset_collection Character. MSigDB collection (e.g., \code{"C2"}, \code{"C5"}).
 #' @param geneset_subcollection Character. Subcollection within MSigDB
@@ -165,9 +159,6 @@
 #' @export
 
 rna.gsea <- function(project,
-                     group_col = "Group",
-                     sample_col = "Sample",
-                     contrast = NULL,
                      top_n = 10,
                      geneset_collection = "C5",
                      geneset_subcollection = "GO:BP",
@@ -180,491 +171,446 @@ rna.gsea <- function(project,
                      save = TRUE
 ) {
 
-  # ===========================================================================
-  # 0) Basic checks
-  # ===========================================================================
-  heatmap_mode <- match.arg(heatmap_mode)
-  ranking_method = match.arg(ranking_method)
+heatmap_mode <- match.arg(heatmap_mode)
+ranking_method = match.arg(ranking_method)
 
-  geneset_collection <- toupper(geneset_collection)
+geneset_collection <- toupper(geneset_collection)
 
-  pkgs <- c("msigdbr",
-            "stringr"
+# =============================================================================
+# 0. Basic checks
+# =============================================================================
+
+.check_dependencies("msigdbr", bioc = TRUE)
+.check_dependencies("stringr")
+
+# Check ggplot2
+if (enrich_plot && !requireNamespace("ggplot2", quietly = TRUE)) {
+  .check_dependencies("ggplot2")
+}
+
+# Check heatmap
+if (plot_heatmap) {
+  .check_dependencies("pheatmap")
+}
+
+# Set seed
+old_seed <- .set_seed(seed)
+on.exit(.reset_seed(old_seed), add = TRUE)
+
+# =============================================================================
+# 1. Get active project
+# =============================================================================
+
+proj <- project
+
+organism <- .get_organism(proj)
+message("[rna.gsea] Using organism from project:", organism)
+
+comp_obj <- .get_comp(proj)
+gene_map <- .get_gene_annotation(proj)
+
+# =============================================================================
+# 2. Validate input
+# =============================================================================
+
+#  Organism
+orgdb <- switch(
+  organism,
+  mouse     = org.Mm.eg.db::org.Mm.eg.db,
+  human     = org.Hs.eg.db::org.Hs.eg.db,
+  zebrafish = org.Dr.eg.db::org.Dr.eg.db,
+  stop("`organism` must be 'human', 'mouse' or 'zebrafish'.")
+)
+
+res_df <- comp_obj$res
+
+contrast <- c(
+  comp_obj$groups$test,
+  comp_obj$groups$reference
+)
+
+message("[rna.gsea] Using comparison: ", contrast[2], " vs ", contrast[1])
+
+collections_without_sub <- c("H","C1","C6","C7","C8")
+
+# Access to rnaCompare
+if (!inherits(comp_obj, "rnaCompare")) {
+  stop(
+    "The current project comparison is not a valid comparison result."
+  )
+}
+
+if (geneset_collection %in% collections_without_sub &&
+    !is.null(geneset_subcollection)) {
+
+  message(
+    "[rna.gsea] Collection ", geneset_collection,
+    " does not support subcollections. Ignoring 'geneset_subcollection'."
   )
 
-  bioc_pkgs <- c("BiocParallel",
-                 "fgsea",
-                 "AnnotationDbi")
+  geneset_subcollection <- NULL
+}
 
-  .check_dependencies(pkgs)
-  .check_dependencies(pkgs, bioc = TRUE)
+# =============================================================================
+# 3. Ranking computation
+# =============================================================================
 
-  # Check ggplot2
-  if (enrich_plot && !requireNamespace("ggplot2", quietly = TRUE)) {
-    .check_dependencies("ggplot2")
-  }
-
-  # Check heatmap
-  if (plot_heatmap) {
-    .check_dependencies("pheatmap")
-  }
-
-  # --- Set seed ---
-  old_seed <- .set_seed(seed)
-  on.exit(.reset_seed(old_seed), add = TRUE)
-
-  # ===========================================================================
-  # 1) Get active project
-  # ===========================================================================
-  proj <- project
-
-  expr <- as.matrix(.get_expr(proj))
-  metadata <- .get_meta(proj)
-
-  organism <- .get_organism(proj)
-  message("[rna.gsea] Using organism from project:", organism)
-
-  comps <- .get_comp(proj)
-  gene_map <- .get_gene_annotation(proj)
-
-  # ===========================================================================
-  # 3) Validate input
-  # ===========================================================================
-  # --- Organism ---
-  orgdb <- switch(
-    organism,
-    mouse     = org.Mm.eg.db::org.Mm.eg.db,
-    human     = org.Hs.eg.db::org.Hs.eg.db,
-    zebrafish = org.Dr.eg.db::org.Dr.eg.db,
-    stop("`organism` must be 'human', 'mouse' or 'zebrafish'.")
+if (is.null(res_df)) {
+  stop(
+    "The stored comparison does not contain differential expression results."
   )
+}
 
-  # --- Case 1: use last comparison automatically
-  contrast_id <- .get_last_or_selected(
-    comps,
-    contrast,
-    what = "comparison"
-  )
+if (ranking_method == "stat") {
 
-  comp_obj <- .get_comp_obj(proj, contrast_id)
-
-  res_df <- comp_obj$res
-
-  contrast <- c(
-    comp_obj$groups$reference,
-    comp_obj$groups$test
-  )
-
-  message("[rna.gsea] Using comparison: ", contrast[2], " vs ", contrast[1])
-
-  collections_without_sub <- c("H","C1","C6","C7","C8")
-
-  if (geneset_collection %in% collections_without_sub &&
-      !is.null(geneset_subcollection)) {
-
-    message(
-      "[rna.gsea] Collection ", geneset_collection,
-      " does not support subcollections. Ignoring 'geneset_subcollection'."
-    )
-
-    geneset_subcollection <- NULL
-  }
-
-  # ===========================================================================
-  # 4) Ranking computation
-  # ===========================================================================
-
-  if (!is.null(res_df)) {
-
-    # ---- From stored comparison ----
-    if (ranking_method == "stat") {
-
-      if (!"stat" %in% colnames(res_df))
-        stop("Stored comparison does not contain 'stat' column.")
-
-      gene_ranking <- res_df$stat
-
-    } else {
-
-      if (!"log2FoldChange" %in% colnames(res_df))
-        stop("Stored comparison does not contain 'log2FoldChange' column.")
-
-      gene_ranking <- res_df$log2FoldChange
-    }
-
-    names(gene_ranking) <- rownames(res_df)
-
-  } else {
-
-    # ---- Contrast based ranking ----
-    if (is.null(contrast) || length(contrast) != 2) {
-      stop("Provide a valid contrast (vector of length 2) or specify using 'contrast'.")
-    }
-
-    # --- Prepare normalized data and metadata ---
-    grp <- metadata[[group_col]]
-
-    g1 <- contrast[1]
-    g2 <- contrast[2]
-
-    if (!all(c(g1, g2) %in% unique(grp))) {
-      stop("One or both contrast groups not found in metadata.")
-    }
-
-    expr1 <- expr[, grp == g1, drop = FALSE]
-    expr2 <- expr[, grp == g2, drop = FALSE]
-
-    if (ncol(expr1) < 1 || ncol(expr2) < 1) {
-      stop("One of the contrast groups has no samples.")
-    }
-
-    if (ranking_method == "stat") {
-
-      m1 <- rowMeans(expr1)
-      m2 <- rowMeans(expr2)
-
-      v1 <- apply(expr1, 1, var)
-      v2 <- apply(expr2, 1, var)
-
-      n1 <- ncol(expr1)
-      n2 <- ncol(expr2)
-
-      se <- sqrt(v1/n1 + v2/n2)
-
-      gene_ranking <- (m2 - m1) / se
-      gene_ranking[!is.finite(gene_ranking)] <- 0
-
-    } else {
-
-      mean1 <- rowMeans(expr1)
-      mean2 <- rowMeans(expr2)
-
-      gene_ranking <- log2((mean2 + 1) / (mean1 + 1))
-    }
-
-    names(gene_ranking) <- rownames(expr)
-  }
-
-  # ---- Cleaning and ordering ----
-  gene_ranking <- gene_ranking[is.finite(gene_ranking)]
-  gene_ranking <- sort(gene_ranking, decreasing = TRUE)
-
-  # ===========================================================================
-  # 5) Load global gene sets
-  # ===========================================================================
-
-  # ---- Compatibility check for zebrafish ----
-  if (organism == "zebrafish" && geneset_collection == "C5") {
-
-    warning(
-      "GO collections (C5) not available for zebrafish in MSigDB. ",
-      "Switching to C2:REACTOME."
-    )
-
-    geneset_collection   <- "C2"
-    geneset_subcollection <- "CP:REACTOME"
-  }
-
-  if (geneset_collection %in% c("H", "C1", "C6", "C7", "C8")) {
-
-    msig <- msigdbr::msigdbr(
-      species = switch(
-        organism,
-        mouse = "Mus musculus",
-        human = "Homo sapiens",
-        zebrafish = "Danio rerio"
-      ),
-      collection = geneset_collection
-    )
-
-  } else {
-
-    msig <- msigdbr::msigdbr(
-      species = switch(
-        organism,
-        mouse = "Mus musculus",
-        human = "Homo sapiens",
-        zebrafish = "Danio rerio"
-      ),
-      collection = geneset_collection,
-      subcollection = geneset_subcollection
+  if (!"stat" %in% colnames(res_df)) {
+    stop(
+      "Stored comparison does not contain 'stat' column."
     )
   }
 
-  pathways <- split(msig$gene_symbol, msig$gs_name)
+  gene_ranking <- res_df$stat
 
-  # Clean pathway names for plotting
-  clean_names <- .smart_pathway_name(names(pathways))
-  names(pathways) <- clean_names
+} else {
 
-  # ===========================================================================
-  # 5.5) ID conversion
-  # ===========================================================================
-  gene_ids <- names(gene_ranking)
-
-  gene_symbols <- gene_map$symbol[
-    match(gene_ids, gene_map$gene_id)
-  ]
-
-  # Smart fallback
-  gene_symbols[is.na(gene_symbols) | gene_symbols == ""] <- gene_ids[
-    is.na(gene_symbols) | gene_symbols == ""
-  ]
-
-  # Ensure valid names
-  valid <- !is.na(gene_symbols) & gene_symbols != ""
-
-  gene_ranking <- gene_ranking[valid]
-  names(gene_ranking) <- gene_symbols[valid]
-
-  # Remove duplicated
-  gene_ranking <- tapply(gene_ranking, names(gene_ranking), mean)
-  gene_ranking <- sort(gene_ranking, decreasing = TRUE)
-
-  if (is.null(names(gene_ranking))) {
-    stop("gene_ranking lost its names after aggregation.")
-  }
-
-  # ===========================================================================
-  # 6) GSEA
-  # ===========================================================================
-  tapply(gene_ranking, names(gene_ranking), median)
-
-  gsea_res <- fgsea::fgseaMultilevel(
-    pathways = pathways,
-    stats    = gene_ranking,
-    minSize  = 10,
-    maxSize  = 500,
-    BPPARAM  = BiocParallel::SerialParam()
-  )
-
-  gsea_res <- gsea_res[order(gsea_res$padj), ]
-  gsea_sig <- gsea_res[gsea_res$padj < padj_gsea, ]
-  gsea_top <- utils::head(gsea_sig, top_n)
-
-  gsea_res$pathway <- .smart_pathway_name(gsea_res$pathway)
-  gsea_res$pathway <- make.unique(gsea_res$pathway)
-  names(pathways)  <- .smart_pathway_name(names(pathways))
-
-  if (nrow(gsea_res) == 0) {
-    warning(
-      "GSEA returned no enriched pathways. ",
-      "Check gene ID compatibility between ranking and pathways."
+  if (!"log2FoldChange" %in% colnames(res_df)) {
+    stop(
+      "Stored comparison does not contain 'log2FoldChange' column."
     )
   }
 
-  # ===========================================================================
-  # 7) Enrichment plots
-  # ===========================================================================
-  enrich_plots <- NULL
+  gene_ranking <- res_df$log2FoldChange
+}
 
-  if (enrich_plot && nrow(gsea_top) > 0) {
+names(gene_ranking) <- rownames(res_df)
 
-    enrich_plots <- lapply(seq_len(nrow(gsea_top)), function(i) {
+# ===============================================
+# 3.1. Cleaning and ordering
+# ===============================================
 
-      fgsea::plotEnrichment(
-        pathways[[gsea_top$pathway[i]]],
-        gene_ranking
-      ) +
-        ggplot2::labs(
-          title = gsea_top$pathway[i],
-          subtitle = paste0(
-            "NES = ", round(gsea_top$NES[i], 2),
-            " | padj = ", signif(gsea_top$padj[i], 3)
-          )
-        ) +
-        ggplot2::theme_classic(base_size = 12)
-    })
+gene_ranking <- gene_ranking[is.finite(gene_ranking)]
+gene_ranking <- sort(gene_ranking, decreasing = TRUE)
 
-    names(enrich_plots) <- gsea_top$pathway
-  }
+# =============================================================================
+# 4. Load global gene sets
+# =============================================================================
 
-  if (interactive()) {
-    lapply(enrich_plots, print)
-  }
+# Compatibility check for zebrafish
+if (organism == "zebrafish" && geneset_collection == "C5") {
 
-  # ===========================================================================
-  # 8) Prepare pathways for NES heatmap
-  # ===========================================================================
-  if (plot_heatmap && nrow(gsea_sig) > 0) {
+  warning(
+    "GO collections (C5) not available for zebrafish in MSigDB. ",
+    "Switching to C2:REACTOME."
+  )
 
-    gsea_heat <- NULL
-    heatmap_title <- "GSEA heatmap"
+  geneset_collection   <- "C2"
+  geneset_subcollection <- "CP:REACTOME"
+}
 
-    if (heatmap_mode == "adaptive") {
+if (geneset_collection %in% c("H", "C1", "C6", "C7", "C8")) {
 
-      gsea_pos <- gsea_sig[gsea_sig$NES > 0, ]
-      gsea_neg <- gsea_sig[gsea_sig$NES < 0, ]
+  msig <- msigdbr::msigdbr(
+    species = switch(
+      organism,
+      mouse = "Mus musculus",
+      human = "Homo sapiens",
+      zebrafish = "Danio rerio"
+    ),
+    collection = geneset_collection
+  )
 
-      gsea_pos <- gsea_pos[order(-gsea_pos$NES), ]
-      gsea_neg <- gsea_neg[order(gsea_neg$NES), ]
+} else {
 
-      n_pos <- nrow(gsea_pos)
-      n_neg <- nrow(gsea_neg)
+  msig <- msigdbr::msigdbr(
+    species = switch(
+      organism,
+      mouse = "Mus musculus",
+      human = "Homo sapiens",
+      zebrafish = "Danio rerio"
+    ),
+    collection = geneset_collection,
+    subcollection = geneset_subcollection
+  )
+}
 
-      if ((n_pos + n_neg) > 0) {
+pathways <- split(msig$gene_symbol, msig$gs_name)
 
-        prop_pos <- n_pos / (n_pos + n_neg)
+# Clean pathway names for plotting
+clean_names <- .smart_pathway_name(names(pathways))
+names(pathways) <- clean_names
 
-        n_pos_top <- round(top_n * prop_pos)
-        n_neg_top <- top_n - n_pos_top
+# =============================================================================
+# 5. ID conversion
+# =============================================================================
 
-        if (n_pos > 0 && n_pos_top == 0) n_pos_top <- 1
-        if (n_neg > 0 && n_neg_top == 0) n_neg_top <- 1
+gene_ids <- names(gene_ranking)
 
-        gsea_heat <- rbind(
-          utils::head(gsea_pos, n_pos_top),
-          utils::head(gsea_neg, n_neg_top)
+gene_symbols <- gene_map$symbol[
+  match(gene_ids, gene_map$gene_id)
+]
+
+# Smart fallback
+gene_symbols[is.na(gene_symbols) | gene_symbols == ""] <- gene_ids[
+  is.na(gene_symbols) | gene_symbols == ""
+]
+
+# Ensure valid names
+valid <- !is.na(gene_symbols) & gene_symbols != ""
+
+gene_ranking <- gene_ranking[valid]
+names(gene_ranking) <- gene_symbols[valid]
+
+# Remove duplicated
+gene_ranking <- tapply(gene_ranking, names(gene_ranking), mean)
+gene_ranking <- sort(gene_ranking, decreasing = TRUE)
+
+if (is.null(names(gene_ranking))) {
+  stop("gene_ranking lost its names after aggregation.")
+}
+
+# =============================================================================
+# 6. GSEA
+# =============================================================================
+
+tapply(gene_ranking, names(gene_ranking), median)
+
+gsea_res <- fgsea::fgseaMultilevel(
+  pathways = pathways,
+  stats    = gene_ranking,
+  minSize  = 10,
+  maxSize  = 500,
+  BPPARAM  = BiocParallel::SerialParam()
+)
+
+gsea_res <- gsea_res[order(gsea_res$padj), ]
+gsea_sig <- gsea_res[gsea_res$padj < padj_gsea, ]
+gsea_top <- utils::head(gsea_sig, top_n)
+
+gsea_res$pathway <- .smart_pathway_name(gsea_res$pathway)
+gsea_res$pathway <- make.unique(gsea_res$pathway)
+names(pathways)  <- .smart_pathway_name(names(pathways))
+
+if (nrow(gsea_res) == 0) {
+  warning(
+    "GSEA returned no enriched pathways. ",
+    "Check gene ID compatibility between ranking and pathways."
+  )
+}
+
+# =============================================================================
+# 7. Enrichment plots
+# =============================================================================
+
+enrich_plots <- NULL
+
+if (enrich_plot && nrow(gsea_top) > 0) {
+
+  enrich_plots <- lapply(seq_len(nrow(gsea_top)), function(i) {
+
+    fgsea::plotEnrichment(
+      pathways[[gsea_top$pathway[i]]],
+      gene_ranking
+    ) +
+      ggplot2::labs(
+        title = gsea_top$pathway[i],
+        subtitle = paste0(
+          "NES = ", round(gsea_top$NES[i], 2),
+          " | padj = ", signif(gsea_top$padj[i], 3)
         )
-      }
+      ) +
+      ggplot2::theme_classic(base_size = 12)
+  })
 
-      heatmap_title <- "GSEA - adaptive NES"
+  names(enrich_plots) <- gsea_top$pathway
+}
 
-    } else if (heatmap_mode == "NES_ordered") {
+if (interactive()) {
+  lapply(enrich_plots, print)
+}
 
-      gsea_heat <- gsea_sig[
-        order(gsea_sig$NES, decreasing = TRUE),
-      ]
-      gsea_heat <- utils::head(gsea_sig, top_n)
+# =============================================================================
+# 8. Prepare pathways for NES heatmap
+# =============================================================================
 
-      heatmap_title <- paste0(
-        "GSEA - NES ordered\n"
-      )
+if (plot_heatmap && nrow(gsea_sig) > 0) {
 
-    } else if (heatmap_mode == "split_direction") {
+  gsea_heat <- NULL
+  heatmap_title <- "GSEA heatmap"
 
-      n_each <- floor(top_n / 2)
+  if (heatmap_mode == "adaptive") {
 
-      gsea_pos <- gsea_sig[gsea_sig$NES > 0, ]
-      gsea_neg <- gsea_sig[gsea_sig$NES < 0, ]
+    gsea_pos <- gsea_sig[gsea_sig$NES > 0, ]
+    gsea_neg <- gsea_sig[gsea_sig$NES < 0, ]
 
-      gsea_pos <- gsea_pos[order(-gsea_pos$NES), ]
-      gsea_neg <- gsea_neg[order(gsea_neg$NES), ]
+    gsea_pos <- gsea_pos[order(-gsea_pos$NES), ]
+    gsea_neg <- gsea_neg[order(gsea_neg$NES), ]
+
+    n_pos <- nrow(gsea_pos)
+    n_neg <- nrow(gsea_neg)
+
+    if ((n_pos + n_neg) > 0) {
+
+      prop_pos <- n_pos / (n_pos + n_neg)
+
+      n_pos_top <- round(top_n * prop_pos)
+      n_neg_top <- top_n - n_pos_top
+
+      if (n_pos > 0 && n_pos_top == 0) n_pos_top <- 1
+      if (n_neg > 0 && n_neg_top == 0) n_neg_top <- 1
 
       gsea_heat <- rbind(
-        utils::head(gsea_pos, n_each),
-        utils::head(gsea_neg, n_each)
-      )
-
-      heatmap_title <- paste0(
-        "GSEA - split direction NES\n"
+        utils::head(gsea_pos, n_pos_top),
+        utils::head(gsea_neg, n_neg_top)
       )
     }
 
-    if (nrow(gsea_heat) > 0) {
+    heatmap_title <- "GSEA - adaptive NES"
 
-      rown <- make.unique(gsea_heat$pathway)
+  } else if (heatmap_mode == "NES_ordered") {
 
-      heat_df <- data.frame(
-        row.names = rown,
-        neg = ifelse(gsea_heat$NES < 0, -gsea_heat$NES, 0),
-        pos = ifelse(gsea_heat$NES > 0,  gsea_heat$NES, 0)
-      )
+    gsea_heat <- gsea_sig[
+      order(gsea_sig$NES, decreasing = TRUE),
+    ]
+    gsea_heat <- utils::head(gsea_sig, top_n)
 
-      colnames(heat_df) <- contrast
-
-      # Plot heatmap
-      pheatmap::pheatmap(
-        heat_df,
-        cluster_rows = TRUE,
-        cluster_cols = FALSE,
-        angle_col = 45,
-        color = grDevices::colorRampPalette(
-          c("#4C72B0", "#DDDDDD", "#C44E52")
-        )(100),
-        border_color = "white",
-        labels_row = stringr::str_wrap(rownames(heat_df), width = 40),
-        main = heatmap_title
-      )
-    }
-  }
-
-  # ===========================================================================
-  # 9) RNG handling
-  # ===========================================================================
-  rng_state <- if (exists(".Random.seed", envir = .GlobalEnv)) .Random.seed else NULL
-
-  seed <- if (is.null(seed)) {
-    "not set"
-  } else {
-    as.character(seed)
-  }
-
-  # ===========================================================================
-  # 10) Output
-  # ===========================================================================
-  direction_summary <- list(
-    up = sum(gsea_top$NES > 0),
-    down = sum(gsea_top$NES < 0),
-    total = nrow(gsea_top),
-    proportion_up = mean(gsea_top$NES > 0),
-    proportion_down = mean(gsea_top$NES < 0)
-  )
-
-  params <- list(
-    timestamp = Sys.time(),
-    organism = organism,
-    group_col = group_col,
-    sample_col = sample_col,
-    contrast = contrast,
-    ranking_method = ranking_method,
-    geneset_collection = geneset_collection,
-    geneset_subcollection = geneset_subcollection,
-    padj_gsea = padj_gsea,
-    top_n = top_n,
-    heatmap_mode = heatmap_mode,
-    gene_id_type = proj$input$imp_data$gene_id_type,
-    seed = seed,
-    rng_state = rng_state
-  )
-
-  obj <- list(
-    params = params,
-    ranking = gene_ranking,
-    pathways = pathways,
-    gsea_full = gsea_res,
-    gsea_top = gsea_top,
-    direction_summary = direction_summary,
-    input_summary = list(
-      n_genes = length(gene_ranking),
-      gene_id_type = params$gene_id_type
-    ),
-    enrich_plots = enrich_plots
-  )
-
-  class(obj) <- "gsea_result"
-
-  # ===========================================================================
-  # 11) Attach to project
-  # ===========================================================================
-  if (save) {
-
-    proj <- .attach_to_project(
-      proj,
-      obj,
-      slot = "analyses",
-      subtype = "gsea",
-      prefix = "gsea",
-      log = list(
-        contrast = paste(contrast, collapse = " vs "),
-        ranking = ranking_method,
-        genesets = paste0(geneset_collection, ":", geneset_subcollection),
-        n_sig = sum(gsea_res$padj < padj_gsea),
-        top_pathway = ifelse(nrow(gsea_top) > 0, gsea_top$pathway[1], NA),
-        seed = seed
-      )
+    heatmap_title <- paste0(
+      "GSEA - NES ordered\n"
     )
 
+  } else if (heatmap_mode == "split_direction") {
+
+    n_each <- floor(top_n / 2)
+
+    gsea_pos <- gsea_sig[gsea_sig$NES > 0, ]
+    gsea_neg <- gsea_sig[gsea_sig$NES < 0, ]
+
+    gsea_pos <- gsea_pos[order(-gsea_pos$NES), ]
+    gsea_neg <- gsea_neg[order(gsea_neg$NES), ]
+
+    gsea_heat <- rbind(
+      utils::head(gsea_pos, n_each),
+      utils::head(gsea_neg, n_each)
+    )
+
+    heatmap_title <- paste0(
+      "GSEA - split direction NES\n"
+    )
   }
 
-  print(obj)
-  return(invisible(proj))
+  if (nrow(gsea_heat) > 0) {
+
+    rown <- make.unique(gsea_heat$pathway)
+
+    heat_df <- data.frame(
+      row.names = rown,
+      neg = ifelse(gsea_heat$NES < 0, -gsea_heat$NES, 0),
+      pos = ifelse(gsea_heat$NES > 0,  gsea_heat$NES, 0)
+    )
+
+    colnames(heat_df) <- contrast
+
+    # Plot heatmap
+    pheatmap::pheatmap(
+      heat_df,
+      cluster_rows = TRUE,
+      cluster_cols = FALSE,
+      angle_col = 45,
+      color = grDevices::colorRampPalette(
+        c("#4C72B0", "#DDDDDD", "#C44E52")
+      )(100),
+      border_color = "white",
+      labels_row = stringr::str_wrap(rownames(heat_df), width = 40),
+      main = heatmap_title
+    )
+  }
+}
+
+# =============================================================================
+# 9. RNG handling
+# =============================================================================
+
+rng_state <- if (exists(".Random.seed", envir = .GlobalEnv)).Random.seed else NULL
+
+seed <- if (is.null(seed)) {
+  "not set"
+} else {
+  as.character(seed)
+}
+
+# =============================================================================
+# 10. Output
+# =============================================================================
+
+direction_summary <- list(
+  up = sum(gsea_top$NES > 0),
+  down = sum(gsea_top$NES < 0),
+  total = nrow(gsea_top),
+  proportion_up = mean(gsea_top$NES > 0),
+  proportion_down = mean(gsea_top$NES < 0)
+)
+
+params <- list(
+  timestamp = Sys.time(),
+  organism = organism,
+  contrast = contrast,
+  ranking_method = ranking_method,
+  geneset_collection = geneset_collection,
+  geneset_subcollection = geneset_subcollection,
+  padj_gsea = padj_gsea,
+  top_n = top_n,
+  heatmap_mode = heatmap_mode,
+  gene_id_type = proj$input$imp_data$gene_id_type,
+  seed = seed,
+  rng_state = rng_state
+)
+
+obj <- list(
+  params = params,
+  ranking = gene_ranking,
+  pathways = pathways,
+  gsea_full = gsea_res,
+  gsea_top = gsea_top,
+  direction_summary = direction_summary,
+  input_summary = list(
+    n_genes = length(gene_ranking),
+    gene_id_type = params$gene_id_type
+  ),
+  enrich_plots = enrich_plots
+)
+
+class(obj) <- "gsea_result"
+
+# =============================================================================
+# 11. Attach to project
+# =============================================================================
+
+if (save) {
+
+  proj <- .attach_to_project(
+    proj,
+    obj,
+    slot = "analyses",
+    subtype = "gsea",
+    log = list(
+      contrast = paste(contrast, collapse = " vs "),
+      ranking = ranking_method,
+      genesets = paste0(geneset_collection, ":", geneset_subcollection),
+      n_sig = sum(gsea_res$padj < padj_gsea),
+      top_pathway = ifelse(nrow(gsea_top) > 0, gsea_top$pathway[1], NA),
+      seed = seed
+    )
+  )
 
 }
 
-# ===========================================================================
-# 12) Print S3
-# ===========================================================================
+print(obj)
+return(invisible(proj))
+
+}
+
+# =============================================================================
+# 12. Print S3
+# =============================================================================
 #' Print method for gsea_result objects
 #'
 #' Displays a formatted summary of a \code{gsea_result} object,
@@ -696,33 +642,34 @@ NULL
 
 print.gsea_result <- function(x, ...) {
 
-  .print_header("GSEA Result")
+.print_header("GSEA Result")
 
-  .print_block("Overview", function() {
-    cat("Class: gsea_result\n")
-    cat("Contrast: ", paste(x$params$contrast, collapse = " vs "), "\n")
-    cat("Significant pathways: ",
-        sum(x$gsea_full$padj < x$params$padj_gsea),
-        "\n", sep = "")
-    cat("Seed: ", x$params$seed, "\n", sep = "")
-  })
+.print_block("Overview", function() {
+  cat("Class: gsea_result\n")
+  cat("Contrast: ", paste(x$params$contrast, collapse = " vs "), "\n")
+  cat("Significant pathways: ",
+      sum(x$gsea_full$padj < x$params$padj_gsea),
+      "\n", sep = "")
+  cat("Seed: ", x$params$seed, "\n", sep = "")
+})
 
-  .print_block("Direction summary", function() {
-    cat("Upregulated pathways: ", x$direction_summary$up, "\n")
-    cat("Downregulated pathways: ", x$direction_summary$down, "\n")
-    cat("Up proportion: ", round(x$direction_summary$proportion_up, 2), "\n")
-  })
+.print_block("Direction summary", function() {
+  cat("Upregulated pathways: ", x$direction_summary$up, "\n")
+  cat("Downregulated pathways: ", x$direction_summary$down, "\n")
+  cat("Up proportion: ", round(x$direction_summary$proportion_up, 2), "\n")
+})
 
-  .print_block("Top enriched pathways", function(){
-    print(utils::head(x$gsea_top$pathway, 5))
-  })
+.print_block("Top enriched pathways", function(){
+  print(utils::head(x$gsea_top$pathway, 5))
+})
 
-  invisible(x)
+invisible(x)
+
 }
 
-# ===========================================================================
-# 13) Summary method
-# ===========================================================================
+# =============================================================================
+# 13. Summary method
+# =============================================================================
 #' Summary method for gsea_result objects
 #'
 #' Returns a table of top enriched pathways from a
@@ -734,5 +681,5 @@ print.gsea_result <- function(x, ...) {
 #' @rdname gsea_result
 
 summary.gsea_result <- function(object, ...) {
-  object$gsea_top
+object$gsea_top
 }

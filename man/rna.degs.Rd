@@ -6,7 +6,6 @@
 \usage{
 rna.degs(
   project,
-  comparison_id = NULL,
   top_n = 10,
   padj_cutoff = 0.05,
   plot = TRUE,
@@ -16,13 +15,6 @@ rna.degs(
 }
 \arguments{
 \item{project}{\code{rna_project} object created by \code{rna.project()}.}
-
-\item{comparison_id}{Identifier of the comparison to use. Can be:
-\itemize{
-\item A character string matching a stored comparison name
-\item A numeric index (position in stored comparisons)
-\item \code{NULL} to use the most recent comparison
-}}
 
 \item{top_n}{Integer. Number of genes to select from each tail of the
 log2 fold-change distribution (default: 10).}
@@ -58,24 +50,18 @@ An object of class \code{"deg_result"} containing:
 Identifies the top up- and down-regulated genes from a differential
 expression analysis performed with \code{rna.compare()}, and optionally
 generates a bar plot of log2 fold-changes using gene symbols.
-
-Gene identifiers are automatically mapped to symbols using \pkg{biomaRt},
-based on the organism defined in the active \code{rna_project}.
 }
 \details{
 The function ranks genes based on log2 fold-change and extracts the top
 \code{top_n} most upregulated and downregulated genes.
 
-\strong{comparison_id interpretation:}
+\strong{comparison_label interpretation:}
 The log2 fold-change is defined as \strong{test − reference}, inherited
 from \code{rna.compare()}. Therefore:
 \itemize{
 \item Positive values indicate higher expression in the test group
 \item Negative values indicate higher expression in the reference group
 }
-
-Gene identifiers are mapped to symbols using \pkg{biomaRt}. If mapping fails,
-original gene IDs are used as fallback.
 
 The bar plot displays:
 \itemize{
@@ -100,10 +86,6 @@ A summary is printed to the console including:
 \dontrun{
 # Use last comparison
 rna.degs(project = my_project)
-
-# Specify comparison by name
-rna.degs(my_project,
-         comparison_id = "treated_vs_control")
 
 # Select more genes
 rna.degs(my_project,

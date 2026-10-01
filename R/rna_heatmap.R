@@ -102,353 +102,350 @@ rna.heatmap <- function(project,
                         save = TRUE
                         ) {
 
+res_df <- NULL
+
+# =============================================================================
+# 0. Basic checks
+# =============================================================================
+
+.check_dependencies("pheatmap")
+
+#  Set seed
+old_seed <- .set_seed(seed)
+on.exit(.reset_seed(old_seed), add = TRUE)
+
+# =============================================================================
+# 1. Get active project
+# =============================================================================
+
+proj <- project
+
+expr_mat <- as.matrix(.get_expr(proj))
+metadata <- .get_meta(proj)
+comp_obj <- .get_comp(proj)
+
+gene_id_type <- .get_gene_id_type(proj)
+organism <- .get_organism(proj)
+
+# =============================================================================
+# 2. Validate input
+# =============================================================================
+
+OrgDb <- switch(
+  organism,
+  human = org.Hs.eg.db::org.Hs.eg.db,
+  mouse = org.Mm.eg.db::org.Mm.eg.db,
+  zebrafish = org.Dr.eg.db::org.Dr.eg.db
+)
+
+if (!"Sample" %in% colnames(metadata))
+  stop("Metadata must contain a 'Sample' column.")
+
+# =============================================================================
+# 3. Resolve comparison
+# =============================================================================
+
+if (is.null(genes) && !use_variance) {
+
+  res_df <- comp_obj$res
+
+  message(
+    "[rna.heatmap] Using comparison: ",
+    comp_obj$groups$test, " vs ", comp_obj$groups$reference
+  )
+
+} else {
+
   res_df <- NULL
-
-  # =============================================================================
-  # 0) Basic checks
-  # =============================================================================
-
-  .check_dependencies("pheatmap")
-
-  # --- Set seed ---
-  old_seed <- .set_seed(seed)
-  on.exit(.reset_seed(old_seed), add = TRUE)
-
-  # =============================================================================
-  # 1) Get active project
-  # =============================================================================
-
-  proj <- project
-
-  expr_mat <- as.matrix(.get_expr(proj))
-  metadata <- .get_meta(proj)
-  comps <- .get_comp(proj)
-
-  gene_id_type <- .get_gene_id_type(proj)
-  organism <- .get_organism(proj)
-
-  # =============================================================================
-  # 2) Validate input
-  # =============================================================================
-
-  OrgDb <- switch(
-    organism,
-    human = org.Hs.eg.db::org.Hs.eg.db,
-    mouse = org.Mm.eg.db::org.Mm.eg.db,
-    zebrafish = org.Dr.eg.db::org.Dr.eg.db
-  )
-
-  if (!"Sample" %in% colnames(metadata))
-    stop("Metadata must contain a 'Sample' column.")
-
-  # =============================================================================
-  # 3) Resolve comparison
-  # =============================================================================
-
-  if (is.null(genes) && !use_variance) {
-
-    contrast_id <- .get_last_or_selected(
-      comps,
-      contrast,
-      what = "comparison"
-    )
-
-    comp_obj <- .get_comp_obj(proj, contrast_id)
-
-    res_df <- comp_obj$res
-
-    message(
-      "[rna.heatmap] Using comparison: ",
-      comp_obj$groups$test, " vs ", comp_obj$groups$reference
-    )
-
-  } else {
-
-    res_df <- NULL
-  }
-
-  # =============================================================================
-  # 4) Mode validation
-  # =============================================================================
-
-  if (sum(c(!is.null(contrast), !is.null(genes), use_variance)) > 1) {
-    stop("Choose only one: contrast, genes, or use_variance.")
-  }
-
-  # =============================================================================
-  # 5) Gene selection & Regulation mapping
-  # =============================================================================
-
-  genes_sel <- .select_heatmap_genes(
-    expr_mat = expr_mat,
-    res_df = res_df,
-    genes = genes,
-    use_variance = use_variance,
-    top_n = top_n
-  )
-
-  genes_sel <- intersect(genes_sel, rownames(expr_mat))
-  mat_top <- expr_mat[genes_sel, , drop = FALSE]
-
-  if (length(genes_sel) < 2) {
-    stop("Heatmap requires at least 2 genes.\nSelected genes: ", length(genes_sel))
-  }
-
-  # Map regulation using ORIGINAL IDs before converting to SYMBOL
-  gene_regulation <- NULL
-  if (!is.null(res_df)) {
-    common_genes <- intersect(genes_sel, rownames(res_df))
-    if (length(common_genes) > 0) {
-      # Extract direction based on log2FoldChange
-      fc_vals <- res_df[common_genes, "log2FoldChange"]
-      reg_vec <- ifelse(fc_vals > 0, "Up", "Down")
-      names(reg_vec) <- common_genes
-
-      gene_regulation <- data.frame(
-        Regulation = reg_vec,
-        stringsAsFactors = FALSE
-      )
-    }
-  }
-
-  # =============================================================================
-  # 6) Map gene IDs to SYMBOL
-  # =============================================================================
-
-  from_type <- toupper(gene_id_type)
-
-  gene_symbols <- tryCatch({
-    AnnotationDbi::mapIds(
-      OrgDb,
-      keys = genes_sel,
-      keytype = from_type,
-      column = "SYMBOL",
-      multiVals = "first"
-    )
-  }, error = function(e) {
-    warning("Gene ID mapping failed. Using original IDs.")
-    NULL
-  })
-
-  if (!is.null(gene_symbols)) {
-    new_names <- gene_symbols[genes_sel]
-    new_names[is.na(new_names)] <- genes_sel[is.na(new_names)]
-    new_names <- make.unique(new_names)
-
-    # Keep track of mapping for row annotations
-    if (!is.null(gene_regulation)) {
-      rownames(gene_regulation) <- new_names
-    }
-
-    rownames(mat_top) <- new_names
-    genes_sel <- new_names
-  }
-
-  # =============================================================================
-  # 7) Apply z-score normalization
-  # =============================================================================
-
-  if (zscore) {
-    mat_top <- t(scale(t(mat_top)))
-  }
-
-  # remove NA / Inf
-  mat_top[!is.finite(mat_top)] <- 0
-
-  # clamp extremes
-  mat_top[mat_top > 2] <- 2
-  mat_top[mat_top < -2] <- -2
-
-  if (any(!is.finite(mat_top))) {
-    warning("Non-finite values detected in heatmap matrix. Replaced with 0.")
-  }
-
-  # =============================================================================
-  # 8) Prepare annotation & Colors
-  # =============================================================================
-
-  if (!group_col %in% colnames(metadata)) {
-    stop(
-      "Column '", group_col, "' not found in metadata.\n",
-      "Available columns: ", paste(colnames(metadata), collapse = ", ")
-    )
-  }
-
-  rownames(metadata) <- metadata$Sample
-
-  group_factor <- factor(
-    metadata[colnames(mat_top), group_col],
-    levels = unique(metadata[colnames(mat_top), group_col])
-  )
-
-  ann_col <- data.frame(
-    Group = group_factor,
-    row.names = colnames(mat_top)
-  )
-
-  # --- Build annotation_colors list dynamically ---
-  annotation_colors <- list()
-
-  unique_groups <- levels(group_factor)
-  n_groups <- length(unique_groups)
-
-  if (!is.null(group_colors)) {
-    # Custom colors provided by user
-    if (!is.null(names(group_colors))) {
-      # Named vector supplied
-      annotation_colors[["Group"]] <- group_colors
-    } else {
-      # Unnamed vector supplied
-      if (length(group_colors) < n_groups) {
-        stop("Insufficient colors provided in 'group_colors' for all levels in ", group_col)
-      }
-      group_cols <- group_colors[1:n_groups]
-      names(group_cols) <- unique_groups
-      annotation_colors[["Group"]] <- group_cols
-    }
-  } else {
-    # DEFAULT: Replicate standard ggplot2 discrete color palette
-    # Check if scales dependency is present, otherwise fallback to base hcl
-    default_cols <- if (requireNamespace("scales", quietly = TRUE)) {
-      scales::hue_pal()(n_groups)
-    } else {
-      # Fallback equivalent formula to ggplot2 hue palette in base R
-      grDevices::hcl(h = seq(15, 375, length = n_groups + 1)[1:n_groups], l = 65, c = 100)
-    }
-
-    names(default_cols) <- unique_groups
-    annotation_colors[["Group"]] <- default_cols
-  }
-
-  # Set Regulation colors if requested
-  if (show_regulation && !is.null(gene_regulation)) {
-    annotation_row <- gene_regulation
-    annotation_colors[["Regulation"]] <- c(Up = "#E69F00", Down = "#009E73")
-  } else {
-    annotation_row <- NULL
-  }
-
-  # =============================================================================
-  # 9) Plot heatmap
-  # =============================================================================
-
-  palette = grDevices::colorRampPalette(c("#3B4CC0", "white", "#d7191c"))(100)
-
-  pheatmap::pheatmap(
-    mat_top,
-    cluster_rows = cluster_rows,
-    cluster_cols = cluster_cols,
-    show_rownames = show_rownames,
-    show_colnames = show_colnames,
-    annotation_col = ann_col,
-    annotation_row = annotation_row,
-    annotation_colors = annotation_colors,
-    annotation_names_col = FALSE,
-    annotation_names_row = FALSE,
-    color = palette,
-    border_color = NA,
-    angle_col = 45,
-    main = if (!is.null(contrast)) {
-      sprintf("Top %d DEGs", length(genes_sel))
-    } else {
-      "Gene Expression Heatmap"
-    }
-  )
-
-  # =============================================================================
-  # 10) RNG handling
-  # =============================================================================
-
-  rng_state <- if (exists(".Random.seed", envir = .GlobalEnv)) .Random.seed else NULL
-
-  seed <- if (is.null(seed)) {
-    "not set"
-  } else {
-    as.character(seed)
-  }
-
-  # =============================================================================
-  # 11) Return object
-  # =============================================================================
-
-  params <- list(
-    timestamp = Sys.time(),
-    group_col = group_col,
-    top_n = top_n,
-    use_variance = use_variance,
-    zscore = zscore,
-    cluster_rows = cluster_rows,
-    cluster_cols = cluster_cols,
-    dist_method = "euclidean",
-    clustering_method = "complete",
-    seed = seed,
-    rng_state = rng_state
-  )
-
-  obj <- list(
-    genes_used = genes_sel,
-    heatmap_matrix = mat_top,
-    annotation_col = ann_col,
-    contrast = contrast,
-    params = params
-  )
-
-  class(obj) <- "heatmap_result"
-
-  # =============================================================================
-  # 12) Attach to project
-  # =============================================================================
-
-  if (save) {
-
-    proj <- .attach_to_project(
-      proj,
-      obj,
-      slot = "analyses",
-      subtype = "heatmap",
-      prefix = "heatmap",
-      log = list(
-        n = length(genes_sel),
-        group = group_col,
-        source = if (!is.null(contrast)) contrast else "none",
-        seed = seed
-      )
-    )
-
-  }
-
-  print(obj)
-  return(invisible(proj))
 }
 
 # =============================================================================
-# 12) Print S3
+# 4. Mode validation
 # =============================================================================
 
+if (sum(c(!is.null(contrast), !is.null(genes), use_variance)) > 1) {
+  stop("Choose only one: contrast, genes, or use_variance.")
+}
+
+# =============================================================================
+# 5. Gene selection & Regulation mapping
+# =============================================================================
+
+genes_sel <- .select_heatmap_genes(
+  expr_mat = expr_mat,
+  res_df = res_df,
+  genes = genes,
+  use_variance = use_variance,
+  top_n = top_n
+)
+
+genes_sel <- intersect(genes_sel, rownames(expr_mat))
+mat_top <- expr_mat[genes_sel, , drop = FALSE]
+
+if (length(genes_sel) < 2) {
+  stop("Heatmap requires at least 2 genes.\nSelected genes: ", length(genes_sel))
+}
+
+# Map regulation using ORIGINAL IDs before converting to SYMBOL
+gene_regulation <- NULL
+if (!is.null(res_df)) {
+  common_genes <- intersect(genes_sel, rownames(res_df))
+  if (length(common_genes) > 0) {
+    # Extract direction based on log2FoldChange
+    fc_vals <- res_df[common_genes, "log2FoldChange"]
+    reg_vec <- ifelse(fc_vals > 0, "Up", "Down")
+    names(reg_vec) <- common_genes
+
+    gene_regulation <- data.frame(
+      Regulation = reg_vec,
+      stringsAsFactors = FALSE
+    )
+  }
+}
+
+# =============================================================================
+# 6. Map gene IDs to SYMBOL
+# =============================================================================
+
+from_type <- toupper(gene_id_type)
+
+gene_symbols <- tryCatch({
+  AnnotationDbi::mapIds(
+    OrgDb,
+    keys = genes_sel,
+    keytype = from_type,
+    column = "SYMBOL",
+    multiVals = "first"
+  )
+}, error = function(e) {
+  warning("Gene ID mapping failed. Using original IDs.")
+  NULL
+})
+
+if (!is.null(gene_symbols)) {
+  new_names <- gene_symbols[genes_sel]
+  new_names[is.na(new_names)] <- genes_sel[is.na(new_names)]
+  new_names <- make.unique(new_names)
+
+  # Keep track of mapping for row annotations
+  if (!is.null(gene_regulation)) {
+    rownames(gene_regulation) <- new_names
+  }
+
+  rownames(mat_top) <- new_names
+  genes_sel <- new_names
+}
+
+# =============================================================================
+# 7. Apply z-score normalization
+# =============================================================================
+
+if (zscore) {
+  mat_top <- t(scale(t(mat_top)))
+}
+
+# remove NA / Inf
+mat_top[!is.finite(mat_top)] <- 0
+
+# clamp extremes
+mat_top[mat_top > 2] <- 2
+mat_top[mat_top < -2] <- -2
+
+if (any(!is.finite(mat_top))) {
+  warning("Non-finite values detected in heatmap matrix. Replaced with 0.")
+}
+
+# =============================================================================
+# 8. Prepare annotation & Colors
+# =============================================================================
+
+if (!group_col %in% colnames(metadata)) {
+  stop(
+    "Column '", group_col, "' not found in metadata.\n",
+    "Available columns: ", paste(colnames(metadata), collapse = ", ")
+  )
+}
+
+rownames(metadata) <- metadata$Sample
+
+group_factor <- factor(
+  metadata[colnames(mat_top), group_col],
+  levels = unique(metadata[colnames(mat_top), group_col])
+)
+
+ann_col <- data.frame(
+  Group = group_factor,
+  row.names = colnames(mat_top)
+)
+
+# ===============================================
+# 8.1. Build annotation_colors list dynamically
+# ===============================================
+annotation_colors <- list()
+
+unique_groups <- levels(group_factor)
+n_groups <- length(unique_groups)
+
+if (!is.null(group_colors)) {
+  # Custom colors provided by user
+  if (!is.null(names(group_colors))) {
+    # Named vector supplied
+    annotation_colors[["Group"]] <- group_colors
+  } else {
+    # Unnamed vector supplied
+    if (length(group_colors) < n_groups) {
+      stop("Insufficient colors provided in 'group_colors' for all levels in ", group_col)
+    }
+    group_cols <- group_colors[1:n_groups]
+    names(group_cols) <- unique_groups
+    annotation_colors[["Group"]] <- group_cols
+  }
+} else {
+  # DEFAULT: Replicate standard ggplot2 discrete color palette
+  # Check if scales dependency is present, otherwise fallback to base hcl
+  default_cols <- if (requireNamespace("scales", quietly = TRUE)) {
+    scales::hue_pal()(n_groups)
+  } else {
+    # Fallback equivalent formula to ggplot2 hue palette in base R
+    grDevices::hcl(h = seq(15, 375, length = n_groups + 1)[1:n_groups], l = 65, c = 100)
+  }
+
+  names(default_cols) <- unique_groups
+  annotation_colors[["Group"]] <- default_cols
+}
+
+# ===============================================
+# 8.2. Set Regulation colors if requested
+# ===============================================
+
+if (show_regulation && !is.null(gene_regulation)) {
+  annotation_row <- gene_regulation
+  annotation_colors[["Regulation"]] <- c(Up = "#E69F00", Down = "#009E73")
+} else {
+  annotation_row <- NULL
+}
+
+# =============================================================================
+# 9. Plot heatmap
+# =============================================================================
+
+palette = grDevices::colorRampPalette(c("#3B4CC0", "white", "#d7191c"))(100)
+
+pheatmap::pheatmap(
+  mat_top,
+  cluster_rows = cluster_rows,
+  cluster_cols = cluster_cols,
+  show_rownames = show_rownames,
+  show_colnames = show_colnames,
+  annotation_col = ann_col,
+  annotation_row = annotation_row,
+  annotation_colors = annotation_colors,
+  annotation_names_col = FALSE,
+  annotation_names_row = FALSE,
+  color = palette,
+  border_color = NA,
+  angle_col = 45,
+  main = if (!is.null(contrast)) {
+    sprintf("Top %d DEGs", length(genes_sel))
+  } else {
+    "Gene Expression Heatmap"
+  }
+)
+
+# =============================================================================
+# 10. RNG handling
+# =============================================================================
+
+rng_state <- if (exists(".Random.seed", envir = .GlobalEnv)) .Random.seed else NULL
+
+seed <- if (is.null(seed)) {
+  "not set"
+} else {
+  as.character(seed)
+}
+
+# =============================================================================
+# 11. Return object
+# =============================================================================
+
+# Parameters
+params <- list(
+  timestamp = Sys.time(),
+  group_col = group_col,
+  top_n = top_n,
+  use_variance = use_variance,
+  zscore = zscore,
+  cluster_rows = cluster_rows,
+  cluster_cols = cluster_cols,
+  dist_method = "euclidean",
+  clustering_method = "complete",
+  seed = seed,
+  rng_state = rng_state
+)
+
+# Final object
+obj <- list(
+  genes_used = genes_sel,
+  heatmap_matrix = mat_top,
+  annotation_col = ann_col,
+  contrast = contrast,
+  params = params
+)
+
+class(obj) <- "heatmap_result"
+
+# =============================================================================
+# 12. Attach to project
+# =============================================================================
+
+if (save) {
+
+  proj <- .attach_to_project(
+    proj,
+    obj,
+    slot = "analyses",
+    subtype = "heatmap",
+    log = list(
+      n = length(genes_sel),
+      group = group_col,
+      source = if (!is.null(contrast)) contrast else "none",
+      seed = seed
+    )
+  )
+
+}
+
+print(obj)
+return(invisible(proj))
+}
+
+# =============================================================================
+# 13. Print S3
+# =============================================================================
 #' Print method for GO objects
 #' @name heatmap_result
 #' @docType class
 NULL
-
 #' @method print heatmap_result
 #' @export
 
 print.heatmap_result <- function(x, ...) {
 
-  .print_header("Heatmap Result")
+.print_header("Heatmap Result")
 
-  .print_block("Heatmap info", function() {
-    cat("Genes used: ", length(x$genes_used), "\n", sep = "")
-    cat("Z-score: ", x$params$zscore, "\n", sep = "")
-    cat("Top n genes: ", x$params$top_n, "\n", sep = "")
-    cat("Cluster rows: ", x$params$cluster_rows, "\n", sep = "")
-    cat("Cluster cols: ", x$params$cluster_cols, "\n", sep = "")
-    cat("Seed: ", x$params$seed, "\n", sep = "")
-  })
+.print_block("Heatmap info", function() {
+  cat("Genes used: ", length(x$genes_used), "\n", sep = "")
+  cat("Z-score: ", x$params$zscore, "\n", sep = "")
+  cat("Top n genes: ", x$params$top_n, "\n", sep = "")
+  cat("Cluster rows: ", x$params$cluster_rows, "\n", sep = "")
+  cat("Cluster cols: ", x$params$cluster_cols, "\n", sep = "")
+  cat("Seed: ", x$params$seed, "\n", sep = "")
+})
 
-  .print_block("Top 5 genes", function(){
-    print(utils::head(x$genes_used, n = 5))
-  })
+.print_block("Top 5 genes", function(){
+  print(utils::head(x$genes_used, n = 5))
+})
 
-  invisible(x)
+invisible(x)
+
 }

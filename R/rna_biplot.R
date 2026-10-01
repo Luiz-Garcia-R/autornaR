@@ -67,295 +67,321 @@ rna.biplot <- function(project,
                        verbose = TRUE
 ) {
 
-  # ===========================================================================
-  # 0) Basic checks
-  # ===========================================================================
-  .check_dependencies(c("dplyr", "ggplot2", "ggrepel"))
+# =============================================================================
+# 0. Basic checks
+# =============================================================================
 
-  # ===========================================================================
-  # 1) Get active project
-  # ===========================================================================
-  proj <- project
+.check_dependencies(c("dplyr", "ggplot2", "ggrepel"))
 
-  expr_mat <- as.matrix(.get_expr(proj))
-  metadata <- .get_meta(proj)
-  dimred <- .get_dimred(proj, id = use_dimred)
+# =============================================================================
+# 1. Get active project
+# =============================================================================
 
-  # ===========================================================================
-  # 2) Validate input
-  # ===========================================================================
-  pca_res <- dimred$PCA$model
-  loadings <- dimred$PCA$loadings
-  df_pca <- dimred$PCA$coordinates
+proj <- project
 
-  common <- intersect(colnames(expr_mat), metadata$Sample)
+expr_mat <- as.matrix(.get_expr(proj))
+metadata <- .get_meta(proj)
+dimred <- .get_dimred(proj)
 
-  expr_mat <- expr_mat[, common, drop = FALSE]
-  metadata <- metadata[match(common, metadata$Sample), , drop = FALSE]
+# =============================================================================
+# 2. Validate input
+# =============================================================================
 
-  groups <- as.factor(metadata[[group_col]])
+pca_res <- dimred$PCA$model
+loadings <- dimred$PCA$loadings
+df_pca <- dimred$PCA$coordinates
 
-  # ===========================================================================
-  # 3) Gene mapping
-  # ===========================================================================
-  gene_map <- .get_gene_annotation(proj)
+common <- intersect(colnames(expr_mat), metadata$Sample)
 
-  gene_ids <- gene_map$gene_id
-  gene_symbols <- gene_map$symbol
+expr_mat <- expr_mat[, common, drop = FALSE]
+metadata <- metadata[match(common, metadata$Sample), , drop = FALSE]
 
-  # fallback
-  gene_labels <- ifelse(
-    is.na(gene_symbols) | gene_symbols == "",
-    gene_ids,
-    gene_symbols
+groups <- as.factor(metadata[[group_col]])
+
+# =============================================================================
+# 3. Gene mapping
+# =============================================================================
+
+gene_map <- .get_gene_annotation(proj)
+
+gene_ids <- gene_map$gene_id
+gene_symbols <- gene_map$symbol
+
+# fallback
+gene_labels <- ifelse(
+  is.na(gene_symbols) | gene_symbols == "",
+  gene_ids,
+  gene_symbols
+)
+
+names(gene_labels) <- gene_ids
+
+# =============================================================================
+# 4. Computate loadings
+# =============================================================================
+
+style <- match.arg(style)
+p_biplot <- NULL
+
+pc_x = 1
+pc_y = 2
+
+# ===============================================
+# 4.1. Gene selection
+# ===============================================
+
+if (!is.null(genes)) {
+  valid_idx <- which(
+    gene_ids %in% genes |
+      gene_symbols %in% genes
   )
 
-  names(gene_labels) <- gene_ids
+  if (length(valid_idx) == 0) {
+    warning("None of the provided genes were found.")
+    selected_genes <- character(0)
+  } else {
+    selected_genes <- gene_ids[valid_idx]
+  }
 
-  # ===========================================================================
-  # 4) Computate loadings
-  # ===========================================================================
-  style <- match.arg(style)
-  p_biplot <- NULL
+} else {
 
-  pc_x = 1
-  pc_y = 2
+  all_genes <- gene_ids[gene_ids %in% rownames(loadings)]
 
-  # --- gene selection ---
-  if (!is.null(genes)) {
-    valid_idx <- which(
-      gene_ids %in% genes |
-        gene_symbols %in% genes
-    )
+  # ===============================================
+  # 4.1.1. Loadings
+  # ===============================================
 
-    if (length(valid_idx) == 0) {
-      warning("None of the provided genes were found.")
-      selected_genes <- character(0)
-    } else {
-      selected_genes <- gene_ids[valid_idx]
-    }
+  pc_load <- loadings[, pc_x]
+  loading_score <- sqrt(loadings[, pc_x]^2 + loadings[, pc_y]^2)
+
+  # ===============================================
+  # 4.1.2. ANOVA
+  # ===============================================
+  if (style %in% c("anova", "hybrid")) {
+
+    pvals <- apply(expr_mat[all_genes, , drop = FALSE], 1, function(g) {
+      tryCatch({
+        summary(stats::aov(g ~ groups))[[1]][["Pr(>F)"]][1]
+      }, error = function(e) NA)
+    })
+
+    # Avoiding p=0
+    pvals[pvals == 0] <- 1e-300
+    anova_score <- -log10(pvals)
 
   } else {
+    anova_score <- rep(1, length(all_genes))
+  }
 
-    all_genes <- gene_ids[gene_ids %in% rownames(loadings)]
+  # ===============================================
+  # 4.1.3. Final Score
+  # ===============================================
 
-    # --- 1) Loadings ---
-    pc_load <- loadings[, pc_x]
-    loading_score <- sqrt(loadings[, pc_x]^2 + loadings[, pc_y]^2)
+  if (style == "loading") {
+    score <- loading_score
 
-    # --- 2) ANOVA ---
-    if (style %in% c("anova", "hybrid")) {
+  } else if (style == "anova") {
+    score <- anova_score
 
-      pvals <- apply(expr_mat[all_genes, , drop = FALSE], 1, function(g) {
-        tryCatch({
-          summary(stats::aov(g ~ groups))[[1]][["Pr(>F)"]][1]
-        }, error = function(e) NA)
-      })
-
-      # Avoiding p=0
-      pvals[pvals == 0] <- 1e-300
-      anova_score <- -log10(pvals)
-
-    } else {
-      anova_score <- rep(1, length(all_genes))
+  } else if (style == "hybrid") {
+    scale01 <- function(x) {
+      rng <- range(x, na.rm = TRUE)
+      if (diff(rng) == 0) return(rep(0, length(x)))
+      (x - rng[1]) / diff(rng)
     }
 
-    # --- 3) final Score ---
-    if (style == "loading") {
-      score <- loading_score
+    loading_norm <- scale01(loading_score)
+    anova_norm <- scale01(anova_score)
 
-    } else if (style == "anova") {
-      score <- anova_score
-
-    } else if (style == "hybrid") {
-      scale01 <- function(x) {
-        rng <- range(x, na.rm = TRUE)
-        if (diff(rng) == 0) return(rep(0, length(x)))
-        (x - rng[1]) / diff(rng)
-      }
-
-      loading_norm <- scale01(loading_score)
-      anova_norm <- scale01(anova_score)
-
-      score <- loading_norm * anova_norm
-    }
-
-    # --- 4) Ordering ---
-    ord <- order(score, decreasing = TRUE)
-    n_use <- min(n_genes, length(ord))
-    selected_genes <- all_genes[ord][1:n_use]
+    score <- loading_norm * anova_norm
   }
-  # --- validation ---
-  if (length(selected_genes) == 0) {
-    warning("No valid genes found for biplot.")
-  } else {
 
-    load_df <- data.frame(
-      gene_id = selected_genes,
-      gene_label = gene_labels[selected_genes],
-      PC1 = loadings[selected_genes, pc_x] * pca_res$sdev[pc_x],
-      PC2 = loadings[selected_genes, pc_y] * pca_res$sdev[pc_y]
-    )
+  # ===============================================
+  # 4.1.4. Ordering
+  # ===============================================
 
-    arrow_scale <- 0.8 * max(abs(df_pca$PC1), abs(df_pca$PC2)) /
-      max(abs(load_df$PC1), abs(load_df$PC2))
-
-    load_df$PC1 <- load_df$PC1 * arrow_scale
-    load_df$PC2 <- load_df$PC2 * arrow_scale
-
-    df_pca$Group <- groups
-
-  # ===========================================================================
-  # 5) Compute Variation
-  # ===========================================================================
-  var_exp <- (pca_res$sdev^2) / sum(pca_res$sdev^2)
-
-  pc1_var <- round(var_exp[pc_x] * 100, 1)
-  pc2_var <- round(var_exp[pc_y] * 100, 1)
-
-  # ===========================================================================
-  # 6) Plot
-  # ===========================================================================
-    p_biplot <- ggplot2::ggplot(df_pca,
-                                ggplot2::aes(PC1, PC2, color = Group)) +
-      ggplot2::geom_point(size = point_size, alpha = 0.8) +
-
-      # Arrows
-      ggplot2::geom_segment(
-        data = load_df,
-        ggplot2::aes(x = 0, y = 0, xend = PC1, yend = PC2),
-        arrow = ggplot2::arrow(length = grid::unit(0.25, "cm")),
-        color = "grey30",
-        linewidth = 0.6,
-        alpha = 0.8,
-        inherit.aes = FALSE
-      ) +
-
-      # Invisible anchor point
-      ggplot2::geom_point(
-        data = load_df,
-        ggplot2::aes(x = PC1, y = PC2),
-        alpha = 0,
-        inherit.aes = FALSE
-      ) +
-
-      # Smart labels
-      ggrepel::geom_text_repel(
-        data = load_df,
-        ggplot2::aes(x = PC1, y = PC2, label = .data$gene_label),
-        size = 3,
-        segment.color = "grey50",
-        max.overlaps = Inf,
-        box.padding = 0.3,
-        point.padding = 0.2,
-        inherit.aes = FALSE
-      ) +
-
-      ggplot2::theme_minimal() +
-      ggplot2::labs(
-        title = paste0("PCA Biplot (", style, ")"),
-        x = paste0("PC", pc_x, " (", pc1_var, "%)"),
-        y = paste0("PC", pc_y, " (", pc2_var, "%)")
-      )
-
-  if (!is.null(colors)) {
-    p_biplot <- p_biplot +
-      ggplot2::scale_color_manual(values = colors)
-  }
+  ord <- order(score, decreasing = TRUE)
+  n_use <- min(n_genes, length(ord))
+  selected_genes <- all_genes[ord][1:n_use]
 
 }
 
-  # ===========================================================================
-  # 7) Print plots if verbose
-  # ===========================================================================
-  if (verbose) {
-    print(p_biplot)
-  }
+# ===============================================
+# 4.2. Validation
+# ===============================================
 
-  # ===========================================================================
-  # 8) Output
-  # ===========================================================================
-  obj <- NULL
+if (length(selected_genes) == 0) {
+  warning("No valid genes found for biplot.")
+} else {
 
-  obj <- list(
-    params = list(
-      method = style,
-      n_genes = length(selected_genes),
-      group_col = group_col,
-      dimred_used = use_dimred,
-      timestamp = Sys.time()
-    ),
-
-    genes = data.frame(
-      gene_id = selected_genes,
-      gene_label = gene_labels[selected_genes],
-      score = if (exists("score")) score[selected_genes] else NA,
-      loading_PC1 = loadings[selected_genes, pc_x],
-      loading_PC2 = loadings[selected_genes, pc_y],
-      coord_PC1 = load_df$PC1,
-      coord_PC2 = load_df$PC2,
-      row.names = NULL
-    ),
-
-    pca = list(
-      pcs = c(pc_x, pc_y),
-      var_explained = var_exp,
-      sdev = pca_res$sdev
-    ),
-
-    samples = df_pca,
-
-    plot = p_biplot
+  load_df <- data.frame(
+    gene_id = selected_genes,
+    gene_label = gene_labels[selected_genes],
+    PC1 = loadings[selected_genes, pc_x] * pca_res$sdev[pc_x],
+    PC2 = loadings[selected_genes, pc_y] * pca_res$sdev[pc_y]
   )
 
-  class(obj) <- "biplot_result"
+  arrow_scale <- 0.8 * max(abs(df_pca$PC1), abs(df_pca$PC2)) /
+    max(abs(load_df$PC1), abs(load_df$PC2))
 
-  # ===========================================================================
-  # 9) Attach to project
-  # ===========================================================================
-  if (save) {
+  load_df$PC1 <- load_df$PC1 * arrow_scale
+  load_df$PC2 <- load_df$PC2 * arrow_scale
 
-    proj <- .attach_to_project(
-      proj,
-      obj,
-      slot = "analyses",
-      subtype = "biplot",
-      prefix = "biplot",
-      log = list(
-        dimred_used = use_dimred,
-        n_genes_selected = length(selected_genes),
-        mode = style,
-        group_col = group_col,
-        pcs = c(pc_x, pc_y),
-        used_custom_genes = !is.null(genes)
-      )
+  df_pca$Group <- groups
+
+# =============================================================================
+# 5. Compute Variation
+# =============================================================================
+
+var_exp <- (pca_res$sdev^2) / sum(pca_res$sdev^2)
+
+pc1_var <- round(var_exp[pc_x] * 100, 1)
+pc2_var <- round(var_exp[pc_y] * 100, 1)
+
+# =============================================================================
+# 6. Plot
+# =============================================================================
+
+p_biplot <- ggplot2::ggplot(df_pca,
+                            ggplot2::aes(PC1, PC2, color = Group)) +
+  ggplot2::geom_point(size = point_size, alpha = 0.8) +
+
+  # Arrows
+  ggplot2::geom_segment(
+    data = load_df,
+    ggplot2::aes(x = 0, y = 0, xend = PC1, yend = PC2),
+    arrow = ggplot2::arrow(length = grid::unit(0.25, "cm")),
+    color = "grey30",
+    linewidth = 0.6,
+    alpha = 0.8,
+    inherit.aes = FALSE
+  ) +
+
+  # Invisible anchor point
+  ggplot2::geom_point(
+    data = load_df,
+    ggplot2::aes(x = PC1, y = PC2),
+    alpha = 0,
+    inherit.aes = FALSE
+  ) +
+
+  # Smart labels
+  ggrepel::geom_text_repel(
+    data = load_df,
+    ggplot2::aes(x = PC1, y = PC2, label = .data$gene_label),
+    size = 3,
+    segment.color = "grey50",
+    max.overlaps = Inf,
+    box.padding = 0.3,
+    point.padding = 0.2,
+    inherit.aes = FALSE
+  ) +
+
+  ggplot2::theme_minimal() +
+  ggplot2::labs(
+    title = paste0("PCA Biplot (", style, ")"),
+    x = paste0("PC", pc_x, " (", pc1_var, "%)"),
+    y = paste0("PC", pc_y, " (", pc2_var, "%)")
+  )
+
+if (!is.null(colors)) {
+p_biplot <- p_biplot +
+  ggplot2::scale_color_manual(values = colors)
+}
+
+}
+
+# Print plots if verbose
+if (verbose) {
+print(p_biplot)
+}
+
+# =============================================================================
+# 8. Output
+# =============================================================================
+
+obj <- NULL
+
+obj <- list(
+  params = list(
+    method = style,
+    n_genes = length(selected_genes),
+    group_col = group_col,
+    dimred_used = use_dimred,
+    timestamp = Sys.time()
+  ),
+
+  genes = data.frame(
+    gene_id = selected_genes,
+    gene_label = gene_labels[selected_genes],
+    score = if (exists("score")) score[selected_genes] else NA,
+    loading_PC1 = loadings[selected_genes, pc_x],
+    loading_PC2 = loadings[selected_genes, pc_y],
+    coord_PC1 = load_df$PC1,
+    coord_PC2 = load_df$PC2,
+    row.names = NULL
+  ),
+
+  pca = list(
+    pcs = c(pc_x, pc_y),
+    var_explained = var_exp,
+    sdev = pca_res$sdev
+  ),
+
+  samples = df_pca,
+
+  plot = p_biplot
+)
+
+class(obj) <- "biplot_result"
+
+# =============================================================================
+# 9. Attach to project
+# =============================================================================
+
+if (save) {
+
+  proj <- .attach_to_project(
+    proj,
+    obj,
+    slot = "analyses",
+    subtype = "biplot",
+    log = list(
+      dimred_used = use_dimred,
+      n_genes_selected = length(selected_genes),
+      mode = style,
+      group_col = group_col,
+      pcs = c(pc_x, pc_y),
+      used_custom_genes = !is.null(genes)
     )
+  )
+}
+
+# =============================================================================
+# 10. Return
+# =============================================================================
+
+  has_score <- exists("score")
+
+  .print_header("PCA biplot results")
+
+  .print_block("Biplot Summary", function() {
+    cat("Mode:               ", style, "\n")
+    cat("Genes selected:     ", length(selected_genes), "\n")
+    cat("PCs used:           ", "PC", pc_x, " vs PC", pc_y, "\n")
+  })
+
+  if (exists("score")) {
+    .print_block("Top contributing genes", function() {
+      df <- data.frame(
+        gene = gene_labels[selected_genes],
+        gene_id = selected_genes,
+        score = round(score[selected_genes], 3),
+        row.names = NULL
+      )
+      print(df)
+    })
   }
 
-  # ===========================================================================
-  # 10) Return
-  # ===========================================================================
-    has_score <- exists("score")
-
-    .print_header("PCA biplot results")
-
-    .print_block("Biplot Summary", function() {
-      cat("Mode:               ", style, "\n")
-      cat("Genes selected:     ", length(selected_genes), "\n")
-      cat("PCs used:           ", "PC", pc_x, " vs PC", pc_y, "\n")
-    })
-
-    if (exists("score")) {
-      .print_block("Top contributing genes", function() {
-        df <- data.frame(
-          gene = gene_labels[selected_genes],
-          gene_id = selected_genes,
-          score = round(score[selected_genes], 3),
-          row.names = NULL
-        )
-        print(df)
-      })
-    }
-
-    return(invisible(proj))
+  return(invisible(proj))
 }

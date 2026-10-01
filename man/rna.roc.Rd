@@ -10,7 +10,7 @@ rna.roc(
   group_col = "Group",
   score_method = c("auto", "pca", "mean"),
   show_gene_names = TRUE,
-  colors = "#1f77b4",
+  line_color = "#1f77b4",
   plot = TRUE,
   save = TRUE
 )
@@ -18,7 +18,8 @@ rna.roc(
 \arguments{
 \item{project}{\code{rna_project} object created by \code{rna.project()}.}
 
-\item{genes}{Character vector of gene symbols or Ensembl IDs, or \code{"all"} to use all genes.}
+\item{genes}{Character vector of gene symbols or Ensembl IDs, or \code{"all"}
+to use all genes.}
 
 \item{group_col}{Character. Column name in metadata defining binary groups.}
 
@@ -26,7 +27,7 @@ rna.roc(
 
 \item{show_gene_names}{Logical. Wheter to display gene names in subtitle.}
 
-\item{colors}{Character. Optional plot line colors.}
+\item{line_color}{Character. Optional plot line color (default: \code{"#1f77b4"}).}
 
 \item{plot}{Logical. Whether to display the ROC curve.}
 
@@ -39,8 +40,10 @@ An object of class \code{"roc_result"} containing:
 \item{auc}{Numeric AUC value.}
 \item{auc_ci}{Confidence interval for AUC.}
 \item{genes}{Genes used in the analysis.}
-\item{method}{Scoring strategy used (\code{"single_gene"}, \code{"logistic"}, or \code{"signature"}).}
-\item{score_method}{Method used for multi-gene scoring (\code{"pca"} or \code{"mean"}).}
+\item{method}{Scoring strategy used (\code{"single_gene"}, \code{"logistic"},
+or \code{"signature"}).}
+\item{score_method}{Method used for multi-gene scoring (\code{"pca"}
+or \code{"mean"}).}
 \item{best_threshold}{Optimal classification threshold (Youden index).}
 \item{best_sens}{Sensitivity at optimal threshold.}
 \item{best_spec}{Specificity at optimal threshold.}
