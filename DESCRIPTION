@@ -1,7 +1,7 @@
 Package: autornaR
 Type: Package
 Title: Comprehensive RNAseq Data Analysis and Visualization
-Version: 0.3.0
+Version: 0.3.1
 Authors@R: 
     person("Luiz", "Garcia", 
            email = "luiz.cardoso@ufpr.br", 
@@ -56,6 +56,7 @@ Suggests:
     org.Mm.eg.db,
     RColorBrewer,
     rlang,
+    rmarkdown,
     Rtsne,
     stringr,
     SummarizedExperiment,
@@ -63,3 +64,4 @@ Suggests:
 Depends: R (>= 3.5)
 NeedsCompilation: no
 Maintainer: Luiz Garcia <luiz.cardoso@ufpr.br>
+VignetteBuilder: knitr

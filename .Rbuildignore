@@ -16,7 +16,6 @@
 ^LICENSE\\.md$
 ^NEWS\\.md$
 ^docs/
-^vignettes/
 ^CITATION\.cff$
 
 # Cache / temporary / output
@@ -37,3 +36,5 @@
 ^\.*\\.Rproj$$
 
 
+^doc$
+^Meta$

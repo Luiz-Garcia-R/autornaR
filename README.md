@@ -4,7 +4,7 @@
 
 <table>
 <tr>
-<td width="72%" valign="top">
+<td width="70%" valign="top">
 
 **RNA-seq analysis, from data to biology.**
 
@@ -14,9 +14,9 @@ It provides functions for filtering, imputation, outlier detection, gene ranking
 
 </td>
 
-<td width="28%" align="center" valign="middle">
+<td width="30%" align="center" valign="middle">
 
-<img src=".github/images/logo_autornaR.png" width="130">
+<img src=".github/images/logo_autornaR.png" width="160">
 
 </td>
 </tr>
@@ -33,6 +33,24 @@ install.packages("remotes")
 # Install autornaR from GitHub
 remotes::install_github("Luiz-Garcia-R/autornaR")
 ```
+
+## Getting started
+
+New to autornaR? Start with the package vignette for a guided introduction to the main workflow, from data import and normalization to quality control and downstream analyses.
+
+To browse the available vignettes in R, run:
+
+```r
+browseVignettes("autornaR")
+```
+
+To open the introductory vignette directly:
+
+```r
+vignette("overview", package = "autornaR")
+```
+
+See the [introductory vignette](vignettes/overview.Rmd) direcly on Github.
 
 ## Input Data Format (Very Important)
 

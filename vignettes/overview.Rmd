@@ -1,0 +1,18 @@
+---
+title: "autornaR"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{autornaR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<img src="figures/header_autornaR.png"
+     alt="autor naR package banner"
+     style="display: block; width: 100%; height: auto;">
+
+<br>
+
+## This vignette is currently under development.
+
+More examples and workflows for autornaR will be added in a future version.
