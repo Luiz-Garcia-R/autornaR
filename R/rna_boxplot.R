@@ -14,13 +14,6 @@
 #' @param project \code{rna_project} object created by \code{rna.project()}.
 #' @param gene Character. Single gene identifier (Ensembl ID, ENTREZID, or SYMBOL).
 #' @param group_col Character. metadata column defining experimental groups.
-#' @param contrast Specifies the comparison. Can be:
-#'   \itemize{
-#'     \item A string: \code{"test_vs_reference"} matching a stored comparison
-#'     \item A character vector of length 2: \code{c("test", "reference")}
-#'     \item \code{"last"} to use the most recent comparison in the project
-#'     \item \code{NULL}: automatically inferred if only two groups are present
-#'   }
 #' @param batch_col Character. Optional metadata column defining batch effects
 #'   to include in the design matrix.
 #' @param style Character. Whether use \code{boxplot} or \code{violin} for data
@@ -77,10 +70,6 @@
 #' rna.boxplot(project = my_project,
 #'             gene = "TP53")
 #'
-#' # Using stored comparison
-#' rna.boxplot(my_project,
-#'             gene = "TP53",
-#'             contrast = "treated_vs_control")
 #'
 #' # Changing style
 #' rna.boxplot(my_project,
@@ -98,7 +87,6 @@
 rna.boxplot <- function(project,
                         gene,
                         group_col = "Group",
-                        contrast = NULL,
                         batch_col = NULL,
                         style = c("boxplot", "violin"),
                         colors = NULL,
@@ -168,31 +156,13 @@ metadata[[group_col]] <- as.factor(metadata[[group_col]])
 # 4. Resolve contrast
 # =============================================================================
 
-if (is.null(contrast)) {
+groups <- levels(metadata[[group_col]])
 
-  groups <- levels(metadata[[group_col]])
-
-  if (length(groups) != 2) {
-    stop("contrast must be specified when there are more than 2 groups.")
-  }
-
-  contrast_vec <- c(groups[2], groups[1])  # test vs reference
-
-} else if (is.character(contrast) && length(contrast) == 1) {
-
-  if (contrast == "last") {
-    stop("'last' not implemented yet.")
-  }
-
-  contrast_vec <- strsplit(contrast, "_vs_")[[1]]
-
-} else if (is.character(contrast) && length(contrast) == 2) {
-
-  contrast_vec <- contrast
-
-} else {
-  stop("Invalid contrast format.")
+if (length(groups) != 2) {
+  stop("contrast must be specified when there are more than 2 groups.")
 }
+
+contrast_vec <- c(groups[2], groups[1])  # test vs reference
 
 # Ensure factor order
 metadata[[group_col]] <- factor(metadata[[group_col]],

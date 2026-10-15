@@ -8,7 +8,6 @@ rna.boxplot(
   project,
   gene,
   group_col = "Group",
-  contrast = NULL,
   batch_col = NULL,
   style = c("boxplot", "violin"),
   colors = NULL,
@@ -24,14 +23,6 @@ rna.boxplot(
 \item{gene}{Character. Single gene identifier (Ensembl ID, ENTREZID, or SYMBOL).}
 
 \item{group_col}{Character. metadata column defining experimental groups.}
-
-\item{contrast}{Specifies the comparison. Can be:
-\itemize{
-\item A string: \code{"test_vs_reference"} matching a stored comparison
-\item A character vector of length 2: \code{c("test", "reference")}
-\item \code{"last"} to use the most recent comparison in the project
-\item \code{NULL}: automatically inferred if only two groups are present
-}}
 
 \item{batch_col}{Character. Optional metadata column defining batch effects
 to include in the design matrix.}
@@ -106,10 +97,6 @@ Results can be stored in the active \code{rna_project} for reproducibility.
 rna.boxplot(project = my_project,
             gene = "TP53")
 
-# Using stored comparison
-rna.boxplot(my_project,
-            gene = "TP53",
-            contrast = "treated_vs_control")
 
 # Changing style
 rna.boxplot(my_project,
