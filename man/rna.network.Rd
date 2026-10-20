@@ -96,7 +96,9 @@ An object of class \code{"rna_network"} containing:
 \item{genes}{Genes belonging to the pathway}
 \item{graph}{Network object from \code{igraph}}
 \item{edges}{Edge table with correlation statistics}
-\item{nodes}{Node table with gene annotations and network metrics}
+\item{nodes}{Node table containing gene annotations, expression summaries,
+degree, betweenness centrality, harmonic centrality, community assignments,
+hub classification, and the composite hub score, where applicable.}
 }
 
 The function invisibly returns a list containing:
@@ -154,6 +156,33 @@ Therefore, parameter selection should reflect the biological question:
 Networks generated with \code{node_filter = "top"} represent a
 \emph{centrality-enriched projection of the pathway}, not the full
 coexpression topology.
+}
+
+\section{Network centrality}{
+
+Network centrality is characterized using three complementary metrics:
+\itemize{
+\item \strong{Degree}: number of direct connections, representing local connectivity.
+\item \strong{Betweenness centrality}: measures how frequently a node
+lies on shortest paths between other nodes, highlighting potential
+bridging positions in the network.
+\item \strong{Harmonic centrality}: quantifies node accessibility
+using the inverse of shortest-path distances to other nodes.
+}
+
+Harmonic centrality is used instead of conventional closeness centrality
+because pathway coexpression networks may contain disconnected components.
+Unlike conventional closeness centrality, harmonic centrality accounts
+for unreachable nodes by assigning them zero contribution, allowing
+comparisons across nodes in disconnected networks.
+
+Shortest-path distances are derived from absolute correlation weights,
+such that stronger correlations correspond to shorter distances.
+
+The \code{hub_score} is calculated as the sum of the standardized degree,
+betweenness centrality, and harmonic centrality values. It represents
+a composite exploratory measure of network centrality rather than
+a validated biological measure of regulatory influence.
 }
 
 \section{Stored output}{

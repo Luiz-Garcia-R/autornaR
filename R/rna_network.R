@@ -109,6 +109,32 @@
 #' \emph{centrality-enriched projection of the pathway}, not the full
 #' coexpression topology.
 #'
+#' @section Network centrality:
+#' Network centrality is characterized using three complementary metrics:
+#' \itemize{
+#'   \item \strong{Degree}: number of direct connections, representing local connectivity.
+#'   \item \strong{Betweenness centrality}: measures how frequently a node
+#'   lies on shortest paths between other nodes, highlighting potential
+#'   bridging positions in the network.
+#'   \item \strong{Harmonic centrality}: quantifies node accessibility
+#'   using the inverse of shortest-path distances to other nodes.
+#' }
+#'
+#' Harmonic centrality is used instead of conventional closeness centrality
+#' because pathway coexpression networks may contain disconnected components.
+#' Unlike conventional closeness centrality, harmonic centrality accounts
+#' for unreachable nodes by assigning them zero contribution, allowing
+#' comparisons across nodes in disconnected networks.
+#'
+#' Shortest-path distances are derived from absolute correlation weights,
+#' such that stronger correlations correspond to shorter distances.
+#'
+#' The \code{hub_score} is calculated as the sum of the standardized degree,
+#' betweenness centrality, and harmonic centrality values. It represents
+#' a composite exploratory measure of network centrality rather than
+#' a validated biological measure of regulatory influence.
+#'
+#'
 #' @return
 #' An object of class \code{"rna_network"} containing:
 #' \describe{
@@ -117,7 +143,9 @@
 #'   \item{genes}{Genes belonging to the pathway}
 #'   \item{graph}{Network object from \code{igraph}}
 #'   \item{edges}{Edge table with correlation statistics}
-#'   \item{nodes}{Node table with gene annotations and network metrics}
+#'   \item{nodes}{Node table containing gene annotations, expression summaries,
+#'   degree, betweenness centrality, harmonic centrality, community assignments,
+#'   hub classification, and the composite hub score, where applicable.}
 #' }
 #'
 #' The function invisibly returns a list containing:
@@ -159,7 +187,7 @@
 #' }
 #'
 #' @importFrom stats cor pt
-#' @importFrom igraph graph_from_data_frame degree betweenness closeness
+#' @importFrom igraph graph_from_data_frame degree betweenness harmonic_centrality
 #' @importFrom igraph cluster_louvain cluster_leiden membership edge_density
 #' @importFrom tidygraph as_tbl_graph
 #' @importFrom ggraph ggraph geom_edge_link geom_node_point geom_node_text scale_edge_width
@@ -415,7 +443,7 @@ nodes_df$betweenness <- igraph::betweenness(
   normalized = TRUE
 )
 
-nodes_df$closeness <- igraph::closeness(
+nodes_df$harmonic_centrality <- igraph::harmonic_centrality(
   g,
   weights = igraph::E(g)$distance,
   normalized = TRUE
@@ -427,7 +455,7 @@ nodes_df$closeness <- igraph::closeness(
 
 nodes_df$hub_score <- scale(nodes_df$degree) +
   scale(nodes_df$betweenness) +
-  scale(nodes_df$closeness)
+  scale(nodes_df$harmonic_centrality)
 
 nodes_df$hub_score <- as.numeric(nodes_df$hub_score)
 
@@ -442,7 +470,7 @@ nodes_df$label <- nodes_df$symbol
 
 igraph::vertex_attr(g, "degree") <- nodes_df$degree
 igraph::vertex_attr(g, "betweenness") <- nodes_df$betweenness
-igraph::vertex_attr(g, "closeness") <- nodes_df$closeness
+igraph::vertex_attr(g, "harmonic_centrality") <- nodes_df$harmonic_centrality
 igraph::vertex_attr(g, "hub") <- nodes_df$hub
 igraph::vertex_attr(g, "label") <- nodes_df$label
 
@@ -481,35 +509,63 @@ if (node_filter == "top") {
   igraph::E(g)$distance <- el$distance
   igraph::E(g)$weight <- el$weight
 
+
   # ===============================================
-  # 10.2. rebuild nodes
+  # 10.2. Rebuild nodes while preserving annotations
   # ===============================================
 
-  nodes_df <- data.frame(
-    name = igraph::V(g)$name,
-    stringsAsFactors = FALSE
-  )
+  # Preserve annotations from the original network
+  original_nodes <- nodes_df
 
+  # Keep only nodes present in the filtered graph
+  nodes_df <- original_nodes[
+    match(igraph::V(g)$name, original_nodes$name),
+    ,
+    drop = FALSE
+  ]
+
+  # Recalculate topology on the induced subgraph
   nodes_df$degree <- igraph::degree(g)
 
   nodes_df$betweenness <- igraph::betweenness(
     g,
-    weights = igraph::E(g)$distance
+    weights = igraph::E(g)$distance,
+    normalized = TRUE
   )
 
-  nodes_df$closeness <- igraph::closeness(
+  nodes_df$harmonic_centrality <- igraph::harmonic_centrality(
     g,
-    weights = igraph::E(g)$distance
+    weights = igraph::E(g)$distance,
+    normalized = TRUE
   )
 
-  nodes_df$hub_score <- scale(nodes_df$degree) +
-    scale(nodes_df$betweenness) +
-    scale(nodes_df$closeness)
+  # Recalculate composite centrality score
+  nodes_df$hub_score <- as.numeric(
+    scale(nodes_df$degree) +
+      scale(nodes_df$betweenness) +
+      scale(nodes_df$harmonic_centrality)
+  )
 
-  nodes_df$hub_score <- as.numeric(nodes_df$hub_score)
-  nodes_df$symbol <- nodes_df$name
+  # Recalculate hub classification in the filtered network
+  deg_cut <- mean(nodes_df$degree) + sd(nodes_df$degree)
 
+  nodes_df$hub <- nodes_df$degree >= deg_cut
+
+  # Preserve original gene annotations and expression values
+  # while updating the corresponding graph vertex attributes
+  igraph::vertex_attr(g, "degree") <- nodes_df$degree
+  igraph::vertex_attr(g, "betweenness") <- nodes_df$betweenness
+  igraph::vertex_attr(g, "harmonic_centrality") <-
+    nodes_df$harmonic_centrality
+  igraph::vertex_attr(g, "hub_score") <- nodes_df$hub_score
+  igraph::vertex_attr(g, "hub") <- nodes_df$hub
+  igraph::vertex_attr(g, "label") <- nodes_df$label
+  igraph::vertex_attr(g, "expr_mean") <- nodes_df$expr_mean
+  igraph::vertex_attr(g, "expr_z") <- nodes_df$expr_z
+
+  # Rebuild tidygraph after updating the graph
   tg <- tidygraph::as_tbl_graph(g)
+
 }
 
 tg <- tg |>
@@ -613,6 +669,7 @@ params = list(
   group = group,
   node_filter = node_filter,
   top_nodes = top_nodes,
+  centrality_method = "harmonic",
   seed = seed,
   rng_state = rng_state
 )

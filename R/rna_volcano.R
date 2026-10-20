@@ -344,7 +344,8 @@ if (!is.null(label_df)) {
       ggplot2::aes(label = .data$gene_symbol),
       size = 3,
       max.overlaps = Inf,
-      na.rm = TRUE
+      na.rm = TRUE,
+      show.legend = FALSE
     )
 }
 
