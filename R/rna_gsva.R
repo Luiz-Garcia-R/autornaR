@@ -3,7 +3,7 @@
 #' @description
 #' Computes pathway activity scores for individual samples using GSVA-based
 #' methods. Gene sets can be obtained directly from a previous
-#' \code{rna.gsea()} analysis, MSigDB collections, or user-supplied pathways.
+#' \code{rna_gsea()} analysis, MSigDB collections, or user-supplied pathways.
 #'
 #' Unlike GSEA, which evaluates pathway enrichment between groups,
 #' GSVA estimates pathway activity for each sample individually.
@@ -31,7 +31,7 @@
 #'
 #' @export
 
-rna.gsva <- function(
+rna_gsva <- function(
     project,
     source = c("gsea", "msigdb", "custom"),
     pathways = NULL,
@@ -81,7 +81,7 @@ if (source == "gsea") {
 
   if (is.null(gsea_obj)) {
     stop(
-      "No GSEA result found in project. Run rna.gsea() first."
+      "No GSEA result found in project. Run rna_gsea() first."
     )
   }
 
@@ -221,7 +221,7 @@ if (method == "gsva") {
 }
 
 message(
-  "[rna.gsva] ",
+  "[rna_gsva] ",
   length(pathways),
   " pathways retained after size filtering."
 )

@@ -2,8 +2,8 @@
 #'
 #' @description
 #' Performs normalization of raw RNA-seq count data stored in the active
-#' \code{rna_project} object (created with \code{rna.project()} and populated
-#' via \code{rna.import()}). The function integrates gene filtering,
+#' \code{rna_project} object (created with \code{rna_project()} and populated
+#' via \code{rna_import()}). The function integrates gene filtering,
 #' outlier detection, and multiple normalization strategies into a single,
 #' reproducible workflow.
 #'
@@ -11,7 +11,7 @@
 #' standardized input for downstream analyses (e.g., differential expression,
 #' clustering, and pathway analysis).
 #'
-#' @param project \code{rna_project} object created by \code{rna.project()}.
+#' @param project \code{rna_project} object created by \code{rna_project()}.
 #' @param method Character. Normalization method to apply:
 #' \itemize{
 #'   \item \code{"none"}: No normalization (raw counts retained)
@@ -135,20 +135,20 @@
 #' especially for rare cell populations.
 #'
 #' @seealso
-#' \code{\link{rna.import}}, \code{\link{rna.project}},  \code{\link{rna.qc}}
+#' \code{\link{rna_import}}, \code{\link{rna_project}},  \code{\link{rna_qc}}
 #'
 #' @examples
 #' \dontrun{
 #'
 #' Example 1: basic normalization using default settings (suitable for general analysis)
-#' rna.normalize(project = my_project)
+#' rna_normalize(project = my_project)
 #'
 #' # Example 2: log2 transformation only (quick exploratory analysis)
-#' rna.normalize(my_project,
+#' rna_normalize(my_project,
 #'               method = "log2")
 #'
 #' # Example 3: Using relaxed filtering thresholds for deconvolution and gene set scoring
-#' proj <- rna.normalize(my_project,
+#' proj <- rna_normalize(my_project,
 #'                       method = "vst",   # or "log2"
 #'                       filter_low = TRUE,
 #'                       min_expr = 1,
@@ -161,7 +161,7 @@
 #'
 #' @export
 
-rna.normalize <- function(project,
+rna_normalize <- function(project,
                           method = c("none", "log2", "cpm", "tpm", "rlog", "vst", "quantile", "upper-quartile"),
                           filter_low = TRUE,
                           min_expr = 10,
@@ -185,7 +185,7 @@ proj <- project
 # =============================================================================
 
 if (is.null(proj$input$imp_data)) {
-  stop("No imported data found. Run rna.import() first.")
+  stop("No imported data found. Run rna_import() first.")
 }
 
 # =============================================================================

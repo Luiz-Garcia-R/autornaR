@@ -11,8 +11,8 @@
 #' and meta-analysis workflows (e.g., integration via \code{metaOmicsR}).
 #'
 #' @param project A \code{rna_project} object generated through the standard
-#'   workflow (\code{rna.project()}, \code{rna.import()}, \code{rna.normalize()},
-#'   \code{rna.compare()}, etc.).
+#'   workflow (\code{rna_project()}, \code{rna_import()}, \code{rna_normalize()},
+#'   \code{rna_compare()}, etc.).
 #' @param file Character. Output file path where the \code{.rds} object will be saved.
 #' @param compress Character. Compression method passed to \code{saveRDS()}
 #'   (default: \code{"xz"}).
@@ -63,22 +63,22 @@
 #' @examples
 #' \dontrun{
 #' # Save a processed project for meta-analysis
-#' rna.save(project = my_project,
+#' rna_save(project = my_project,
 #'          file = "my_project.rds")
 #'
 #' # Save with alternative compression
-#' rna.save(my_project,
+#' rna_save(my_project,
 #'          file = "my_project.rds",
 #'          compress = "gzip")
 #' }
 #'
 #' @seealso
-#' \code{\link{rna.project}}, \code{\link{rna.import}},
-#' \code{\link{rna.compare}}, \code{\link{rna.gsea}}
+#' \code{\link{rna_project}}, \code{\link{rna_import}},
+#' \code{\link{rna_compare}}, \code{\link{rna_gsea}}
 #'
 #' @export
 
-rna.save <- function(project,
+rna_save <- function(project,
                      file,
                      compress = "xz",
                      verbose = TRUE) {

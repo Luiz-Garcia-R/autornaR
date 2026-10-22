@@ -33,7 +33,7 @@ Returns a table of top enriched pathways from a
 \details{
 gsea_result object
 
-An object returned by \code{rna.gsea()} containing
+An object returned by \code{rna_gsea()} containing
 GSEA results, rankings, and plots.
 }
 \section{Slots}{

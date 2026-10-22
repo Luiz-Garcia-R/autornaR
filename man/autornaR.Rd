@@ -17,24 +17,24 @@ a quick reference and guide for users.
 The recommended workflow guides users from raw RNA-seq count data to QC and
 exploratory/differential analysis:
 \itemize{
-\item rna.import() – Import and standardize raw RNA-seq count matrices (HISAT2, STAR, featureCounts, tximport, or clean matrices).
-\item rna.normalize() – Normalize imported data, filter lowly expressed genes, impute missing values, and remove outliers.
-\item rna.qc() – Generate QC plots including library size, expression distribution, density plots, and correlation heatmaps.
+\item rna_import() – Import and standardize raw RNA-seq count matrices (HISAT2, STAR, featureCounts, tximport, or clean matrices).
+\item rna_normalize() – Normalize imported data, filter lowly expressed genes, impute missing values, and remove outliers.
+\item rna_qc() – Generate QC plots including library size, expression distribution, density plots, and correlation heatmaps.
 }
 }
 
 \subsection{Main Functions Overview}{\tabular{ll}{
    Function \tab Description \cr
-   \code{rna.project()} \tab Create a new rna_project object \cr
-   \code{rna.import()} \tab Import and standardize RNA-seq count data \cr
-   \code{rna.normalize()} \tab Normalize, filter, and impute missing values \cr
-   \code{rna.qc()} \tab QC plots: library size, expression, density, correlation heatmaps \cr
-   \code{rna.compare()} \tab Performs differential expression analysis between two groups \cr
-   \code{rna.degs()} \tab Rank genes by mean or variance per group \cr
-   \code{rna.roc()} \tab ROC curves for discriminant genes \cr
-   \code{rna.boxplot()} \tab Limma t-test for individual genes \cr
-   \code{rna.volcano()} \tab Volcano plot and DE gene summary \cr
-   \code{rna.sets()} \tab Evaluatte presence/absence or DE genes across groups \cr
+   \code{rna_project()} \tab Create a new rna_project object \cr
+   \code{rna_import()} \tab Import and standardize RNA-seq count data \cr
+   \code{rna_normalize()} \tab Normalize, filter, and impute missing values \cr
+   \code{rna_qc()} \tab QC plots: library size, expression, density, correlation heatmaps \cr
+   \code{rna_compare()} \tab Performs differential expression analysis between two groups \cr
+   \code{rna_degs()} \tab Rank genes by mean or variance per group \cr
+   \code{rna_roc()} \tab ROC curves for discriminant genes \cr
+   \code{rna_boxplot()} \tab Limma t-test for individual genes \cr
+   \code{rna_volcano()} \tab Volcano plot and DE gene summary \cr
+   \code{rna_sets()} \tab Evaluatte presence/absence or DE genes across groups \cr
 }
 
 }
@@ -67,34 +67,34 @@ metadata <- data.frame(
 )
 
 # Create a new rna project
-my_project <- rna.project()
+my_project <- rna_project()
 
 # Import
-my_project <- rna.import(project = my_project,
+my_project <- rna_import(project = my_project,
                          raw_counts,
                          metadata)
 
 # Normalize
-my_project <- rna.normalize(my_project)
+my_project <- rna_normalize(my_project)
 
 # QC
-my_project <- rna.qc(my_project)
+my_project <- rna_qc(my_project)
 
 # Gene ranking and exploratory analysis
-rna.compare(my_project,
+rna_compare(my_project,
             method = "limma",
             contrast = "Treatment", "Control")
 
-rna.roc(my_project, genes = c("G001","G002"))
+rna_roc(my_project, genes = c("G001","G002"))
 
-rna.boxplot(my_project, genes = "G001")
+rna_boxplot(my_project, genes = "G001")
 
-rna.volcano(my_project)
+rna_volcano(my_project)
 
-rna.sets(my_project)
+rna_sets(my_project)
 
 # Save rna_project object
-rna.save(rna_project)
+rna_save(rna_project)
 }
 
 }

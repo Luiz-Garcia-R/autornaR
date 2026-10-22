@@ -8,7 +8,7 @@
 #' This function provides a flexible framework to evaluate the discriminative
 #' performance of individual genes or gene sets in binary classification problems.
 #'
-#' @param project \code{rna_project} object created by \code{rna.project()}.
+#' @param project \code{rna_project} object created by \code{rna_project()}.
 #' @param genes Character vector of gene symbols or Ensembl IDs, or \code{"all"}
 #' to use all genes.
 #' @param group_col Character. Column name in metadata defining binary groups.
@@ -82,9 +82,9 @@
 #' from the same dataset without proper validation.
 #'
 #' @section Pipeline context:
-#' This function is typically used after \code{rna.normalize()} and optionally after
-#' feature selection steps such as \code{rna.compare()}. It complements visualization
-#' tools like \code{rna.heatmap()} by providing quantitative classification metrics.
+#' This function is typically used after \code{rna_normalize()} and optionally after
+#' feature selection steps such as \code{rna_compare()}. It complements visualization
+#' tools like \code{rna_heatmap()} by providing quantitative classification metrics.
 #'
 #' @section Side effects:
 #' If \code{save = TRUE}, results are stored in the \code{rna_project} under the
@@ -93,17 +93,17 @@
 #' @examples
 #' \dontrun{
 #' # Single gene ROC
-#' rna.roc(project = my_project,
+#' rna_roc(project = my_project,
 #'         genes = "CD8A"
 #' )
 #'
 #' # Multi-gene logistic model
-#' rna.roc(my_project,
+#' rna_roc(my_project,
 #'         genes = c("CD3D", "CD8A", "GZMB")
 #' )
 #'
 #' # Signature using PCA score
-#' rna.roc(my_project,
+#' rna_roc(my_project,
 #'         genes = c("Gene1", "Gene2", "Gene3", "Gene4", "Gene5", "Gene6"),
 #'         score_method = "pca"
 #' )
@@ -112,7 +112,7 @@
 #' @importFrom pROC roc auc
 #' @export
 
-rna.roc <- function(project,
+rna_roc <- function(project,
                     genes = NULL,
                     group_col = "Group",
                     score_method = c("auto", "pca", "mean"),
@@ -146,11 +146,11 @@ organism <- .get_organism(proj)
 # =============================================================================
 
 if (is.null(metadata)) {
-  stop("No normalized data found. Run rna.normalize() first.")
+  stop("No normalized data found. Run rna_normalize() first.")
 }
 
 if (!is.null(organism)) {
-  message("[rna.enrich] Using organism from project: ", organism)
+  message("[rna_enrich] Using organism from project: ", organism)
 }
 
 # =============================================================================
@@ -181,7 +181,7 @@ if (length(genes) == 1 && tolower(genes) == "all") {
   genes_use <- rownames_expr
   gene_labels <- genes_use
 
-  message("[rna.roc] Using all genes.")
+  message("[rna_roc] Using all genes.")
 
 } else {
 
@@ -213,7 +213,7 @@ if (length(genes) == 1 && tolower(genes) == "all") {
 safe_gene_labels <- make.names(gene_labels)
 
 if (length(genes_use) > 1000) {
-  warning("[rna.roc] Large gene set detected. Results may be unstable.")
+  warning("[rna_roc] Large gene set detected. Results may be unstable.")
 }
 
 # =============================================================================
@@ -296,7 +296,7 @@ if (method == "single_gene") {
 
   }
 
-  message("[rna.roc] Using signature score: ", score_method_use)
+  message("[rna_roc] Using signature score: ", score_method_use)
 }
 
 # =============================================================================
@@ -506,7 +506,7 @@ score_method <- x$params$score_method
     )
   }
   if (abs(diff(auc_ci[c(1,3)]) - diff(auc_boot_ci)) > 0.05) {
-      message("[rna.roc] Notice: bootstrap and DeLong CI differ - model may be unstable.")
+      message("[rna_roc] Notice: bootstrap and DeLong CI differ - model may be unstable.")
     }
 
 })

@@ -10,7 +10,7 @@
 #' The function automatically adapts parameters based on dataset size and
 #' structure, and returns both numerical results and publication-ready plots.
 #'
-#' @param project \code{rna_project} object created by \code{rna.project()}.
+#' @param project \code{rna_project} object created by \code{rna_project()}.
 #' @param group_col Character. Metadata column used to define sample groups
 #'   for coloring plots (default: \code{"Group"}).
 #' @param run_tsne Logical. Whether to compute t-SNE embeddings (default: \code{FALSE}).
@@ -95,10 +95,10 @@
 #' @examples
 #' \dontrun{
 #' # Run default dimensionality reduction
-#' rna.dimred(project = my_project)
+#' rna_dimred(project = my_project)
 #'
 #' # Run with t-SNE and ellipses
-#' rna.dimred(my_project,
+#' rna_dimred(my_project,
 #'            run_tsne = TRUE,
 #'            add_ellipse = TRUE)
 #' }
@@ -109,7 +109,7 @@
 #'
 #' @export
 
-rna.dimred <- function(project,
+rna_dimred <- function(project,
                        group_col = "Group",
                        run_tsne = FALSE,
                        add_ellipse = FALSE,

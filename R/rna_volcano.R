@@ -7,7 +7,7 @@
 #' (-log10 p-value), highlighting significantly up- and down-regulated genes.
 #'
 #' @details
-#' This function retrieves results produced by \code{rna.compare()} and does not
+#' This function retrieves results produced by \code{rna_compare()} and does not
 #' perform differential expression analysis itself.
 #'
 #' Genes are classified into three categories:
@@ -27,7 +27,7 @@
 #' If no comparison is specified, the most recent comparison stored in the
 #' \code{rna_project} is used automatically.
 #'
-#' @param project \code{rna_project} object created by \code{rna.project()}.
+#' @param project \code{rna_project} object created by \code{rna_project()}.
 #' @param genes Optional character vector of genes to label on the plot.
 #'   Gene identifiers can be provided either as gene symbols (e.g. \code{"TP53"})
 #'   or as gene IDs matching the rownames of the differential expression results
@@ -84,20 +84,20 @@
 #' \dontrun{
 #'
 #' # Generate basic volcano plot
-#' rna.volcano(project = my_project)
+#' rna_volcano(project = my_project)
 #'
 #' # Specific gene labeling
-#' rna.volcano(my_project,
+#' rna_volcano(my_project,
 #'             genes = c('gene1', 'gene2', 'gene3')
 #' )
 #'
 #' # Top gene labeling
-#' rna.volcano(my_project,
+#' rna_volcano(my_project,
 #'             top_genes = 10
 #' )
 #'
 #' # Custom thresholds
-#' rna.volcano(my_project,
+#' rna_volcano(my_project,
 #'             padj_threshold = 0.01,
 #'             log2fc_threshold = 1
 #' )
@@ -107,11 +107,11 @@
 #' @importFrom grDevices dev.flush
 #'
 #' @seealso
-#' \code{\link{rna.compare}}, \code{\link{rna.sets}}
+#' \code{\link{rna_compare}}, \code{\link{rna_sets}}
 #'
 #' @export
 
-rna.volcano <- function(project,
+rna_volcano <- function(project,
                         genes = NULL,
                         top_genes = NULL,
                         padj_threshold = 0.05,
@@ -141,7 +141,7 @@ comp_obj <- .get_comp(proj)
 # =============================================================================
 
 if (is.null(proj$analyses$comparison)) {
-  stop("No comparison found. Run rna.compare() first.")
+  stop("No comparison found. Run rna_compare() first.")
 }
 
 if (!inherits(comp_obj, "rnaCompare")) {
@@ -171,7 +171,7 @@ groups <- c(
 )
 
 if (length(groups) != 2) {
-  stop("rna.volcano() supports only 2-group comparisons.")
+  stop("rna_volcano() supports only 2-group comparisons.")
 }
 
 comparison_label <- paste(

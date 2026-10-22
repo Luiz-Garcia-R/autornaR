@@ -2,10 +2,10 @@
 #'
 #' @description
 #' Identifies the top up- and down-regulated genes from a differential
-#' expression analysis performed with \code{rna.compare()}, and optionally
+#' expression analysis performed with \code{rna_compare()}, and optionally
 #' generates a bar plot of log2 fold-changes using gene symbols.
 #'
-#' @param project \code{rna_project} object created by \code{rna.project()}.
+#' @param project \code{rna_project} object created by \code{rna_project()}.
 #' @param top_n Integer. Number of genes to select from each tail of the
 #'   log2 fold-change distribution (default: 10).
 #' @param padj_cutoff Numeric. Adjusted p-value threshold used to define
@@ -21,7 +21,7 @@
 #'
 #' \strong{comparison_label interpretation:}
 #' The log2 fold-change is defined as \strong{test − reference}, inherited
-#' from \code{rna.compare()}. Therefore:
+#' from \code{rna_compare()}. Therefore:
 #' \itemize{
 #'   \item Positive values indicate higher expression in the test group
 #'   \item Negative values indicate higher expression in the reference group
@@ -64,14 +64,14 @@
 #' @examples
 #' \dontrun{
 #' # Use last comparison
-#' rna.degs(project = my_project)
+#' rna_degs(project = my_project)
 #'
 #' # Select more genes
-#' rna.degs(my_project,
+#' rna_degs(my_project,
 #'          top_n = 20)
 #'
 #' # Disable plotting
-#' rna.degs(my_project,
+#' rna_degs(my_project,
 #'          plot = FALSE)
 #' }
 #'
@@ -79,7 +79,7 @@
 #'
 #' @export
 
-rna.degs <- function(project,
+rna_degs <- function(project,
                      top_n = 10,
                      padj_cutoff = 0.05,
                      plot = TRUE,
@@ -124,7 +124,7 @@ groups <- c(
 )
 
 if (length(groups) != 2) {
-  stop("rna.degs() supports only 2-group comparisons.")
+  stop("rna_degs() supports only 2-group comparisons.")
 }
 
 comparison_label <- paste(
@@ -141,9 +141,9 @@ gene_ids <- rownames(df)
 
 if (any(grepl("\\.", gene_ids))) {
   stop(
-    "[rna.degs] Gene IDs contain version suffixes (e.g. ENSG...\\.6).\n",
+    "[rna_degs] Gene IDs contain version suffixes (e.g. ENSG...\\.6).\n",
     "This function expects cleaned Ensembl IDs.\n",
-    "Please run rna.normalize(clean_gene_versions = TRUE) upstream."
+    "Please run rna_normalize(clean_gene_versions = TRUE) upstream."
   )
 }
 
@@ -183,7 +183,7 @@ n_down = sum(df$log2FoldChange < 0, na.rm = TRUE)
 
 p <- NULL
 if (plot) {
-  if (verbose) message(sprintf("[rna.degs] Plotting top %d up- and down-regulated genes...", top_n))
+  if (verbose) message(sprintf("[rna_degs] Plotting top %d up- and down-regulated genes...", top_n))
   p <- ggplot2::ggplot(top_genes, ggplot2::aes(
     y = reorder(Symbol, log2FoldChange),
     x = log2FoldChange,

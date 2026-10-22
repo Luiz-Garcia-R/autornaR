@@ -13,8 +13,8 @@
 #'
 #' Gene selection can be automatic (top-ranked) or user-defined.
 #'
-#' @param project \code{rna_project} object created by \code{rna.project()}.
-#' @param use_dimred Optional \code{dimred_object} to use in \code{rna.biplot}.
+#' @param project \code{rna_project} object created by \code{rna_project()}.
+#' @param use_dimred Optional \code{dimred_object} to use in \code{rna_biplot}.
 #' @param group_col Character. Column name in metadata used for grouping samples.
 #' @param style Character. Method used for gene selection.
 #'   One of \code{"loading"}, \code{"anova"}, or \code{"hybrid"}.
@@ -43,10 +43,10 @@
 #' @examples
 #' \dontrun{
 #' # Standard PCA biplot
-#' rna.biplot(project = my_project)
+#' rna_biplot(project = my_project)
 #'
 #' # PCA biplot with a specific gene set
-#' rna.biplot(project = my_project,
+#' rna_biplot(project = my_project,
 #'            n_genes = 2,
 #'            genes = c("IL6", "HSP70"))
 #' }
@@ -55,7 +55,7 @@
 #'
 #' @export
 
-rna.biplot <- function(project,
+rna_biplot <- function(project,
                        use_dimred = NULL,
                        group_col = "Group",
                        style = c("loading", "anova", "hybrid"),

@@ -17,7 +17,7 @@
 #' identifier column and validates its correspondence with the count matrix.
 #' Summary information (e.g., group sizes) is reported when available.
 #'
-#' @param project \code{rna_project} object created by \code{rna.project()}.
+#' @param project \code{rna_project} object created by \code{rna_project()}.
 #' @param count_matrix Data frame containing raw counts and gene identifiers.
 #' @param metadata Optional data frame with sample information. The sample
 #' column is automatically detected based on column names or matching values
@@ -73,18 +73,18 @@
 #' @examples
 #' \dontrun{
 #' # Basic import with metadata
-#'   rna.import(project = my_project,
+#'   rna_import(project = my_project,
 #'              count_matrix = counts_df,
 #'              metadata = meta_df)
 #'
 #' # Import with metadata and specifying an organism
-#'   rna.import(my_project,
+#'   rna_import(my_project,
 #'              count_matrix = counts_df,
 #'              metadata = meta_df,
 #'              organism = "mouse")
 #'
 #' # Import with a specific format
-#'   rna.import(my_project,
+#'   rna_import(my_project,
 #'              count_matrix = counts_df,
 #'              metadata = meta_df,
 #'              format = "star")
@@ -94,7 +94,7 @@
 #'
 #' @export
 
-rna.import <- function(project,
+rna_import <- function(project,
                        count_matrix,
                        metadata = NULL,
                        format = c("clean", "hisat2", "star", "featureCounts", "tximport"),
@@ -118,7 +118,7 @@ format <- match.arg(format)
 # =============================================================================
 
 if (is.null(project)) {
-  stop("Project must be provided. Use rna.project() first.")
+  stop("Project must be provided. Use rna_project() first.")
 }
 proj <- project
 

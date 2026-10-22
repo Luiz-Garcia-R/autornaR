@@ -7,7 +7,7 @@
 #'
 #' Optionally, a summary plot of up- and down-regulated genes can be generated.
 #'
-#' @param project \code{rna_project} object created by \code{rna.project()}.
+#' @param project \code{rna_project} object created by \code{rna_project()}.
 
 #' @param padj_cutoff Numeric. Adjusted p-value threshold used to define significance
 #'   (default: \code{0.05}).
@@ -71,7 +71,7 @@
 #' used in the original comparison.
 #'
 #' @section Pipeline context:
-#' This function is typically used after \code{rna.compare()} to formalize DEG sets.
+#' This function is typically used after \code{rna_compare()} to formalize DEG sets.
 #' The resulting object is designed to be used with downstream tools such as:
 #' \itemize{
 #'   \item visualization (e.g., heatmaps, Venn diagrams)
@@ -102,27 +102,27 @@
 #' @examples
 #' \dontrun{
 #' # Build DEG sets from last comparison
-#' rna.sets(project = my_project)
+#' rna_sets(project = my_project)
 #'
 #' # More stringent thresholds
-#' rna.sets(my_project,
+#' rna_sets(my_project,
 #'          padj_cutoff = 0.01,
 #'          log2fc_cutoff = 1
 #' )
 #'
 #' # Only upregulated genes
-#' rna.sets(my_project,
+#' rna_sets(my_project,
 #'          direction = "up")
 #'
 #' # Plot DEG summary
-#' rna.sets(my_project,
+#' rna_sets(my_project,
 #'          plot = TRUE)
 #'
 #' }
 #'
 #' @export
 
-rna.sets <- function(project,
+rna_sets <- function(project,
                      padj_cutoff = 0.05,
                      log2fc_cutoff = 0.5,
                      direction = c("both", "up", "down"),
@@ -176,7 +176,7 @@ group_levels <- c(
 )
 
 if (length(group_levels) != 2) {
-  stop("rna.sets() supports only 2-group comparisons.")
+  stop("rna_sets() supports only 2-group comparisons.")
 }
 
 # Comparison label

@@ -87,27 +87,27 @@ Example of metadata:
 ## Main Workflow
 
 The recommended workflow guides users from raw count import to quality control and initial gene evaluation:
-- rna.project() - Create a new rna_project object to store the results from downstream analyses
-- rna.import() - Import and validate raw RNA-seq count data (raw_data + metadata)
-- rna.normalize() - Normalize data, filter genes, impute missing values, remove outliers
-- rna.qc() - Performs comprehensive quality control (QC) on normalized RNA-seq data
-- rna.save() - Extracts and save the essential components from a object
+- rna_project() - Create a new rna_project object to store the results from downstream analyses
+- rna_import() - Import and validate raw RNA-seq count data (raw_data + metadata)
+- rna_normalize() - Normalize data, filter genes, impute missing values, remove outliers
+- rna_qc() - Performs comprehensive quality control (QC) on normalized RNA-seq data
+- rna_save() - Extracts and save the essential components from a object
 
 # Exploratory and Differential Analysis
 For deeper insights and pairwise comparisons:
-  - rna.compare() - Performs differential expression analysis (Limma or DESeq2) between two groups
-  - rna.association() - Compute gene or clinical features correlations among samples
-  - rna.enrich() - performs Gene Ontology (GO) enrichment analysis
-  - rna.degs() - Identify differentially expressed genes
-  - rna.dimred() - Perform PCA and UMAP for dimensionality reduction
-  - rna.heatmap() - Visualize top variable genes with heatmaps
-  - rna.gsea() - Perform a GSEA rank to visualize top enriched pathway
-  - rna.gsva() - Perform a GSVA to visualize individual enriched pathway
-  - rna.network() - Build a gene-gene network using pathways identified by rna.gsea()
-  - rna.roc() - Assess discriminatory power of specific genes
-  - rna.boxplot() - Perform Limma t-tests for gene-level differences
-  - rna.sets() - Evaluate differential expressed genes distribution
-  - rna.volcano() - Generate volcano plots for differential expression analysis
+  - rna_compare() - Performs differential expression analysis (Limma or DESeq2) between two groups
+  - rna_association() - Compute gene or clinical features correlations among samples
+  - rna_enrich() - performs Gene Ontology (GO) enrichment analysis
+  - rna_degs() - Identify differentially expressed genes
+  - rna_dimred() - Perform PCA and UMAP for dimensionality reduction
+  - rna_heatmap() - Visualize top variable genes with heatmaps
+  - rna_gsea() - Perform a GSEA rank to visualize top enriched pathway
+  - rna_gsva() - Perform a GSVA to visualize individual enriched pathway
+  - rna_network() - Build a gene-gene network using pathways identified by rna_gsea()
+  - rna_roc() - Assess discriminatory power of specific genes
+  - rna_boxplot() - Perform Limma t-tests for gene-level differences
+  - rna_sets() - Evaluate differential expressed genes distribution
+  - rna_volcano() - Generate volcano plots for differential expression analysis
 
 ## Example Workflow (Minimal)
 ```r
@@ -126,28 +126,28 @@ meta_df <- data.frame(
 )
 
 # Create a new rna_project object
-my_project <- rna.project()
+my_project <- rna_project()
 
 # Import counts
-my_project <- rna.import(my_project,
+my_project <- rna_import(my_project,
                         raw_data = raw_counts,
                         metadata = meta_df)
 
 # Normalize
-my_project <- rna.normalize(my_project)
+my_project <- rna_normalize(my_project)
 
 # Quality control
-my_project <- rna.qc(my_project)
+my_project <- rna_qc(my_project)
 
 # Dimension reduction
-my_project <- rna.dimred(my_project)
+my_project <- rna_dimred(my_project)
 
 # Differential expression
-my_project <- rna.compare(my_project,
+my_project <- rna_compare(my_project,
                           comparison = c("Treatment", "Control"))
 
 # Evaluating top DEGs
-my_project <- rna.degs(my_project)
+my_project <- rna_degs(my_project)
 
 ```
 

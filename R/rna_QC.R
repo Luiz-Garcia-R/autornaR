@@ -7,7 +7,7 @@
 #' consistency, helping identify technical artifacts and potential outliers
 #' before downstream analyses.
 #'
-#' @param project \code{rna_project} object created by \code{rna.project()}.
+#' @param project \code{rna_project} object created by \code{rna_project()}.
 #' @param group_col Character. Column in metadata indicating biological groups
 #'   (default: \code{"Group"}).
 #' @param display_corr_values Logical. If \code{TRUE}, overlays correlation
@@ -79,23 +79,23 @@
 #' experimental design, and normalization method can all influence these metrics.
 #'
 #' @section Pipeline context:
-#' This function is typically used after \code{rna.normalize()}.
+#' This function is typically used after \code{rna_normalize()}.
 #'
 #' @examples
 #' \dontrun{
 #' # Basic QC
-#' rna.qc(project = my_project)
+#' rna_qc(project = my_project)
 #'
 #' # QC with custom grouping
-#' rna.qc(my_project,
+#' rna_qc(my_project,
 #'        group_col = "Condition")
 #'
 #' # Display correlation values and highlight structure
-#' rna.qc(my_project,
+#' rna_qc(my_project,
 #'        display_corr_values = TRUE)
 #'
 #' # Disable plotting (metrics only)
-#' rna.qc(my_project,
+#' rna_qc(my_project,
 #'        plot = FALSE)
 #'
 #' }
@@ -106,7 +106,7 @@
 #'
 #' @export
 
-rna.qc <- function(project,
+rna_qc <- function(project,
                    group_col = "Group",
                    display_corr_values = FALSE,
                    highlight_outliers = TRUE,
@@ -139,11 +139,11 @@ metadata <- .get_meta(proj)
 # =============================================================================
 
 if (is.null(expr_mat)) {
-  stop("No expression matrix available. Run 'rna.normalize()' first.")
+  stop("No expression matrix available. Run 'rna_normalize()' first.")
 }
 
 if (is.null(metadata)) {
-  stop("No metadata available. Load a metadata file using 'rna.import()'")
+  stop("No metadata available. Load a metadata file using 'rna_import()'")
 }
 
 if (!"Sample" %in% colnames(metadata)) {

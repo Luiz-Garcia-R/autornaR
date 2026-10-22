@@ -24,7 +24,7 @@
 #' These two modes represent different biological perspectives rather than
 #' simple visual filtering.
 #'
-#' @param project \code{rna_project} object created by \code{rna.project()}.
+#' @param project \code{rna_project} object created by \code{rna_project()}.
 #' @param pathway Character or numeric. Pathway name or index from GSEA results.
 #' @param group Character. Experimental group used to compute correlations.
 #' @param threshold Numeric. Minimum absolute correlation required to define an edge.
@@ -165,23 +165,23 @@
 #' \dontrun{
 #'
 #' # Build network for top enriched pathway
-#' rna.network(project = my_project)
+#' rna_network(project = my_project)
 #'
 #' # Use a specific pathway from GSEA
-#' rna.network(my_project,
+#' rna_network(my_project,
 #'             pathway = 'Cellular Response To Starvation')
 #'
 #' # Restrict labels to top 20% genes
-#' rna.network(my_project,
+#' rna_network(my_project,
 #'             node_filter = 'top',
 #'             top_nodes = 0.2)
 #'
 #' # Use Spearman correlation
-#' rna.network(my_project,
+#' rna_network(my_project,
 #'             cor_method = "spearman")
 #'
 #' # Change layout algorithm
-#' rna.network(my_project,
+#' rna_network(my_project,
 #'             layout = "stress")
 #'
 #' }
@@ -196,7 +196,7 @@
 #'
 #' @export
 
-rna.network <- function(project,
+rna_network <- function(project,
                         pathway = NULL,
                         group = NULL,
                         threshold = 0.8,
@@ -266,7 +266,7 @@ if (gene_id_type != "ENSEMBL") {
 
 # GSEA object
 if (is.null(gsea_obj)) {
-  stop("No GSEA result found in project. Run rna.gsea() first.")
+  stop("No GSEA result found in project. Run rna_gsea() first.")
 }
 
 # Comparison object
@@ -284,7 +284,7 @@ gsea_top <- gsea_obj$gsea_top
 if (is.null(pathway)) {
 
   pathway <- gsea_top$pathway[1]
-  message("[rna.network] Using top pathway: ", pathway)
+  message("[rna_network] Using top pathway: ", pathway)
 
 }
 
@@ -332,7 +332,7 @@ if (length(genes_path) < 3) {
 if (is.null(group)) {
 
   group <- unique(meta$Group)[1]
-  message("[rna.network] Using group: ", group)
+  message("[rna_network] Using group: ", group)
 
 }
 
@@ -352,7 +352,7 @@ if (cor_method == "auto") {
   cor_method <- if (n < 8) "spearman" else "pearson"
 }
 
-message("[rna.network] Correlation method: ", cor_method)
+message("[rna_network] Correlation method: ", cor_method)
 
 cor_mat <- cor(t(expr_sub), method = cor_method)
 

@@ -9,7 +9,7 @@
 #' and mixed-data analyses.
 #'
 #' @param project \code{rna_project} object created by
-#'   \code{rna.project()}.
+#'   \code{rna_project()}.
 #' @param x_features Character vector of features to place on the x-axis.
 #'   Features may represent genes or metadata variables depending on
 #'   \code{x_type}.
@@ -96,13 +96,13 @@
 #' \dontrun{
 #'
 #' # Gene-gene association matrix
-#' rna.association(
+#' rna_association(
 #'   project = my_project,
 #'   x_features = c("SERTAD3", "MFSD4B", "RNF139")
 #' )
 #'
 #' # Metadata vs genes
-#' rna.association(
+#' rna_association(
 #'   project = my_project,
 #'   x_features = c("Age", "BMI"),
 #'   y_features = c("IL7R", "GZMB"),
@@ -111,7 +111,7 @@
 #' )
 #'
 #' # Spearman correlation with MI
-#' rna.association(
+#' rna_association(
 #'   project = my_project,
 #'   x_features = c("GeneA", "GeneB"),
 #'   method = "spearman",
@@ -119,7 +119,7 @@
 #' )
 #'
 #' # Restrict analysis to one group
-#' rna.association(
+#' rna_association(
 #'   project = my_project,
 #'   x_features = c("GeneA", "GeneB"),
 #'   group = "Control"
@@ -130,7 +130,7 @@
 #'
 #' @export
 
-rna.association <- function(project,
+rna_association <- function(project,
                             x_features,
                             y_features = NULL,
                             x_type = c("auto", "gene", "metadata", "gsva"),

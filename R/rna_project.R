@@ -10,8 +10,8 @@
 #'
 #' Once created, the project is automatically assigned to the global
 #' environment as \code{rna_project}, becoming the active context for all
-#' subsequent functions (e.g., \code{rna.import()}, \code{rna.normalize()},
-#' \code{rna.compare()}).
+#' subsequent functions (e.g., \code{rna_import()}, \code{rna_normalize()},
+#' \code{rna_compare()}).
 #'
 #' @param project_name Character. Optional project identifier used for
 #'   labeling outputs and logs.
@@ -42,36 +42,36 @@
 #'
 #' \strong{Typical workflow:}
 #' \enumerate{
-#'   \item Initialize project with \code{rna.project()}
-#'   \item Import data using \code{rna.import()}
-#'   \item Normalize expression with \code{rna.normalize()}
-#'   \item Perform analyses (e.g., \code{rna.compare()}, \code{rna.gsea()})
+#'   \item Initialize project with \code{rna_project()}
+#'   \item Import data using \code{rna_import()}
+#'   \item Normalize expression with \code{rna_normalize()}
+#'   \item Perform analyses (e.g., \code{rna_compare()}, \code{rna_gsea()})
 #' }
 #'
-#' Calling \code{rna.project()} again will overwrite the current active project.
+#' Calling \code{rna_project()} again will overwrite the current active project.
 #'
 #' @examples
 #' \dontrun{
 #'
 #' # Initialize a new project
-#' my_project <- rna.project(project_name = "my_project")
+#' my_project <- rna_project(project_name = "my_project")
 #'
 #' # Continue workflow updating project
-#' my_project <- rna.import(...)
-#' my_project <- rna.normalize(...)
-#' my_project <- rna.compare(...)
+#' my_project <- rna_import(...)
+#' my_project <- rna_normalize(...)
+#' my_project <- rna_compare(...)
 #'
 #' }
 #'
 #' @seealso
-#' \code{\link{rna.import}},
-#' \code{\link{rna.normalize}},
-#' \code{\link{rna.qc}},
-#' \code{\link{rna.compare}}
+#' \code{\link{rna_import}},
+#' \code{\link{rna_normalize}},
+#' \code{\link{rna_qc}},
+#' \code{\link{rna_compare}}
 #'
 #' @export
 
-rna.project <- function(project_name = NULL) {
+rna_project <- function(project_name = NULL) {
 
   # Object creation
   obj <- list(

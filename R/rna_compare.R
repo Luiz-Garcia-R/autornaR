@@ -8,7 +8,7 @@
 #' The function handles design matrix construction, contrast specification,
 #' and result extraction, returning standardized outputs across methods.
 #'
-#' @param project \code{rna_project} object created by \code{rna.project()}.
+#' @param project \code{rna_project} object created by \code{rna_project()}.
 #' @param group_col Character. Column name in metadata defining experimental
 #'   groups (default: \code{"Group"}).
 #' @param batch_col Optional character. Column specifying batch effects.
@@ -28,7 +28,7 @@
 #'
 #' @details
 #' The function requires raw count data and expects that normalization has been
-#' performed with \code{rna.normalize(method = "none")} to preserve integer counts.
+#' performed with \code{rna_normalize(method = "none")} to preserve integer counts.
 #'
 #' \strong{Contrast definition:}
 #' All contrasts are defined as \strong{test − reference}, which determines
@@ -78,11 +78,11 @@
 #' @examples
 #' \dontrun{
 #' # Basic usage
-#' rna.compare(my_project,
+#' rna_compare(my_project,
 #'             contrast = c("treated", "control"))
 #'
 #' # Multiple contrasts
-#' rna.compare(my_project,
+#' rna_compare(my_project,
 #'             contrast = list(
 #'                             c("treated", "control"),
 #'                             c("treated2", "control")
@@ -90,12 +90,12 @@
 #' )
 #'
 #' # Using limma instead of DESeq2
-#' rna.compare(my_project,
+#' rna_compare(my_project,
 #'             contrast = c("treated", "control"),
 #'             method = "limma")
 #'
 #' # Including batch effect
-#' rna.compare(my_project,
+#' rna_compare(my_project,
 #'             contrast = c("treated", "control"),
 #'             batch_col = "Batch")
 #' }
@@ -105,7 +105,7 @@
 #'
 #' @export
 
-rna.compare <- function(project,
+rna_compare <- function(project,
                         group_col = "Group",
                         batch_col = "Batch",
                         method = c("deseq2", "limma"),
@@ -148,7 +148,7 @@ norm_method <- .get_norm_method(proj)
 if (!is.factor(metadata[[group_col]])) {
   if (verbose)
     message(sprintf(
-      "[rna.compare] '%s' is not a factor. Converting using order of appearance.",
+      "[rna_compare] '%s' is not a factor. Converting using order of appearance.",
       group_col
     ))
   metadata[[group_col]] <-
@@ -198,14 +198,14 @@ counts <- round(expr_mat)
 if (norm_method != "none") {
   stop(
     "Differential expression requires raw counts.\n",
-    "Please run rna.normalize(method = 'none') before rna.compare()."
+    "Please run rna_normalize(method = 'none') before rna_compare()."
   )
 }
 
 if (any(grepl("\\.", rownames(counts)))) {
   stop(
     "Gene IDs contain version suffixes.\n",
-    "Please run rna.normalize(clean_gene_versions = TRUE) upstream."
+    "Please run rna_normalize(clean_gene_versions = TRUE) upstream."
   )
 }
 
@@ -224,7 +224,7 @@ design_formula <- if (!is.null(batch_col) && batch_col %in% colnames(metadata)) 
 # =============================================================================
 
 if (method == "deseq2") {
-  if (verbose) message("[rna.compare] Creating DESeq2 dataset...")
+  if (verbose) message("[rna_compare] Creating DESeq2 dataset...")
 
   dds <- DESeq2::DESeqDataSetFromMatrix(
     countData = counts,
@@ -232,7 +232,7 @@ if (method == "deseq2") {
     design = design_formula
   )
 
-  if (verbose) message("[rna.compare] Running DESeq2...")
+  if (verbose) message("[rna_compare] Running DESeq2...")
 
   dds_final <- tryCatch(
     {
@@ -240,7 +240,7 @@ if (method == "deseq2") {
     },
     error = function(e) {
       if (verbose)
-        message("[rna.compare] Parametric fit failed. Using gene-wise dispersions.")
+        message("[rna_compare] Parametric fit failed. Using gene-wise dispersions.")
 
       dds <- DESeq2::estimateSizeFactors(dds)
       dds <- DESeq2::estimateDispersionsGeneEst(dds)
@@ -257,7 +257,7 @@ if (method == "deseq2") {
     ref_group  <- ct[2]
 
     if (verbose) {
-      message(sprintf("[rna.compare] Running contrast: %s vs %s",
+      message(sprintf("[rna_compare] Running contrast: %s vs %s",
                       test_group, ref_group))
     }
 
@@ -333,7 +333,7 @@ if (method == "deseq2") {
     ref_group  <- ct[2]
 
     if (verbose) {
-      message(sprintf("[rna.compare] Running contrast: %s vs %s",
+      message(sprintf("[rna_compare] Running contrast: %s vs %s",
                       test_group, ref_group))
     }
 

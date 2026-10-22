@@ -2,7 +2,7 @@
 #'
 #' @description
 #' Performs Gene Ontology (GO) enrichment analysis on differentially expressed
-#' genes derived from \code{rna.compare()}, using the \pkg{clusterProfiler}
+#' genes derived from \code{rna_compare()}, using the \pkg{clusterProfiler}
 #' framework. Enrichment is computed separately for up- and down-regulated genes,
 #' allowing directional biological interpretation.
 #'
@@ -11,7 +11,7 @@
 #' log2 fold-change thresholds, maps gene identifiers, and computes enrichment
 #' across one or more ontology domains (BP, MF, CC).
 #'
-#' @param project \code{rna_project} object created by \code{rna.project()}.
+#' @param project \code{rna_project} object created by \code{rna_project()}.
 #' @param use_comparison Character or numeric. Identifier of the comparison
 #'   stored in \code{rna_project$analyses$comparison}. If \code{NULL},
 #'   the most recent comparison is used.
@@ -87,15 +87,15 @@
 #' @examples
 #' \dontrun{
 #' # Run enrichment using last comparison
-#' rna.enrich(project = my_project)
+#' rna_enrich(project = my_project)
 #'
 #' # Run enrichment with stricter thresholds
-#' rna.enrich(my_project,
+#' rna_enrich(my_project,
 #'            padj_cutoff = 0.01,
 #'            log2fc_cutoff = 1)
 #'
 #' # Run enrichment for molecular function
-#' rna.enrich(my_project,
+#' rna_enrich(my_project,
 #'            ont = "MF")
 #' }
 #'
@@ -103,7 +103,7 @@
 #'
 #' @export
 
-rna.enrich <- function(project,
+rna_enrich <- function(project,
                        use_comparison = NULL,
                        plot_style = c("dotplot", "barplot"),
                        ont = c("BP", "MF", "CC"),
@@ -161,7 +161,7 @@ if (!inherits(comp_obj, "rnaCompare")) {
 # 3. Validate organism
 # =============================================================================
 
-message("[rna.enrich] Using organism from project: ", organism)
+message("[rna_enrich] Using organism from project: ", organism)
 
 org_pkg <- switch(
   organism,
@@ -199,7 +199,7 @@ if (any(grepl("\\.", gene_ids))) {
   stop(
     "[rna_enrich] Gene IDs contain version suffixes (e.g. ENSG...\\.6).\n",
     "This function expects cleaned Ensembl IDs.\n",
-    "Please run rna.normalize(clean_gene_versions = TRUE) upstream."
+    "Please run rna_normalize(clean_gene_versions = TRUE) upstream."
   )
 }
 

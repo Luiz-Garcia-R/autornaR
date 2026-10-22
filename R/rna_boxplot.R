@@ -11,7 +11,7 @@
 #' ENTREZID, or gene symbol. Annotation is performed automatically using
 #' organism-specific \pkg{org.*.eg.db} databases.
 #'
-#' @param project \code{rna_project} object created by \code{rna.project()}.
+#' @param project \code{rna_project} object created by \code{rna_project()}.
 #' @param gene Character. Single gene identifier (Ensembl ID, ENTREZID, or SYMBOL).
 #' @param group_col Character. metadata column defining experimental groups.
 #' @param batch_col Character. Optional metadata column defining batch effects
@@ -45,8 +45,8 @@
 #'   \item \code{method}: Statistical method ("limma")
 #' }
 #'
-#' This function is typically used after \code{rna.normalize()} and before
-#' downstream analyses such as \code{rna.compare()}, or clustering.
+#' This function is typically used after \code{rna_normalize()} and before
+#' downstream analyses such as \code{rna_compare()}, or clustering.
 #'
 #' @details
 #' The contrast is always defined as \strong{test − reference}, which determines
@@ -67,12 +67,12 @@
 #' @examples
 #' \dontrun{
 #' # Basic usage
-#' rna.boxplot(project = my_project,
+#' rna_boxplot(project = my_project,
 #'             gene = "TP53")
 #'
 #'
 #' # Changing style
-#' rna.boxplot(my_project,
+#' rna_boxplot(my_project,
 #'             gene = "TP53",
 #'             style = "violin"
 #' }
@@ -84,7 +84,7 @@
 #'
 #' @export
 
-rna.boxplot <- function(project,
+rna_boxplot <- function(project,
                         gene,
                         group_col = "Group",
                         batch_col = NULL,
@@ -216,7 +216,7 @@ if (save && !is.null(proj$analyses$gene_tests) &&
     limma_id %in% names(proj$analyses$gene_tests)) {
 
   if (verbose)
-    message("[rna.boxplot] Limma result already saved. Using cached result.")
+    message("[rna_boxplot] Limma result already saved. Using cached result.")
 
   cached <- proj$analyses$gene_tests[[limma_id]]
 
@@ -230,7 +230,7 @@ if (save && !is.null(proj$analyses$gene_tests) &&
   } else {
 
     if (verbose)
-      message("[rna.boxplot] Old cache detected. Recomputing limma fit for CI.")
+      message("[rna_boxplot] Old cache detected. Recomputing limma fit for CI.")
 
     fit <- limma::lmFit(expr_mat_use, design)
     fit <- limma::contrasts.fit(fit, contrast_matrix)
@@ -253,7 +253,7 @@ if (save && !is.null(proj$analyses$gene_tests) &&
 } else {
 
   if (verbose)
-    message("[rna.boxplot] No cached result. Running limma fit.")
+    message("[rna_boxplot] No cached result. Running limma fit.")
 
   if (!is_log) {
     expr_mat_use <- log2(expr_mat + 1)
