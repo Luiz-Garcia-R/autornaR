@@ -1,0 +1,153 @@
+# Expression heatmap of normalized RNA-seq data
+
+Generates a clustered heatmap from normalized expression data, allowing
+flexible gene selection based on differential expression results,
+variance, or user-defined gene sets.
+
+## Usage
+
+``` r
+rna_heatmap(
+  project,
+  group_col = "Group",
+  top_n = 100,
+  genes = NULL,
+  use_variance = FALSE,
+  zscore = TRUE,
+  cluster_rows = TRUE,
+  cluster_cols = TRUE,
+  group_colors = NULL,
+  show_rownames = FALSE,
+  show_colnames = FALSE,
+  show_regulation = FALSE,
+  seed = NULL,
+  save = TRUE
+)
+```
+
+## Arguments
+
+- project:
+
+  `rna_project` object created by
+  [`rna_project()`](https://luiz-garcia-r.github.io/autornaR/reference/rna_project.md).
+
+- group_col:
+
+  Character. Column name in metadata defining sample groups for column
+  annotation (default: `"Group"`).
+
+- top_n:
+
+  Integer. Number of genes to include (default: `100`).
+
+- genes:
+
+  Character vector. User-defined gene identifiers to include in the
+  heatmap. Overrides other selection methods if provided.
+
+- use_variance:
+
+  Logical. If `TRUE`, selects the top `top_n` most variable genes across
+  samples (default: `FALSE`).
+
+- zscore:
+
+  Logical. If `TRUE`, applies row-wise z-score normalization prior to
+  plotting (default: `TRUE`).
+
+- cluster_rows:
+
+  Logical. Whether to cluster genes (rows) (default: `TRUE`).
+
+- cluster_cols:
+
+  Logical. Whether to cluster samples (columns) (default: `TRUE`).
+
+- group_colors:
+
+  Character. Vector or named list for group colors.
+
+- show_rownames:
+
+  Logical. Whether to display gene names (default: `FALSE`).
+
+- show_colnames:
+
+  Logical. Whether to display sample names (default: `FALSE`).
+
+- show_regulation:
+
+  Logical. If `TRUE`, adds a row annotation indicating up- and
+  down-regulated genes (default: `FALSE`).
+
+- seed:
+
+  Optional integer used to set the random seed for reproducibility. If
+  `NULL`, the existing random number generator state is used.
+
+- save:
+
+  Logical. Whether to store results in the active `rna_project`
+  (default: `TRUE`).
+
+## Value
+
+Invisibly returns an object of class `heatmap_result` containing:
+
+- genes_used:
+
+  Character vector of genes included in the heatmap.
+
+- heatmap_matrix:
+
+  Matrix used for plotting (z-scored if applicable).
+
+- annotation_col:
+
+  Data frame with sample group annotations.
+
+- comparison:
+
+  Comparison used (if applicable).
+
+- params:
+
+  List of parameters and metadata.
+
+## Details
+
+Gene selection follows a mutually exclusive strategy:
+
+- `use_variance`: selects genes with highest variance across samples.
+  When `FALSE`, selects genes based on differential expression
+  statistics (typically lowest `padj` or `pvalue`).
+
+- `genes`: uses a user-defined gene set.
+
+If no selection method is provided, the function defaults to using the
+most recent stored comparison.
+
+Expression values can be optionally standardized (z-score) per gene to
+highlight relative expression patterns across samples. Values are
+clipped to the range `[-2, 2]` to improve visualization stability.
+
+The heatmap is generated using pheatmap, with optional row and column
+clustering and annotation tracks.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Basic usage
+rna_heatmap(project = my_project)
+
+# Using most variable genes
+rna_heatmap(my_project,
+            use_variance = TRUE)
+
+# Using a custom gene set
+rna_heatmap(my_project,
+            genes = c("GeneA", "GeneB", "GeneC"))
+} # }
+```
