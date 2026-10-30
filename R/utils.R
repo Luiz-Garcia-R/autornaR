@@ -704,3 +704,412 @@
     ci_boot = ci_boot
   )
 }
+
+
+# =============================================================================
+# 21. Prepare expression data for WGCNA
+# =============================================================================
+#' @keywords internal
+
+.prepare_wgcna_data <- function(
+    expr_mat,
+    metadata,
+    genes_n = 10000,
+    verbose = TRUE
+) {
+
+# ===============================================
+# 21.1. Validate arguments
+# ===============================================
+
+if (!is.null(genes_n)) {
+
+  if (length(genes_n) != 1L ||
+      !is.numeric(genes_n) ||
+      !is.finite(genes_n) ||
+      genes_n < 1 ||
+      genes_n != floor(genes_n) ||
+      genes_n > .Machine$integer.max) {
+
+    stop("`genes_n` must be a positive integer or NULL.")
+  }
+
+  genes_n <- as.integer(genes_n)
+}
+
+if (!is.logical(verbose) ||
+    length(verbose) != 1L ||
+    is.na(verbose)) {
+
+  stop("`verbose` must be TRUE or FALSE.")
+}
+
+# ===============================================
+# 21.2. Validate expression matrix
+# ===============================================
+
+if (!is.matrix(expr_mat) || !is.numeric(expr_mat)) {
+  stop("Expression data must be a numeric matrix.")
+}
+
+if (nrow(expr_mat) < 2L || ncol(expr_mat) < 3L) {
+  stop(
+    "Expression matrix must contain at least 2 genes ",
+    "and 3 samples."
+  )
+}
+
+if (is.null(rownames(expr_mat)) ||
+    is.null(colnames(expr_mat)) ||
+    anyNA(rownames(expr_mat)) ||
+    anyNA(colnames(expr_mat)) ||
+    any(!nzchar(trimws(rownames(expr_mat)))) ||
+    any(!nzchar(trimws(colnames(expr_mat)))) ||
+    anyDuplicated(rownames(expr_mat)) ||
+    anyDuplicated(colnames(expr_mat))) {
+
+  stop(
+    "Expression matrix must have unique, non-empty gene ",
+    "and sample identifiers."
+  )
+}
+
+# Work on local objects.
+expr <- expr_mat
+
+# ===============================================
+# 21.3. Validate and align metadata
+# ===============================================
+
+if (is.null(metadata) || !is.data.frame(metadata)) {
+  stop("Metadata must be a data.frame.")
+}
+
+if ("Sample" %in% colnames(metadata)) {
+
+  sample_ids <- as.character(metadata$Sample)
+
+} else {
+
+  sample_ids <- rownames(metadata)
+
+  if (is.null(sample_ids)) {
+    stop(
+      "Metadata must contain a 'Sample' column ",
+      "or sample IDs as row names."
+    )
+  }
+}
+
+if (anyNA(sample_ids) ||
+    any(!nzchar(trimws(sample_ids))) ||
+    anyDuplicated(sample_ids)) {
+
+  stop(
+    "Metadata sample identifiers must be non-missing, ",
+    "non-empty and unique."
+  )
+}
+
+rownames(metadata) <- sample_ids
+
+missing_samples <- setdiff(colnames(expr), sample_ids)
+
+if (length(missing_samples) > 0L) {
+  stop(
+    "The following expression samples are missing from metadata: ",
+    paste(missing_samples, collapse = ", ")
+  )
+}
+
+# Preserve expression-matrix sample order.
+metadata <- metadata[colnames(expr), , drop = FALSE]
+
+# ===============================================
+# 21.4. Record initial dimensions
+# ===============================================
+
+initial_genes <- rownames(expr)
+initial_samples <- colnames(expr)
+
+n_genes_initial <- nrow(expr)
+n_samples_initial <- ncol(expr)
+
+if (verbose) {
+  message(
+    "[WGCNA] Initial data: ",
+    n_genes_initial, " genes and ",
+    n_samples_initial, " samples."
+  )
+}
+
+# ===============================================
+# 21.5. Exclude genes with invalid or zero variance
+# ===============================================
+
+gene_var <- apply(expr, 1L, stats::var)
+
+eligible <- is.finite(gene_var) & gene_var > 0
+
+genes_invalid_variance <- rownames(expr)[!eligible]
+
+expr <- expr[eligible, , drop = FALSE]
+gene_var <- gene_var[eligible]
+
+if (nrow(expr) < 2L) {
+  stop("Fewer than 2 genes with non-zero variance remain.")
+}
+
+# ===============================================
+# 21.6. Select most variable genes
+# ===============================================
+
+ord <- order(gene_var, decreasing = TRUE)
+
+if (!is.null(genes_n)) {
+  ord <- head(ord, min(genes_n, length(ord)))
+}
+
+expr <- expr[ord, , drop = FALSE]
+
+genes_selected <- rownames(expr)
+
+genes_excluded_selection <- setdiff(
+  setdiff(initial_genes, genes_invalid_variance),
+  genes_selected
+)
+
+if (verbose) {
+  message(
+    "[WGCNA] Selected ",
+    nrow(expr), " variable genes."
+  )
+}
+
+# ===============================================
+# 21.7. Prepare data for WGCNA
+# ===============================================
+
+# WGCNA expects samples in rows and genes in columns.
+datExpr <- t(expr)
+
+# ===============================================
+# 21.8. Quality control
+# ===============================================
+
+gsg <- WGCNA::goodSamplesGenes(
+  datExpr,
+  verbose = 0
+)
+
+# Record exclusions before filtering.
+samples_removed_qc <- rownames(datExpr)[!gsg$goodSamples]
+genes_removed_qc <- colnames(datExpr)[!gsg$goodGenes]
+
+if (length(samples_removed_qc) > 0L ||
+    length(genes_removed_qc) > 0L) {
+
+  if (verbose) {
+    message(
+      "[WGCNA] Removing ",
+      length(samples_removed_qc), " problematic samples and ",
+      length(genes_removed_qc), " problematic genes."
+    )
+  }
+}
+
+datExpr <- datExpr[
+  gsg$goodSamples,
+  gsg$goodGenes,
+  drop = FALSE
+]
+
+# Keep metadata synchronized with retained samples.
+metadata <- metadata[
+  rownames(datExpr),
+  ,
+  drop = FALSE
+]
+
+if (nrow(datExpr) < 3L || ncol(datExpr) < 2L) {
+  stop(
+    "Insufficient samples or genes remain after quality control."
+  )
+}
+
+# ===============================================
+# 21.9. Return prepared data and provenance
+# ===============================================
+
+list(
+  datExpr = datExpr,
+  metadata = metadata,
+
+  n_genes_initial = n_genes_initial,
+  n_samples_initial = n_samples_initial,
+
+  n_genes = ncol(datExpr),
+  n_samples = nrow(datExpr),
+
+  genes_used = colnames(datExpr),
+  samples_used = rownames(datExpr),
+
+  genes_invalid_variance = genes_invalid_variance,
+  genes_excluded_selection = genes_excluded_selection,
+  genes_removed_qc = genes_removed_qc,
+  samples_removed_qc = samples_removed_qc
+)
+}
+
+# =============================================================================
+# 22. Prepare expression data for WGCNA
+# =============================================================================
+#' @keywords internal
+
+.calculate_wgcna_metrics <- function(datExpr, MEs, wgcna_obj) {
+
+  net <- wgcna_obj$network
+  genes_modules <- wgcna_obj$genes_modules
+
+  # ===============================================
+  # 22.1. Intramodular connectivity
+  # ===============================================
+
+  connectivity <- vector("list", length(net$blockGenes))
+
+  for (b in seq_along(net$blockGenes)) {
+
+    block_idx <- net$blockGenes[[b]]
+
+    block_expr <- datExpr[, block_idx, drop = FALSE]
+    block_colors <- net$colors[block_idx]
+
+    adj <- WGCNA::adjacency(
+      block_expr,
+      power = wgcna_obj$power,
+      type = wgcna_obj$network_type
+    )
+
+    connectivity[[b]] <- WGCNA::intramodularConnectivity(
+      adj,
+      colors = block_colors
+    )
+
+    rownames(connectivity[[b]]) <- colnames(block_expr)
+  }
+
+  connectivity <- do.call(rbind, connectivity)
+
+  # ===============================================
+  # 22.2. Module membership (kME)
+  # ===============================================
+
+  kME_matrix <- stats::cor(
+    datExpr,
+    MEs,
+    use = "pairwise.complete.obs",
+    method = wgcna_obj$cor_method
+  )
+
+  gene_module <- as.character(genes_modules$Module)
+
+  gene_idx <- match(
+    genes_modules$Gene,
+    rownames(kME_matrix)
+  )
+
+  kME <- vapply(seq_along(gene_module), function(i) {
+
+    if (is.na(gene_module[i]) ||
+        gene_module[i] %in% c("0", "grey")) {
+      return(NA_real_)
+    }
+
+    me_name <- paste0("ME", gene_module[i])
+
+    if (!me_name %in% colnames(kME_matrix)) {
+      return(NA_real_)
+    }
+
+    kME_matrix[gene_idx[i], me_name]
+
+  }, numeric(1))
+
+  # ===============================================
+  # 22.3. Organize gene metrics
+  # ===============================================
+
+  connectivity_idx <- match(
+    genes_modules$Gene,
+    rownames(connectivity)
+  )
+
+  gene_metrics <- data.frame(
+    Gene = genes_modules$Gene,
+    Module = genes_modules$Module,
+    ModuleColor = genes_modules$ModuleColor,
+    kME = kME,
+    kWithin = connectivity[connectivity_idx, "kWithin"],
+    kTotal = connectivity[connectivity_idx, "kTotal"],
+    kOut = connectivity[connectivity_idx, "kOut"],
+    stringsAsFactors = FALSE
+  )
+
+  # ===============================================
+  # 22.4. Safe summary functions
+  # ===============================================
+
+  safe_mean <- function(x) {
+    if (all(is.na(x))) return(NA_real_)
+    mean(x, na.rm = TRUE)
+  }
+
+  safe_median <- function(x) {
+    if (all(is.na(x))) return(NA_real_)
+    stats::median(x, na.rm = TRUE)
+  }
+
+  # ===============================================
+  # 22.5. Module summary
+  # ===============================================
+
+  module_data <- gene_metrics[
+    !is.na(gene_metrics$ModuleColor) &
+      gene_metrics$ModuleColor != "grey",
+    ,
+    drop = FALSE
+  ]
+
+  module_groups <- split(
+    module_data,
+    module_data$ModuleColor
+  )
+
+  module_summary <- do.call(
+    rbind,
+    lapply(module_groups, function(x) {
+
+      data.frame(
+        Module = x$Module[1],
+        ModuleColor = x$ModuleColor[1],
+        NGenes = nrow(x),
+        Mean_kME = safe_mean(x$kME),
+        Median_kME = safe_median(x$kME),
+        Mean_kWithin = safe_mean(x$kWithin),
+        Median_kWithin = safe_median(x$kWithin),
+        stringsAsFactors = FALSE
+      )
+    })
+  )
+
+  rownames(module_summary) <- NULL
+
+  module_summary <- module_summary[
+    order(module_summary$NGenes, decreasing = TRUE),
+  ]
+
+  list(
+    gene_metrics = gene_metrics,
+    module_summary = module_summary
+  )
+}

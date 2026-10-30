@@ -1,7 +1,7 @@
 .onAttach <- function(libname, pkgname) {
 
   version_text <- paste0(
-    "autornaR v.",
+    "autornaR v",
     utils::packageVersion("autornaR")
   )
 

@@ -24,8 +24,8 @@ keywords:
   - differential-expression
   - R
 
-version: "0.4.1"
-date-released: 2026-05-27
+version: "0.5.0"
+date-released: 2025-11-10
 
 repository-code: "https://github.com/Luiz-Garcia-R/autornaR"
 url: "https://github.com/Luiz-Garcia-R/autornaR"

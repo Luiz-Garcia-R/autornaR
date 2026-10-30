@@ -6,7 +6,6 @@
 \usage{
 rna_enrich(
   project,
-  use_comparison = NULL,
   plot_style = c("dotplot", "barplot"),
   ont = c("BP", "MF", "CC"),
   enrich_p_cutoff = 0.1,
@@ -19,10 +18,6 @@ rna_enrich(
 }
 \arguments{
 \item{project}{\code{rna_project} object created by \code{rna_project()}.}
-
-\item{use_comparison}{Character or numeric. Identifier of the comparison
-stored in \code{rna_project$analyses$comparison}. If \code{NULL},
-the most recent comparison is used.}
 
 \item{plot_style}{Character. Wheter use \code{barplot} or \code{dotplot}.}
 
@@ -55,8 +50,7 @@ to define up- and down-regulated genes (default: \code{0.5}).}
 \value{
 An object of class \code{"enrich_result"} containing:
 \describe{
-\item{comparison}{Comparison identifier used}
-\item{contrast}{Group contrast (reference vs test)}
+\item{contrast}{Group contrast (test vs reference)}
 \item{organism}{Organism used for annotation}
 \item{gene_id_type}{Gene identifier type used in enrichment}
 \item{up}{Named list of enrichment results for up-regulated genes (per ontology)}

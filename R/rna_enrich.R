@@ -12,9 +12,6 @@
 #' across one or more ontology domains (BP, MF, CC).
 #'
 #' @param project \code{rna_project} object created by \code{rna_project()}.
-#' @param use_comparison Character or numeric. Identifier of the comparison
-#'   stored in \code{rna_project$analyses$comparison}. If \code{NULL},
-#'   the most recent comparison is used.
 #' @param plot_style Character. Wheter use \code{barplot} or \code{dotplot}.
 #' @param ont Character vector. Ontology domains to test:
 #'   \itemize{
@@ -66,8 +63,7 @@
 #' @return
 #' An object of class \code{"enrich_result"} containing:
 #' \describe{
-#'   \item{comparison}{Comparison identifier used}
-#'   \item{contrast}{Group contrast (reference vs test)}
+#'   \item{contrast}{Group contrast (test vs reference)}
 #'   \item{organism}{Organism used for annotation}
 #'   \item{gene_id_type}{Gene identifier type used in enrichment}
 #'   \item{up}{Named list of enrichment results for up-regulated genes (per ontology)}
@@ -104,7 +100,6 @@
 #' @export
 
 rna_enrich <- function(project,
-                       use_comparison = NULL,
                        plot_style = c("dotplot", "barplot"),
                        ont = c("BP", "MF", "CC"),
                        enrich_p_cutoff = 0.1,
@@ -188,8 +183,8 @@ OrgDb <- switch(
 res <- as.data.frame(comp_obj$res)
 
 contrast <- c(
-  comp_obj$groups$reference,
-  comp_obj$groups$test
+  comp_obj$groups$test,
+  comp_obj$groups$reference
 )
 
 #  Gene ID sanity check
@@ -329,7 +324,6 @@ params <- list(
 )
 
 obj <- list(
-  comparison = use_comparison,
   contrast = contrast,
   organism = proj$input$imp_data$organism,
   gene_id_type = gene_id_type,
@@ -352,7 +346,7 @@ if (save) {
     slot = "analyses",
     subtype = "enrichment",
     log = list(
-      comparison = use_comparison,
+      contrast = contrast,
       organism = proj$input$imp_data$organism,
       padj_cutoff = padj_cutoff,
       log2fc_cutoff = log2fc_cutoff,
@@ -393,7 +387,6 @@ print.enrich_result <- function(x, ...) {
 
 .print_block("Overview", function() {
   cat("Class: enrich_result\n")
-  cat("Comparison: ", x$comparison, "\n", sep = "")
   cat("Contrast: ", paste(x$contrast, collapse = " vs "), "\n", sep = "")
   cat("Organism: ", x$organism, "\n", sep = "")
 

@@ -35,6 +35,7 @@ exploratory/differential analysis:
    \code{rna_boxplot()} \tab Limma t-test for individual genes \cr
    \code{rna_volcano()} \tab Volcano plot and DE gene summary \cr
    \code{rna_sets()} \tab Evaluatte presence/absence or DE genes across groups \cr
+   \code{rna_wgcna()} \tab Performs a weighted correlation network analysis \cr
 }
 
 }
@@ -85,16 +86,25 @@ rna_compare(my_project,
             method = "limma",
             contrast = "Treatment", "Control")
 
-rna_roc(my_project, genes = c("G001","G002"))
+my_project <- rna_roc(my_project, genes = c("G001","G002"))
 
-rna_boxplot(my_project, genes = "G001")
+my_project <- rna_boxplot(my_project, genes = "G001")
 
-rna_volcano(my_project)
+my_project <- rna_volcano(my_project)
 
-rna_sets(my_project)
+my_project <- rna_sets(my_project)
+
+my_project <- rna_wgcna(my_project, power = 6)
 
 # Save rna_project object
 rna_save(rna_project)
+}
+
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://luiz-garcia-r.github.io/autornaR/}
 }
 
 }

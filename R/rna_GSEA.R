@@ -229,7 +229,7 @@ contrast <- c(
   comp_obj$groups$reference
 )
 
-message("[rna_gsea] Using comparison: ", contrast[2], " vs ", contrast[1])
+message("[rna_gsea] Using comparison: ", contrast[1], " vs ", contrast[2])
 
 collections_without_sub <- c("H","C1","C6","C7","C8")
 
@@ -507,7 +507,10 @@ if (plot_heatmap && nrow(gsea_sig) > 0) {
       pos = ifelse(gsea_heat$NES > 0,  gsea_heat$NES, 0)
     )
 
-    colnames(heat_df) <- contrast
+    colnames(heat_df) <- c(
+      contrast[2], # Reference
+      contrast[1]  # Test
+    )
 
     # Plot heatmap
     pheatmap::pheatmap(

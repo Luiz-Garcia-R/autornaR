@@ -168,3 +168,11 @@
   )
 }
 
+# WGCNA
+.get_wgcna <- function(project) {
+  .get_project_object(
+    project,
+    slot = "analyses",
+    subtype = "wgcna_network"
+  )
+}

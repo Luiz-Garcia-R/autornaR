@@ -26,6 +26,7 @@
 #' | `rna_boxplot()`     | Limma t-test for individual genes |
 #' | `rna_volcano()`     | Volcano plot and DE gene summary |
 #' | `rna_sets()`        | Evaluatte presence/absence or DE genes across groups |
+#' | `rna_wgcna()`       | Performs a weighted correlation network analysis |
 #'
 #' ## Contact and Contributions
 #' For suggestions, bug reports, or contributions, see the
@@ -70,13 +71,15 @@
 #'             method = "limma",
 #'             contrast = "Treatment", "Control")
 #'
-#' rna_roc(my_project, genes = c("G001","G002"))
+#' my_project <- rna_roc(my_project, genes = c("G001","G002"))
 #'
-#' rna_boxplot(my_project, genes = "G001")
+#' my_project <- rna_boxplot(my_project, genes = "G001")
 #'
-#' rna_volcano(my_project)
+#' my_project <- rna_volcano(my_project)
 #'
-#' rna_sets(my_project)
+#' my_project <- rna_sets(my_project)
+#'
+#' my_project <- rna_wgcna(my_project, power = 6)
 #'
 #' # Save rna_project object
 #' rna_save(rna_project)

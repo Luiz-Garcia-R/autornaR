@@ -77,9 +77,6 @@ while biological relevance is controlled via the log2 fold-change threshold
 
 The function supports optional labeling of genes directly on the plot using
 \code{ggrepel}, which is useful for highlighting key markers.
-
-If no comparison is specified, the most recent comparison stored in the
-\code{rna_project} is used automatically.
 }
 \section{\strong{Visualization features}}{
 

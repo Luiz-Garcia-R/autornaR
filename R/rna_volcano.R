@@ -24,8 +24,6 @@
 #' The function supports optional labeling of genes directly on the plot using
 #' \code{ggrepel}, which is useful for highlighting key markers.
 #'
-#' If no comparison is specified, the most recent comparison stored in the
-#' \code{rna_project} is used automatically.
 #'
 #' @param project \code{rna_project} object created by \code{rna_project()}.
 #' @param genes Optional character vector of genes to label on the plot.

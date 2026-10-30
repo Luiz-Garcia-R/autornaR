@@ -1,7 +1,7 @@
 Package: autornaR
 Type: Package
 Title: Comprehensive RNAseq Data Analysis and Visualization
-Version: 0.4.1
+Version: 0.5.0
 Authors@R: 
     person("Luiz", "Garcia", 
            email = "luiz.cardoso@ufpr.br", 
@@ -36,7 +36,8 @@ Imports:
     tidygraph,
     tidyr,
     umap,
-    utils
+    utils,
+    WGCNA
 Suggests:
     AnnotationDbi,
     BiocParallel,
@@ -65,3 +66,4 @@ Depends: R (>= 3.5)
 NeedsCompilation: no
 Maintainer: Luiz Garcia <luiz.cardoso@ufpr.br>
 VignetteBuilder: knitr
+URL: https://luiz-garcia-r.github.io/autornaR/

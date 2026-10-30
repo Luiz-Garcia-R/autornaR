@@ -307,14 +307,26 @@ if (method == "deseq2") {
 # 5. LIMMA
 # =============================================================================
 
-  } else if (method == "limma") {
+} else if (method == "limma") {
+
+  # Build design formula conditionally
+  design_formula_limma <- if (
+    !is.null(batch_col) &&
+    batch_col %in% colnames(metadata)
+  ) {
+    as.formula(
+      paste("~ 0 +", group_col, "+", batch_col)
+    )
+  } else {
+    as.formula(
+      paste("~ 0 +", group_col)
+    )
+  }
+
+  design_formula <- design_formula_limma
 
   design <- model.matrix(
-    as.formula(paste("~ 0 +",
-                     if (!is.null(batch_col) && batch_col %in% colnames(metadata))
-                       paste(batch_col, "+", group_col)
-                     else
-                       group_col)),
+    design_formula_limma,
     data = metadata
   )
 

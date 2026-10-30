@@ -15,6 +15,8 @@ rna_network(
   cor_method = c("pearson", "spearman", "auto"),
   community_method = c("louvain", "leiden", "none"),
   layout = c("fr", "kk", "stress", "lgl", "graphopt"),
+  color_by = c("expression", "log2fc"),
+  labels = TRUE,
   seed = NULL,
   plot = TRUE,
   save = TRUE
@@ -81,6 +83,16 @@ rather than full modular architecture.}
 \item \code{stress}: best for interpreting hub-centered structures
 \item \code{kk}: balanced exploratory analysis
 }}
+
+\item{color_by}{Method used to color network nodes:
+\itemize{
+\item \code{expression}: colors nodes according to the z-scored mean
+expression of each gene across samples in the selected group.
+\item \code{log2fc}: colors nodes according to the log2 fold change
+obtained from the current comparison stored in the project.
+}}
+
+\item{labels}{Logical. Wheter to display gene labels in the network plot.}
 
 \item{seed}{Optional integer used for reproducibility.}
 

@@ -16,7 +16,7 @@ It provides functions for filtering, imputation, outlier detection, gene ranking
 
 <td width="30%" align="center" valign="middle">
 
-<img src=".github/images/logo_autornaR.png" width="160">
+<img src="man/figures/logo_autornaR.png" width="160">
 
 </td>
 </tr>
@@ -36,21 +36,23 @@ remotes::install_github("Luiz-Garcia-R/autornaR")
 
 ## Getting started
 
-New to autornaR? Start with the package vignette for a guided introduction to the main workflow, from data import and normalization to quality control and downstream analyses.
+New to autornaR? **Start with the [Getting started with autornaR vignette](https://luiz-garcia-r.github.io/autornaR/articles/overview.html)** for a guided introduction to the package's main workflow, from data import and normalization to quality control and downstream analyses.
 
-To browse the available vignettes in R, run:
+The online vignette is the easiest way to get started, with step-by-step explanations and code examples.
+
+You can also access the vignette directly from R:
 
 ```r
 browseVignettes("autornaR")
 ```
 
-To open the introductory vignette directly:
+Or open the introductory vignette specifically:
 
 ```r
 vignette("overview", package = "autornaR")
 ```
 
-See the [introductory vignette](vignettes/overview.Rmd) direcly on Github.
+
 
 ## Input Data Format (Very Important)
 
@@ -108,6 +110,7 @@ For deeper insights and pairwise comparisons:
   - rna_boxplot() - Perform Limma t-tests for gene-level differences
   - rna_sets() - Evaluate differential expressed genes distribution
   - rna_volcano() - Generate volcano plots for differential expression analysis
+  - rna_wgcna() - Performs a weighted correlation network analysis
 
 ## Example Workflow (Minimal)
 ```r
@@ -149,6 +152,8 @@ my_project <- rna_compare(my_project,
 # Evaluating top DEGs
 my_project <- rna_degs(my_project)
 
+# Performs a WGCNA
+my_project <- rna_wgcna(my_project, power = 6)
 ```
 
 **Note:** The package is primarily optimized for pairwise analyses (e.g., Control vs. Treatment).  

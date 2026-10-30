@@ -80,6 +80,16 @@
 #'   \item \code{kk}: balanced exploratory analysis
 #' }
 #'
+#' @param color_by Method used to color network nodes:
+#' \itemize{
+#'    \item \code{expression}: colors nodes according to the z-scored mean
+#'    expression of each gene across samples in the selected group.
+#'    \item \code{log2fc}: colors nodes according to the log2 fold change
+#'    obtained from the current comparison stored in the project.
+#' }
+#'
+#' @param labels Logical. Wheter to display gene labels in the network plot.
+#'
 #' @param seed Optional integer used for reproducibility.
 #' @param plot Logical. Whether to display the network plot.
 #' @param save Logical. Whether to store results in \code{rna_project}.
@@ -206,6 +216,8 @@ rna_network <- function(project,
                         cor_method = c("pearson","spearman","auto"),
                         community_method = c("louvain", "leiden", "none"),
                         layout = c("fr","kk","stress","lgl","graphopt"),
+                        color_by = c("expression", "log2fc"),
+                        labels = TRUE,
                         seed = NULL,
                         plot = TRUE,
                         save = TRUE) {
@@ -214,6 +226,7 @@ cor_method <- match.arg(cor_method)
 node_filter <- match.arg(node_filter)
 community_method <- match.arg(community_method)
 layout <- match.arg(layout)
+color_by <- match.arg(color_by)
 
 # =============================================================================
 # 0. Basic checks
@@ -264,14 +277,17 @@ if (gene_id_type != "ENSEMBL") {
   warning("Network currently assumes ENSEMBL gene IDs.")
 }
 
+if (is.null(proj$analyses$comparison)) {
+  stop("No comparison found. Run rna_compare() first.")
+}
+
+if (!inherits(comp_obj, "rnaCompare")) {
+  stop("Current comparison is not a valid comparison.")
+}
+
 # GSEA object
 if (is.null(gsea_obj)) {
   stop("No GSEA result found in project. Run rna_gsea() first.")
-}
-
-# Comparison object
-if (is.null(comp_obj)) {
-  warning("No comparison results found.")
 }
 
 # =============================================================================
@@ -477,6 +493,69 @@ igraph::vertex_attr(g, "label") <- nodes_df$label
 tg <- tidygraph::as_tbl_graph(g)
 
 # =============================================================================
+# 9.2. Prepare node color values
+# =============================================================================
+
+if (color_by == "expression") {
+
+  # Relative expression within the selected group
+  nodes_df$color_value <- nodes_df$expr_z
+
+  color_legend <- "Expr (z-score)"
+
+} else if (color_by == "log2fc") {
+
+  # Retrieve differential expression results
+  comp_obj <- .get_comp(proj)
+
+  if (is.null(comp_obj) || !inherits(comp_obj, "rnaCompare")) {
+    stop(
+      "No valid comparison found. ",
+      "Run rna_compare() first."
+    )
+  }
+
+  res_df <- as.data.frame(comp_obj$res)
+
+  # Recover gene identifiers
+  if (!"Gene" %in% colnames(res_df)) {
+
+    if (is.null(rownames(res_df))) {
+      stop(
+        "Comparison results have neither row names ",
+        "nor a 'Gene' column."
+      )
+    }
+
+    res_df$Gene <- rownames(res_df)
+  }
+
+  # Validate required column
+  if (!"log2FoldChange" %in% colnames(res_df)) {
+    stop(
+      "Comparison results do not contain 'log2FoldChange'."
+    )
+  }
+
+  # Ensure unique gene identifiers for matching
+  if (anyDuplicated(res_df$Gene)) {
+    stop(
+      "Duplicated gene identifiers in comparison results."
+    )
+  }
+
+  # Match log2FC to network nodes by gene ID
+  idx <- match(nodes_df$name, res_df$Gene)
+
+  nodes_df$color_value <- res_df$log2FoldChange[idx]
+
+  igraph::vertex_attr(g, "color_value") <- nodes_df$color_value
+
+  color_legend <- "log2 Fold Change"
+
+}
+
+# =============================================================================
 # 10.  Node filter
 # =============================================================================
 
@@ -562,11 +641,12 @@ if (node_filter == "top") {
   igraph::vertex_attr(g, "label") <- nodes_df$label
   igraph::vertex_attr(g, "expr_mean") <- nodes_df$expr_mean
   igraph::vertex_attr(g, "expr_z") <- nodes_df$expr_z
-
-  # Rebuild tidygraph after updating the graph
-  tg <- tidygraph::as_tbl_graph(g)
+  igraph::vertex_attr(g, "color_value") <- nodes_df$color_value
 
 }
+
+# Rebuild tidygraph after updating the graph
+tg <- tidygraph::as_tbl_graph(g)
 
 tg <- tg |>
   tidygraph::activate(edges) |>
@@ -603,18 +683,26 @@ if (!is.null(comm)) {
   nodes_df$community <- NA
 }
 
+
 # =============================================================================
 # 12. Plot
 # =============================================================================
 
-if (layout %in% c("fr","kk","stress","lgl")) {
-  p <- ggraph::ggraph(tg, layout = layout, weights = .data$layout_weight)
+if (layout %in% c("fr", "kk", "stress", "lgl")) {
+
+  p <- ggraph::ggraph(
+    tg,
+    layout = layout,
+    weights = .data$layout_weight
+  )
 
 } else {
+
   p <- ggraph::ggraph(tg, layout = layout)
 
 }
 
+# Base plot
 p <- p +
   ggraph::geom_edge_link(
     ggplot2::aes(width = abs(weight)),
@@ -623,24 +711,72 @@ p <- p +
   ) +
   ggraph::scale_edge_width(range = c(0.2, 2)) +
   ggraph::geom_node_point(
-    ggplot2::aes(colour = .data$expr_z, size = degree)
+    ggplot2::aes(
+      colour = .data$color_value,
+      size = degree
+    )
   ) +
-  ggplot2::scale_size(range = c(3,8), name = "Degree") +
-  ggplot2::scale_colour_gradient2(
-    low = "#3B4CC0",
-    mid = "white",
-    high = "#d7191c",
-    midpoint = 0,
-    name = "Expr (z-score)"
-  ) +
-  ggraph::geom_node_text(
-    ggplot2::aes(label = label),
-    repel = TRUE,
-    size = 3.5,
-    max.overlaps = Inf
+  ggplot2::scale_size(
+    range = c(3, 8),
+    name = "Degree"
   ) +
   ggplot2::theme_void() +
   ggplot2::ggtitle(paste0(pathway, " - ", group))
+
+# Color scale
+if (color_by == "expression") {
+
+  p <- p +
+    ggplot2::scale_colour_gradient2(
+      low = "#3B4CC0",
+      mid = "white",
+      high = "#d7191c",
+      midpoint = 0,
+      name = color_legend,
+      na.value = "grey75"
+    )
+
+} else if (color_by == "log2fc") {
+
+  valid_colors <- nodes_df$color_value[
+    is.finite(nodes_df$color_value)
+  ]
+
+  max_abs <- if (length(valid_colors) > 0) {
+    max(abs(valid_colors))
+  } else {
+    1
+  }
+
+  if (max_abs == 0) {
+    max_abs <- 1
+  }
+
+  p <- p +
+    ggplot2::scale_colour_gradient2(
+      low = "#3B4CC0",
+      mid = "white",
+      high = "#d7191c",
+      midpoint = 0,
+      limits = c(-max_abs, max_abs),
+      name = color_legend,
+      na.value = "grey75"
+    )
+
+}
+
+# Add labels only when requested
+if (labels) {
+
+  p <- p +
+    ggraph::geom_node_text(
+      ggplot2::aes(label = label),
+      repel = TRUE,
+      size = 3.5,
+      max.overlaps = Inf
+    )
+
+}
 
 if (plot && interactive()) {
   print(p)
@@ -669,6 +805,7 @@ params = list(
   group = group,
   node_filter = node_filter,
   top_nodes = top_nodes,
+  color_by = color_by,
   centrality_method = "harmonic",
   seed = seed,
   rng_state = rng_state
