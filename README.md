@@ -103,14 +103,24 @@ For deeper insights and pairwise comparisons:
   - rna_degs() - Identify differentially expressed genes
   - rna_dimred() - Perform PCA and UMAP for dimensionality reduction
   - rna_heatmap() - Visualize top variable genes with heatmaps
-  - rna_gsea() - Perform a GSEA rank to visualize top enriched pathway
-  - rna_gsva() - Perform a GSVA to visualize individual enriched pathway
-  - rna_network() - Build a gene-gene network using pathways identified by rna_gsea()
   - rna_roc() - Assess discriminatory power of specific genes
   - rna_boxplot() - Perform Limma t-tests for gene-level differences
   - rna_sets() - Evaluate differential expressed genes distribution
   - rna_volcano() - Generate volcano plots for differential expression analysis
   - rna_wgcna() - Performs a weighted correlation network analysis
+
+## GSEA module
+  - rna_gsea() - Perform a GSEA rank to visualize top enriched pathway
+  - rna_gsva() - Perform a GSVA to visualize individual enriched pathway
+  - rna_network() - Build a gene-gene network using pathways identified by rna_gsea()
+
+## WGCNA module
+	- rna_wgcna() - Build a coexpression matrix
+	- rna_wgcna_metrics() - Perform a general evaluation of coexpression network 
+	- rna_wgcna_module_trait() - Evaluate relationship between modules and phenotype
+	- rna_wgcna_stability() - Perform a evaluation of coexpression network stability
+	- rna_wgcna_plot() - Plot general or module specific coexpression network
+	- rna_wgcna_enrichment() - Perform a enrichment analysis of modules
 
 ## Example Workflow (Minimal)
 ```r

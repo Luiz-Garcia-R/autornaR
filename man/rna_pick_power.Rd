@@ -60,8 +60,8 @@ returns an object of class \code{power_result}. Defaults to
 \code{TRUE}.}
 }
 \value{
-If \code{save = TRUE}, invisibly returns the updated
-\code{rna_project} object containing the diagnostic result.
+If \code{save = TRUE}, invisibly returns the updated \code{rna_project}
+object containing the diagnostic result.
 
 If \code{save = FALSE}, invisibly returns an object of class
 \code{power_result}, containing the fit diagnostics, candidate powers,
@@ -70,12 +70,12 @@ identifiers of retained genes and samples, identifiers removed during
 quality control, and the analysis timestamp.
 }
 \description{
-Evaluates candidate soft-thresholding powers for weighted gene co-expression
-network analysis (WGCNA) using normalized expression data stored in an
-\code{rna_project} object. The function filters genes with zero or invalid
-variance, optionally retains the most variable genes, performs basic
-expression-data quality control, and evaluates scale-free topology fit
-across the candidate powers.
+Evaluates candidate soft-thresholding powers for weighted gene
+co-expression network analysis (WGCNA) using normalized expression data
+stored in an \code{rna_project} object. The function filters genes with
+zero or invalid variance, optionally retains the most variable genes,
+performs basic expression-data quality control, and evaluates scale-free
+topology fit across the candidate powers.
 
 Diagnostic plots and a summary of the evaluated powers are provided to
 support the selection of a suitable soft-thresholding power before network
@@ -83,12 +83,11 @@ construction.
 }
 \section{Input data}{
 
-The expression matrix must be numeric, with genes in rows and samples
-in columns. Gene identifiers and sample identifiers must be unique.
-The metadata must identify samples through a \code{Sample} column or
-through its row names. Sample identifiers are matched to the expression
-matrix column names; metadata must contain an entry for every expression
-sample.
+The expression matrix must be numeric, with genes in rows and samples in
+columns. Gene identifiers and sample identifiers must be unique. The
+metadata must identify samples through a \code{Sample} column or through
+its row names. Sample identifiers are matched to the expression matrix
+column names; metadata must contain an entry for every expression sample.
 
 Expression values must be finite. Genes with non-finite or zero variance
 are excluded before the most variable genes are selected. WGCNA quality
@@ -99,25 +98,25 @@ samples or genes.
 \section{Interpretation}{
 
 The scale-free topology fit and mean connectivity plots provide
-complementary diagnostics. A higher scale-free topology fit may support
-a candidate power, but increasing the power can also reduce network
+complementary diagnostics. A higher scale-free topology fit may support a
+candidate power, but increasing the power can also reduce network
 connectivity. Therefore, power selection should consider both diagnostics
 and the biological objectives of the analysis.
 
 The \code{fit_threshold} argument defines a diagnostic criterion rather
 than a universal cutoff. If no candidate power reaches the specified
-threshold, the function reports this result without automatically
-relaxing the criterion. Alternative thresholds may be explored when
-justified by the dataset and the intended analysis.
+threshold, the function reports this result without automatically relaxing
+the criterion. Alternative thresholds may be explored when justified by the
+dataset and the intended analysis.
 }
 
 \section{Scope of the analysis}{
 
-This function evaluates candidate powers using the samples supplied in
-the project as a whole. It does not test differential co-expression
-between experimental groups and does not construct the final network
-or identify co-expression modules. Group-specific or consensus network
-analyses require additional steps.
+This function evaluates candidate powers using the samples supplied in the
+project as a whole. It does not test differential co-expression between
+experimental groups and does not construct the final network or identify
+co-expression modules. Group-specific or consensus network analyses require
+additional steps.
 }
 
 \references{

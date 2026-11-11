@@ -1,23 +1,27 @@
+# =============================================================================
+# RNA PROJECT
+# =============================================================================
+
 #' Initialize an RNA-seq analysis project container
 #'
 #' @description
-#' Creates a structured \code{rna_project} object that serves as the central
-#' container for all RNA-seq analyses within the \pkg{autornaR} workflow.
+#'   Creates a structured \code{rna_project} object that serves as the central
+#'   container for all RNA-seq analyses within the \pkg{autornaR} workflow.
 #'
-#' The project object is designed to store raw inputs, processed data,
-#' analysis results, and execution logs in a consistent and reproducible
-#' structure, enabling seamless transitions between analysis steps.
+#'   The project object is designed to store raw inputs, processed data,
+#'   analysis results, and execution logs in a consistent and reproducible
+#'   structure, enabling seamless transitions between analysis steps.
 #'
-#' Once created, the project is automatically assigned to the global
-#' environment as \code{rna_project}, becoming the active context for all
-#' subsequent functions (e.g., \code{rna_import()}, \code{rna_normalize()},
-#' \code{rna_compare()}).
+#'   Once created, the project is automatically assigned to the global
+#'   environment as \code{rna_project}, becoming the active context for all
+#'   subsequent functions (e.g., \code{rna_import()}, \code{rna_normalize()},
+#'   \code{rna_compare()}).
 #'
 #' @param project_name Character. Optional project identifier used for
 #'   labeling outputs and logs.
 #'
 #' @return
-#' Invisibly returns an object of class \code{"rna_project"}, containing:
+#'   Invisibly returns an object of class \code{"rna_project"}, containing:
 #' \describe{
 #'   \item{project_info}{Metadata about the project (name, creation time,
 #'   preprocessing steps, list of downstream analyses).}
@@ -28,14 +32,15 @@
 #' }
 #'
 #' @details
-#' The \code{rna_project} object acts as a lightweight state manager for the
-#' analysis workflow. Instead of passing data manually between functions,
-#' each step reads from and writes to this centralized structure.
+#'   The \code{rna_project} object acts as a lightweight state manager for the
+#'   analysis workflow. Instead of passing data manually between functions, each
+#'   step reads from and writes to this centralized structure.
 #'
 #' \strong{Design principles:}
 #' \itemize{
 #'   \item \emph{Reproducibility}: All steps are stored and traceable via logs.
-#'   \item \emph{Modularity}: Each function updates a specific part of the project.
+#'   \item \emph{Modularity}: Each function updates a specific part of the
+#'     project.
 #'   \item \emph{State awareness}: The current analysis state is always explicit.
 #'   \item \emph{Safety}: Prevents loss of intermediate results across steps.
 #' }
@@ -48,7 +53,8 @@
 #'   \item Perform analyses (e.g., \code{rna_compare()}, \code{rna_gsea()})
 #' }
 #'
-#' Calling \code{rna_project()} again will overwrite the current active project.
+#'   Calling \code{rna_project()} again will overwrite the current active
+#'   project.
 #'
 #' @examples
 #' \dontrun{

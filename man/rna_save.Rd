@@ -11,7 +11,8 @@ rna_save(project, file, compress = "xz", verbose = TRUE)
 workflow (\code{rna_project()}, \code{rna_import()}, \code{rna_normalize()},
 \code{rna_compare()}, etc.).}
 
-\item{file}{Character. Output file path where the \code{.rds} object will be saved.}
+\item{file}{Character. Output file path where the \code{.rds} object will be
+saved.}
 
 \item{compress}{Character. Compression method passed to \code{saveRDS()}
 (default: \code{"xz"}).}
@@ -32,11 +33,11 @@ gene identifier type, and contrast definition).}
 }
 }
 \description{
-Extracts the essential components from a \code{rna_project} object and saves
-a simplified, memory-efficient version as an \code{.rds} file. The function
-removes large intermediate objects (e.g., expression matrices, model objects,
-and plots) while preserving key results required for downstream analyses and
-cross-study comparisons.
+Extracts the essential components from a \code{rna_project} object and
+saves a simplified, memory-efficient version as an \code{.rds} file. The
+function removes large intermediate objects (e.g., expression matrices,
+model objects, and plots) while preserving key results required for
+downstream analyses and cross-study comparisons.
 
 This function is designed as a bridge between individual RNA-seq analyses
 and meta-analysis workflows (e.g., integration via \code{metaOmicsR}).

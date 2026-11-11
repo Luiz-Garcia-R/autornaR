@@ -36,13 +36,14 @@ subsequent functions (e.g., \code{rna_import()}, \code{rna_normalize()},
 }
 \details{
 The \code{rna_project} object acts as a lightweight state manager for the
-analysis workflow. Instead of passing data manually between functions,
-each step reads from and writes to this centralized structure.
+analysis workflow. Instead of passing data manually between functions, each
+step reads from and writes to this centralized structure.
 
 \strong{Design principles:}
 \itemize{
 \item \emph{Reproducibility}: All steps are stored and traceable via logs.
-\item \emph{Modularity}: Each function updates a specific part of the project.
+\item \emph{Modularity}: Each function updates a specific part of the
+project.
 \item \emph{State awareness}: The current analysis state is always explicit.
 \item \emph{Safety}: Prevents loss of intermediate results across steps.
 }
@@ -55,7 +56,8 @@ each step reads from and writes to this centralized structure.
 \item Perform analyses (e.g., \code{rna_compare()}, \code{rna_gsea()})
 }
 
-Calling \code{rna_project()} again will overwrite the current active project.
+Calling \code{rna_project()} again will overwrite the current active
+project.
 }
 \examples{
 \dontrun{

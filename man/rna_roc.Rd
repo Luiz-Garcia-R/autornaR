@@ -23,15 +23,18 @@ to use all genes.}
 
 \item{group_col}{Character. Column name in metadata defining binary groups.}
 
-\item{score_method}{Character. One of \code{"auto"}, \code{"pca"}, or \code{"mean"}.}
+\item{score_method}{Character. One of \code{"auto"}, \code{"pca"}, or
+\code{"mean"}.}
 
 \item{show_gene_names}{Logical. Wheter to display gene names in subtitle.}
 
-\item{line_color}{Character. Optional plot line color (default: \code{"#1f77b4"}).}
+\item{line_color}{Character. Optional plot line color
+(default: \code{"#1f77b4"}).}
 
 \item{plot}{Logical. Whether to display the ROC curve.}
 
-\item{save}{Logical. Whether to store results in the active \code{rna_project}.}
+\item{save}{Logical. Whether to store results in the active
+\code{rna_project}.}
 }
 \value{
 An object of class \code{"roc_result"} containing:
@@ -40,8 +43,8 @@ An object of class \code{"roc_result"} containing:
 \item{auc}{Numeric AUC value.}
 \item{auc_ci}{Confidence interval for AUC.}
 \item{genes}{Genes used in the analysis.}
-\item{method}{Scoring strategy used (\code{"single_gene"}, \code{"logistic"},
-or \code{"signature"}).}
+\item{method}{Scoring strategy used (\code{"single_gene"},
+\code{"logistic"}, \code{"signature"}).}
 \item{score_method}{Method used for multi-gene scoring (\code{"pca"}
 or \code{"mean"}).}
 \item{best_threshold}{Optimal classification threshold (Youden index).}
@@ -50,15 +53,17 @@ or \code{"mean"}).}
 }
 }
 \description{
-Computes Receiver Operating Characteristic (ROC) curves and Area Under the Curve (AUC)
-for gene-level or multi-gene signatures using normalized RNA-seq data stored in
-the active \code{rna_project}.
+Computes Receiver Operating Characteristic (ROC) curves and Area Under the
+Curve (AUC) for gene-level or multi-gene signatures using normalized
+RNA-seq data stored in the active \code{rna_project}.
 
 This function provides a flexible framework to evaluate the discriminative
-performance of individual genes or gene sets in binary classification problems.
+performance of individual genes or gene sets in binary classification
+problems.
 }
 \details{
-The function adapts the prediction strategy based on the number of genes provided:
+The function adapts the prediction strategy based on the number of genes
+provided:
 
 \strong{Single gene}
 Expression values are directly used as predictor scores.
@@ -76,8 +81,8 @@ A composite signature score is computed:
 The ROC curve is computed using \pkg{pROC}, and the optimal threshold is
 determined using the Youden index.
 
-Gene identifiers can be provided as Ensembl IDs or gene symbols. When possible,
-gene symbols are retrieved automatically using \pkg{biomaRt}.
+Gene identifiers can be provided as Ensembl IDs or gene symbols. When
+possible, gene symbols are retrieved automatically using \pkg{biomaRt}.
 }
 \section{Interpretation guide}{
 
@@ -88,9 +93,9 @@ gene symbols are retrieved automatically using \pkg{biomaRt}.
 \item AUC > 0.9 may indicate very strong signal or potential overfitting
 }
 
-For multi-gene signatures, interpretation depends on how the score is constructed.
-PCA-based scores capture dominant variance structure, while mean-based scores
-assume consistent directionality across genes.
+For multi-gene signatures, interpretation depends on how the score is
+constructed. PCA-based scores capture dominant variance structure, while
+mean-based scores assume consistent directionality across genes.
 }
 
 \section{Important considerations}{
@@ -99,28 +104,30 @@ assume consistent directionality across genes.
 The grouping variable must contain exactly two levels.
 
 \strong{Unsupervised signatures}
-PCA-based scoring does not use class labels and may not yield optimal classification.
+PCA-based scoring does not use class labels and may not yield optimal
+classification.
 
 \strong{Large gene sets}
 Using \code{"all"} genes may produce unstable or uninterpretable results,
 especially without prior feature selection.
 
 \strong{Data leakage}
-When evaluating predictive performance, avoid using genes selected
-from the same dataset without proper validation.
+When evaluating predictive performance, avoid using genes selected from the
+same dataset without proper validation.
 }
 
 \section{Pipeline context}{
 
-This function is typically used after \code{rna_normalize()} and optionally after
-feature selection steps such as \code{rna_compare()}. It complements visualization
-tools like \code{rna_heatmap()} by providing quantitative classification metrics.
+This function is typically used after \code{rna_normalize()} and optionally
+after feature selection steps such as \code{rna_compare()}. It complements
+visualization tools like \code{rna_heatmap()} by providing quantitative
+classification metrics.
 }
 
 \section{Side effects}{
 
-If \code{save = TRUE}, results are stored in the \code{rna_project} under the
-\code{analyses$roc} slot.
+If \code{save = TRUE}, results are stored in the \code{rna_project} under
+the \code{analyses$roc} slot.
 }
 
 \examples{

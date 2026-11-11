@@ -1,3 +1,7 @@
+# =============================================================================
+# RNA BIPLOT
+# =============================================================================
+
 #' PCA Biplot with Feature Selection
 #'
 #' Generates a PCA biplot using previously computed dimensionality reduction

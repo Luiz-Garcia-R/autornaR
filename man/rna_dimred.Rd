@@ -31,10 +31,11 @@ rna_dimred(
 \item{group_col}{Character. Metadata column used to define sample groups
 for coloring plots (default: \code{"Group"}).}
 
-\item{run_tsne}{Logical. Whether to compute t-SNE embeddings (default: \code{FALSE}).}
+\item{run_tsne}{Logical. Whether to compute t-SNE embeddings
+(default: \code{FALSE}).}
 
-\item{add_ellipse}{Logical. If \code{TRUE}, adds confidence ellipses to PCA plot
-when group sizes allow (default: \code{FALSE}).}
+\item{add_ellipse}{Logical. If \code{TRUE}, adds confidence ellipses to PCA
+plot when group sizes allow (default: \code{FALSE}).}
 
 \item{ellipse_level}{Numeric. Confidence level for PCA ellipses
 (default: \code{0.95}).}
@@ -50,8 +51,8 @@ automatically set based on sample size.}
 \item{tsne_perplexity}{Numeric. Initial perplexity for t-SNE
 (automatically adjusted if too large; default: \code{30}).}
 
-\item{use_pca_preprocessing}{Logical. Whether to use PCA-reduced space as input
-for UMAP and t-SNE (default: \code{TRUE}).}
+\item{use_pca_preprocessing}{Logical. Whether to use PCA-reduced space as
+input for UMAP and t-SNE (default: \code{TRUE}).}
 
 \item{pca_method}{Character. Strategy for selecting number of PCs:
 \itemize{
@@ -63,11 +64,14 @@ for UMAP and t-SNE (default: \code{TRUE}).}
 \item{pca_var_threshold}{Numeric. Target cumulative variance explained when
 using adaptive PCA selection (default: \code{0.8}).}
 
-\item{pca_max_dims}{Integer. Maximum number of PCs allowed (default: \code{50}).}
+\item{pca_max_dims}{Integer. Maximum number of PCs allowed
+(default: \code{50}).}
 
-\item{pca_min_dims}{Integer. Minimum number of PCs enforced (default: \code{10}).}
+\item{pca_min_dims}{Integer. Minimum number of PCs enforced
+(default: \code{10}).}
 
-\item{point_size}{Numeric. Size of points in plots (default: \code{2}).}
+\item{point_size}{Numeric. Size of points in plots
+(default: \code{2}).}
 
 \item{seed}{Optional integer used to set the random seed for reproducibility.
 If \code{NULL}, the existing random number generator state is used.}
@@ -75,15 +79,16 @@ If \code{NULL}, the existing random number generator state is used.}
 \item{save}{Logical. Whether to store results in the active
 \code{rna_project} (default: \code{TRUE}).}
 
-\item{verbose}{Logical. If \code{TRUE}, prints progress messages and displays plots
-(default: \code{TRUE}).}
+\item{verbose}{Logical. If \code{TRUE}, prints progress messages and
+displays plots (default: \code{TRUE}).}
 }
 \value{
 An object of class \code{"dimred_result"} containing:
 \describe{
 \item{res_dimred}{List with dimensionality reduction results:
 \itemize{
-\item \code{summary}: dataset overview (samples, genes, grouping, seed and rng state)
+\item \code{summary}: dataset overview
+(samples, genes, grouping, seed and rng state)
 \item \code{preprocessing}: PCA preprocessing parameters
 \item \code{PCA}: PCA model, variance explained, loadings, coordinates
 \item \code{UMAP}: UMAP model, coordinates, and parameters
@@ -117,7 +122,8 @@ as observations.
 
 \strong{Adaptive behavior:}
 \itemize{
-\item UMAP neighbors are set to \code{floor(n_samples / 2)} when unspecified
+\item UMAP neighbors are set to \code{floor(n_samples / 2)} when
+unspecified
 \item t-SNE perplexity is capped at \code{floor((n_samples - 1)/3)}
 \item t-SNE is skipped when \code{n_samples < 6}
 \item PCA dimensionality is automatically selected when

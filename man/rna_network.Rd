@@ -29,20 +29,23 @@ rna_network(
 
 \item{group}{Character. Experimental group used to compute correlations.}
 
-\item{threshold}{Numeric. Minimum absolute correlation required to define an edge.}
+\item{threshold}{Numeric. Minimum absolute correlation required to define an
+edge.}
 
 \item{cor_p}{Numeric. Maximum p-value allowed for correlations.}
 
 \item{node_filter}{Character. Defines the structural view of the network:
 \itemize{
-\item \code{"all"}: full pathway network (recommended for structural interpretation)
-\item \code{"top"}: restricted network containing only the most central genes
+\item \code{"all"}: full pathway network
+(recommended for structural interpretation)
+\item \code{"top"}: restricted network containing only the most central
+genes
 }
 
 \strong{Important:}
-When \code{node_filter = "top"}, the network is no longer a full pathway graph
-but a \emph{centrality-enriched subnetwork}, highlighting influential genes
-rather than full modular architecture.}
+When \code{node_filter = "top"}, the network is no longer a full pathway
+graph but a \emph{centrality-enriched subnetwork}, highlighting influential
+genes rather than full modular architecture.}
 
 \item{top_nodes}{Numeric. Fraction of most central nodes retained when
 \code{node_filter = "top"} (default: \code{0.2}).}
@@ -72,7 +75,8 @@ rather than full modular architecture.}
 \itemize{
 \item \code{"fr"}: fast global layout, good for overview plots
 \item \code{"kk"}: balanced structure-preserving layout
-\item \code{"stress"}: best preservation of relational distances (recommended for top nodes)
+\item \code{"stress"}: best preservation of relational distances
+(recommended for top nodes)
 \item \code{"lgl"}: scalable layout for larger networks
 \item \code{"graphopt"}: compact structure visualization
 }
@@ -120,8 +124,9 @@ The function invisibly returns a list containing:
 }
 }
 \description{
-Builds a gene coexpression network for genes belonging to a selected pathway
-using normalized RNA-seq expression data stored in the active \code{rna_project}.
+Builds a gene coexpression network for genes belonging to a selected
+pathway using normalized RNA-seq expression data stored in the active
+\code{rna_project}.
 
 The function translates pathway-level gene sets (from GSEA results) into a
 correlation-based network, where edges represent gene-gene coexpression
@@ -144,13 +149,15 @@ These two modes represent different biological perspectives rather than
 simple visual filtering.
 }
 \details{
-The function expects pre-computed GSEA results and normalized expression data.
+The function expects pre-computed GSEA results and normalized expression
+data.
 
 The resulting network is sensitive to filtering choices:
 
 \itemize{
 \item Lower \code{threshold} increases connectivity and density
-\item \code{node_filter = "top"} shifts interpretation toward central regulators
+\item \code{node_filter = "top"} shifts interpretation toward central
+regulators
 \item Community structure becomes less stable in highly filtered networks
 }
 
@@ -174,27 +181,28 @@ coexpression topology.
 
 Network centrality is characterized using three complementary metrics:
 \itemize{
-\item \strong{Degree}: number of direct connections, representing local connectivity.
-\item \strong{Betweenness centrality}: measures how frequently a node
-lies on shortest paths between other nodes, highlighting potential
-bridging positions in the network.
-\item \strong{Harmonic centrality}: quantifies node accessibility
-using the inverse of shortest-path distances to other nodes.
+\item \strong{Degree}: number of direct connections, representing local
+connectivity.
+\item \strong{Betweenness centrality}: measures how frequently a node lies
+on shortest paths between other nodes, highlighting potential bridging
+positions in the network.
+\item \strong{Harmonic centrality}: quantifies node accessibility using the
+inverse of shortest-path distances to other nodes.
 }
 
 Harmonic centrality is used instead of conventional closeness centrality
 because pathway coexpression networks may contain disconnected components.
-Unlike conventional closeness centrality, harmonic centrality accounts
-for unreachable nodes by assigning them zero contribution, allowing
-comparisons across nodes in disconnected networks.
+Unlike conventional closeness centrality, harmonic centrality accounts for
+unreachable nodes by assigning them zero contribution, allowing comparisons
+across nodes in disconnected networks.
 
-Shortest-path distances are derived from absolute correlation weights,
-such that stronger correlations correspond to shorter distances.
+Shortest-path distances are derived from absolute correlation weights, such
+that stronger correlations correspond to shorter distances.
 
 The \code{hub_score} is calculated as the sum of the standardized degree,
-betweenness centrality, and harmonic centrality values. It represents
-a composite exploratory measure of network centrality rather than
-a validated biological measure of regulatory influence.
+betweenness centrality, and harmonic centrality values. It represents a
+composite exploratory measure of network centrality rather than a validated
+biological measure of regulatory influence.
 }
 
 \section{Stored output}{

@@ -24,217 +24,193 @@ rna_wgcna(
 )
 }
 \arguments{
-\item{project}{An \code{rna_project} object containing normalized
-gene expression data and sample metadata.}
+\item{project}{An \code{rna_project} object containing normalized gene
+expression data and sample metadata.}
 
-\item{power}{Numeric value specifying the soft-thresholding power
-used to construct the network. This value should be selected
-beforehand using \code{\link{rna_pick_power}} or another
-appropriate diagnostic approach. Must be finite and positive.}
+\item{power}{Numeric value specifying the soft-thresholding power used to
+construct the network. This value should be selected beforehand using
+\code{\link{rna_pick_power}} or another appropriate diagnostic approach.
+Must be finite and positive.}
 
-\item{genes_n}{Integer or \code{NULL}. Maximum number of genes to
-retain, selected by decreasing expression variance across samples.
-Genes with non-finite or zero variance are excluded before selection.
-If \code{NULL}, all eligible genes are retained. Using a subset of
-the most variable genes can reduce computational requirements.
-Defaults to \code{10000}.}
+\item{genes_n}{Integer or \code{NULL}. Maximum number of genes to retain,
+selected by decreasing expression variance across samples. Genes with
+non-finite or zero variance are excluded before selection. If
+\code{NULL}, all eligible genes are retained. Using a subset of the most
+variable genes can reduce computational requirements. Defaults to
+\code{10000}.}
 
-\item{network_type}{Character string specifying the network type
-used by WGCNA. Supported values are \code{"signed"},
-\code{"unsigned"}, and \code{"signed hybrid"}. A signed network
-preserves the distinction between positive and negative
-correlations; an unsigned network uses the magnitude of
-correlations; and a signed hybrid network excludes negative
-correlations from the adjacency calculation.
-Defaults to \code{"signed"}.}
+\item{network_type}{Character string specifying the network type used by
+WGCNA. Supported values are \code{"signed"}, \code{"unsigned"}, and
+\code{"signed hybrid"}. Signed networks distinguish positive from negative
+correlations, whereas unsigned networks use the absolute correlation
+magnitude. Signed hybrid networks assign zero adjacency to negative
+correlations. Defaults to \code{"signed"}.}
 
 \item{tom_type}{Character string specifying the type of topological
-overlap matrix (TOM) used for module detection. Supported values
-are \code{"signed"}, \code{"unsigned"}, \code{"unsigned 2"},
-\code{"signed Nowick"}, and \code{"signed Nowick 2"}.
-This parameter controls how topological overlap is calculated
-and is independent of the adjacency network type specified by
-\code{network_type}. Defaults to \code{"signed"}.}
+overlap matrix (TOM) used for module detection. Supported values are
+\code{"signed"}, \code{"unsigned"}, \code{"unsigned 2"},
+\code{"signed Nowick"}, and \code{"signed Nowick 2"}. This parameter
+controls how topological overlap is calculated and is specified
+independently of the adjacency network type. Defaults to \code{"signed"}.}
 
-\item{cor_method}{Character string specifying the correlation
-method used during network construction. Currently supports
-\code{"pearson"}, which is also used in downstream calculations
-of module membership (kME) to ensure consistency with the
-original network. Defaults to \code{"pearson"}.}
+\item{cor_method}{Character string specifying the correlation method used
+during network construction. Currently supports only \code{"pearson"},
+which is also used in downstream calculations of module membership (kME) to
+ensure consistency with the original network. Defaults to \code{"pearson"}.}
 
-\item{max_block_size}{Integer specifying the maximum number of genes
-allowed in each block during network construction. When the number
-of genes exceeds this limit, WGCNA divides the data into multiple
-blocks and constructs networks separately. Larger values may
-increase memory requirements. Defaults to \code{20000}.}
+\item{max_block_size}{Integer specifying the maximum number of genes allowed
+in each block during network construction. When the number of selected
+genes exceeds this limit, WGCNA divides the data into multiple blocks and
+constructs networks separately. Larger values may increase memory
+requirements. Defaults to \code{20000}.}
 
 \item{min_module_size}{Integer specifying the minimum number of genes
-required to form a module during dynamic tree cutting.
-Smaller modules are generally not retained as independent modules.
-Defaults to \code{30}.}
+required to form a module during dynamic tree cutting. Smaller modules are
+generally not retained as independent modules. Defaults to \code{30}.}
 
-\item{deep_split}{Integer between 0 and 4 controlling the sensitivity
-of dynamic tree cutting. Higher values generally produce more
-modules by allowing finer subdivisions of the gene dendrogram.
-Higher values correspond to more aggressive module detection.
-Defaults to \code{2}.}
+\item{deep_split}{Integer between 0 and 4 controlling the sensitivity of
+dynamic tree cutting. Higher values generally produce more modules by
+allowing finer subdivisions of the gene dendrogram. Defaults to \code{2}.}
 
-\item{merge_cut_height}{Numeric value between 0 and 1 specifying
-the threshold for merging modules based on the dissimilarity
-between their module eigengenes. Lower values result in more
-conservative merging, whereas higher values allow more modules
-to be merged. Defaults to \code{0.25}.}
+\item{merge_cut_height}{Numeric value between 0 and 1 specifying the
+threshold for merging modules based on the dissimilarity between their
+eigengenes. Lower values result in more conservative merging, whereas
+higher values allow more modules to be merged. Defaults to \code{0.25}.}
 
-\item{reassign_threshold}{Numeric value between 0 and 1 specifying
-the threshold used for gene reassignment based on module
-membership significance during module detection. A value of
-\code{0} disables reassignment based on this threshold.
-Defaults to \code{1e-6}.}
+\item{reassign_threshold}{Numeric value between 0 and 1 specifying the
+p-value threshold used for gene reassignment based on module membership
+significance during module detection. A value of \code{0} disables
+reassignment based on this threshold. Defaults to \code{1e-6}.}
 
-\item{numeric_labels}{Logical. If \code{TRUE}, modules are
-represented by numeric labels in the network result. If
-\code{FALSE}, modules are represented by their assigned colors.
-The returned \code{genes_modules} table also includes module
-colors regardless of this setting. Defaults to \code{FALSE}.}
+\item{numeric_labels}{Logical. If \code{TRUE}, modules are represented by
+numeric labels in the network result. If \code{FALSE}, modules are
+represented by their assigned colors. The returned \code{genes_modules}
+table also includes module colors regardless of this setting. Defaults to
+\code{FALSE}.}
 
-\item{pam_respects_dendro}{Logical. Specifies whether the
-partitioning around medoids (PAM) stage of module detection
-must respect the dendrogram produced by hierarchical clustering.
-If \code{TRUE}, PAM assignments are constrained by the dendrogram;
-if \code{FALSE}, genes may be assigned to modules independently
-of their position in the dendrogram. Defaults to \code{FALSE}.}
+\item{pam_respects_dendro}{Logical. Specifies whether the partitioning around
+medoids (PAM) stage of module detection must respect the dendrogram
+produced by hierarchical clustering. If \code{TRUE}, PAM assignments are
+constrained by the dendrogram; if \code{FALSE}, genes may be assigned to
+modules independently of their position in the dendrogram. Defaults to
+\code{FALSE}.}
 
-\item{threads}{Integer or \code{NULL}. Number of threads used
-during network construction. If \code{NULL}, the \code{nThreads}
-argument is omitted and WGCNA uses its default behavior.
-A positive integer specifies the number of threads passed to
-the network construction procedure. Defaults to \code{NULL}.}
+\item{threads}{Integer or \code{NULL}. Number of threads used during network
+construction. If \code{NULL}, the \code{nThreads} argument is omitted and
+WGCNA uses its default behavior. A positive integer specifies the number of
+threads passed to the network construction procedure. Defaults to
+\code{NULL}.}
 
-\item{plot}{Logical. If \code{TRUE}, generates diagnostic
-dendrogram plots showing the module color assignments for
-each network block. Defaults to \code{TRUE}.}
+\item{plot}{Logical. If \code{TRUE}, generates diagnostic dendrogram plots
+showing module color assignments for each network block. Defaults to
+\code{TRUE}.}
 
-\item{save}{Logical. If \code{TRUE}, attaches the network result
-to the project under the \code{analyses} slot with subtype
-\code{"wgcna_network"} and invisibly returns the updated project.
-If \code{FALSE}, does not attach the result and instead invisibly
-returns an object of class \code{wgcna_network_result}.
-Defaults to \code{TRUE}.}
+\item{save}{Logical. If \code{TRUE}, attaches the network result to the
+project under the \code{analyses} slot with subtype \code{"wgcna_network"}
+and invisibly returns the updated project. If \code{FALSE}, does not attach
+the result and instead invisibly returns an object of class
+\code{wgcna_network_result}. Defaults to \code{TRUE}.}
 }
 \value{
-If \code{save = TRUE}, invisibly returns the updated
-\code{rna_project} object containing the network result.
+If \code{save = TRUE}, invisibly returns the updated \code{rna_project}
+object containing the network result.
 
 If \code{save = FALSE}, invisibly returns an object of class
 \code{wgcna_network_result}, containing:
 \itemize{
-\item \code{network}: the complete network object returned
-by \code{\link[WGCNA]{blockwiseModules}}.
-\item \code{genes_modules}: a data frame containing gene
-identifiers, module labels, and module colors.
+\item \code{network}: the complete network object returned by
+\code{\link[WGCNA]{blockwiseModules}}.
+\item \code{datExpr}: the expression matrix used for network
+construction, with samples in rows and genes in columns.
+\item \code{genes_modules}: a data frame containing gene identifiers,
+module labels, and module colors.
 \item \code{MEs}: the ordered module eigengene matrix.
-\item Network construction parameters, including the
-soft-thresholding power and network types.
+\item Network construction parameters, including gene selection,
+soft-thresholding power, network type, TOM type, correlation method,
+block size, module detection settings, and label configuration.
 \item The number and identifiers of retained genes and samples.
-\item Identifiers of genes excluded due to invalid variance,
-gene selection, or WGCNA quality control, and samples removed
-during quality control.
+\item Identifiers of genes excluded due to invalid variance, gene
+selection, or WGCNA quality control, and samples removed during quality
+control.
 \item \code{timestamp}: the date and time of analysis.
 }
 }
 \description{
 Constructs a weighted gene co-expression network using normalized
 expression data stored in an \code{rna_project} object and identifies
-gene co-expression modules using the WGCNA framework.
+co-expression modules using the WGCNA framework.
 
 The function filters genes with zero or invalid variance, optionally
-retains the most variable genes, performs expression-data quality
-control, constructs the network using a predefined soft-thresholding
-power, and detects modules through hierarchical clustering of the
-topological overlap matrix (TOM).
+retains the most variable genes, performs expression-data quality control,
+constructs the network using a predefined soft-thresholding power, and
+detects modules through hierarchical clustering of the topological overlap
+matrix (TOM).
 
-Module assignments, module eigengenes, network information, and
-analysis metadata are organized into a result object. Diagnostic
-dendrogram plots can also be generated to visualize the identified
-modules.
+Module assignments, eigengenes, network information, and analysis metadata
+are organized into a result object. Diagnostic dendrogram plots can also be
+generated to visualize module assignments.
 }
 \section{Input data}{
 
-The expression matrix must be numeric, with genes in rows and
-samples in columns. Gene identifiers and sample identifiers must
-be unique.
+The expression matrix must be numeric, with genes in rows and samples in
+columns. Gene and sample identifiers must be unique.
 
-The metadata must identify samples through a \code{Sample} column
-or through its row names. Sample identifiers are matched to the
-expression matrix column names; metadata must contain an entry
-for every expression sample.
+Sample metadata must identify samples through a \code{Sample} column or row
+names. Identifiers are matched to the expression matrix column names, and
+metadata must contain an entry for every expression sample.
 
-Genes with non-finite or zero variance are excluded before the
-most variable genes are selected. WGCNA quality control is then
-applied to identify and remove additional problematic samples
-or genes.
+Genes with non-finite or zero variance are excluded before gene selection.
+WGCNA quality control is subsequently applied to identify and remove
+additional problematic samples or genes.
 }
 
 \section{Network construction}{
 
-The network is constructed using the adjacency function and
-topological overlap matrix defined by \code{network_type} and
-\code{tom_type}, respectively. The soft-thresholding power
-specified by \code{power} is applied to the adjacency calculation.
+The adjacency matrix is calculated using the specified
+\code{network_type}, correlation method, and soft-thresholding power.
+Topological overlap is subsequently calculated according to
+\code{tom_type}.
 
-When the number of selected genes exceeds \code{max_block_size},
-WGCNA may divide the data into multiple blocks. Module detection
-is performed independently within each block, and the resulting
-module assignments are returned in a unified result object.
+When the number of selected genes exceeds \code{max_block_size}, WGCNA
+divides the data into multiple blocks. Module detection is performed within
+each block, followed by the integration of module assignments and merging
+of closely related modules according to \code{merge_cut_height}.
 
-Modules are identified through hierarchical clustering and
-dynamic tree cutting. Closely related modules may subsequently
-be merged according to \code{merge_cut_height}.
+Modules are identified through hierarchical clustering and dynamic tree
+cutting, with their detection sensitivity controlled by \code{deep_split}
+and their minimum size by \code{min_module_size}.
 }
 
 \section{Module eigengenes}{
 
-Module eigengenes are calculated by WGCNA as part of the
-module detection procedure. They represent the first principal
-component of the expression profiles of genes assigned to each
-module and provide a summarized representation of module-level
-expression patterns.
+Module eigengenes are calculated by WGCNA as part of the module detection
+procedure. They represent the first principal component of the expression
+profiles of genes assigned to each module and provide a summarized
+representation of module-level expression patterns.
 
 The returned eigengene matrix is ordered using
-\code{\link[WGCNA]{orderMEs}}. Additional analyses, such as
-module membership (kME) estimation and associations between
-module eigengenes and sample-level phenotypes, can be performed
-in subsequent steps.
+\code{\link[WGCNA]{orderMEs}}. These eigengenes can be used in subsequent
+analyses, including module membership (kME) estimation and associations
+with sample-level phenotypes.
 }
 
-\section{Interpretation}{
+\section{Interpretation and scope}{
 
-Identified modules represent groups of genes with similar
-expression patterns across the samples included in the analysis.
-Module detection depends on the selected soft-thresholding
-power, network type, TOM definition, and module detection
-parameters.
+Identified modules represent groups of genes with similar expression
+patterns across the samples included in the analysis. Their structure
+depends on the selected soft-thresholding power, network type, TOM
+definition, and module detection parameters.
 
-Module colors are arbitrary identifiers assigned by WGCNA
-and do not have intrinsic biological meaning. Biological
-interpretation requires additional analyses, such as functional
-enrichment, module membership evaluation, and associations
-with relevant phenotypes.
+Module colors are arbitrary identifiers assigned by WGCNA and have no
+intrinsic biological meaning. Biological interpretation requires additional
+analyses, such as functional enrichment, module membership evaluation, and
+associations with relevant phenotypes.
 
-The resulting modules describe co-expression relationships
-across the samples supplied in the project as a whole.
-They do not directly represent differential co-expression
-between experimental groups or establish causal relationships
-between genes.
-}
-
-\section{Scope of the analysis}{
-
-This function constructs a single co-expression network using
-all retained samples. It does not perform differential
-co-expression analysis, consensus network construction,
-module preservation analysis, or phenotype association testing.
-These analyses require additional steps.
+This function constructs a single co-expression network using all retained
+samples. It does not assess differential co-expression between experimental
+groups, construct consensus networks, evaluate module preservation, or test
+associations with phenotypes. Co-expression relationships also do not
+establish causal relationships between genes.
 }
 
 \references{

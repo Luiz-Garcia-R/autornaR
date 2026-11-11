@@ -1113,3 +1113,718 @@ list(
     module_summary = module_summary
   )
 }
+
+# =============================================================================
+# 23. Build independent WGCNA network for a group
+# =============================================================================
+#' @keywords internal
+
+.build_wgcna_group_network <- function(
+    datExpr,
+    power,
+    network_type,
+    tom_type,
+    cor_method,
+    max_block_size,
+    min_module_size,
+    deep_split,
+    reassign_threshold,
+    merge_cut_height,
+    numeric_labels,
+    pam_respects_dendro,
+    threads = NULL
+) {
+
+  cor <- WGCNA::cor
+
+  wgcna_args <- list(
+    datExpr = datExpr,
+    power = power,
+    networkType = network_type,
+    TOMType = tom_type,
+    corType = cor_method,
+    maxBlockSize = max_block_size,
+    minModuleSize = min_module_size,
+    deepSplit = deep_split,
+    reassignThreshold = reassign_threshold,
+    mergeCutHeight = merge_cut_height,
+    numericLabels = numeric_labels,
+    pamRespectsDendro = pam_respects_dendro,
+    saveTOMs = FALSE,
+    verbose = 1
+  )
+
+  if (!is.null(threads)) {
+    wgcna_args$nThreads <- as.integer(threads)
+  }
+
+  net <- do.call(
+    WGCNA::blockwiseModules,
+    wgcna_args
+  )
+
+  # Standardize module labels as colors
+  colors <- if (numeric_labels) {
+    WGCNA::labels2colors(net$colors)
+  } else {
+    as.character(net$colors)
+  }
+
+  names(colors) <- colnames(datExpr)
+
+  list(
+    network = net,
+    colors = colors,
+    MEs = net$MEs
+  )
+}
+
+# =============================================================================
+# 24. Calculate module hub stability
+# =============================================================================
+#' @keywords internal
+
+.calculate_wgcna_hub_stability <- function(
+    datExpr_reference,
+    datExpr_test,
+    reference_colors,
+    hub_quantile = 0.90
+) {
+
+  # ===============================================
+  # 24.1. Align genes and module assignments
+  # ===============================================
+
+  common_genes <- intersect(
+    colnames(datExpr_reference),
+    colnames(datExpr_test)
+  )
+
+  if (length(common_genes) < 3) {
+    return(data.frame())
+  }
+
+  datExpr_reference <- datExpr_reference[
+    ,
+    common_genes,
+    drop = FALSE
+  ]
+
+  datExpr_test <- datExpr_test[
+    ,
+    common_genes,
+    drop = FALSE
+  ]
+
+  reference_colors <- reference_colors[common_genes]
+
+  if (anyNA(reference_colors)) {
+    stop("Some genes are missing module assignments.")
+  }
+
+  # Exclude unassigned genes
+  modules <- unique(as.character(reference_colors))
+
+  modules <- modules[
+    !modules %in% c("grey", "0", "NA")
+  ]
+
+  if (length(modules) == 0) {
+    return(data.frame())
+  }
+
+  # ===============================================
+  # 24.2. Calculate module eigengenes using fixed module membership
+  # ===============================================
+
+  module_colors <- setNames(
+    as.character(reference_colors),
+    common_genes
+  )
+
+  me_reference <- WGCNA::moduleEigengenes(
+    datExpr_reference,
+    colors = module_colors,
+    excludeGrey = TRUE
+  )$eigengenes
+
+  me_test <- WGCNA::moduleEigengenes(
+    datExpr_test,
+    colors = module_colors,
+    excludeGrey = TRUE
+  )$eigengenes
+
+  # ===============================================
+  # 24.3. Calculate module membership and hub stability
+  # ===============================================
+
+  results <- vector("list", length(modules))
+
+  for (i in seq_along(modules)) {
+
+    module <- modules[i]
+
+    genes <- names(reference_colors)[
+      as.character(reference_colors) == module
+    ]
+
+    me_name <- paste0("ME", module)
+
+    if (!me_name %in% colnames(me_reference) ||
+        !me_name %in% colnames(me_test)) {
+      next
+    }
+
+    if (length(genes) < 3) next
+
+    # Calculate kME in both groups
+    kME_reference <- stats::cor(
+      datExpr_reference[, genes, drop = FALSE],
+      me_reference[, me_name],
+      use = "pairwise.complete.obs"
+    )
+
+    kME_test <- stats::cor(
+      datExpr_test[, genes, drop = FALSE],
+      me_test[, me_name],
+      use = "pairwise.complete.obs"
+    )
+
+    kME_reference <- as.numeric(kME_reference)
+    kME_test <- as.numeric(kME_test)
+
+    names(kME_reference) <- genes
+    names(kME_test) <- genes
+
+    # Retain genes with valid kME in both groups
+    valid <- is.finite(kME_reference) &
+      is.finite(kME_test)
+
+    kME_reference <- kME_reference[valid]
+    kME_test <- kME_test[valid]
+
+    n_genes <- length(kME_reference)
+
+    if (n_genes < 3) next
+
+    # ===============================================
+    # 24.4. Identify top hubs
+    # ===============================================
+
+    n_hubs <- max(
+      1,
+      ceiling(n_genes * (1 - hub_quantile))
+    )
+
+    hubs_reference <- names(
+      sort(abs(kME_reference), decreasing = TRUE)
+    )[seq_len(n_hubs)]
+
+    hubs_test <- names(
+      sort(abs(kME_test), decreasing = TRUE)
+    )[seq_len(n_hubs)]
+
+    common_hubs <- intersect(
+      hubs_reference,
+      hubs_test
+    )
+
+    union_hubs <- union(
+      hubs_reference,
+      hubs_test
+    )
+
+    # ===============================================
+    # 24.5. Calculate stability metrics
+    # ===============================================
+
+    kME_correlation <- if (
+      stats::sd(kME_reference) > 0 &&
+      stats::sd(kME_test) > 0
+    ) {
+      stats::cor(
+        kME_reference,
+        kME_test,
+        method = "pearson"
+      )
+    } else {
+      NA_real_
+    }
+
+    results[[i]] <- data.frame(
+      Module = module,
+      N_genes = n_genes,
+      N_hubs = n_hubs,
+      Hub_overlap = length(common_hubs),
+      Hub_Jaccard = length(common_hubs) / length(union_hubs),
+      kME_correlation = kME_correlation,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  # ===============================================
+  # 24.6. Return results
+  # ===============================================
+
+  results <- Filter(Negate(is.null), results)
+
+  if (length(results) == 0) {
+    return(data.frame())
+  }
+
+  results <- do.call(rbind, results)
+
+  rownames(results) <- NULL
+
+  results
+}
+
+# =============================================================================
+# 25. Calculate intramodular adjacency and extract network edges
+# =============================================================================
+#' @keywords internal
+
+.calculate_wgcna_module_adjacency <- function(
+    wgcna_obj,
+    module,
+    edge_threshold,
+    datExpr = wgcna_obj$datExpr,
+    hub_quantile = 0.90
+) {
+
+  # ===============================================
+  # 25.1. Retrieve network information
+  # ===============================================
+
+  net <- wgcna_obj$network
+  genes_modules <- wgcna_obj$genes_modules
+
+  if (is.null(net$blockGenes) || length(net$blockGenes) == 0L) {
+    stop("WGCNA block information is missing.", call. = FALSE)
+  }
+
+    # ===============================================
+    # 25.1.1. Validate hub quantile
+    # ===============================================
+
+    if (!is.numeric(hub_quantile) ||
+        length(hub_quantile) != 1L ||
+        is.na(hub_quantile) ||
+        !is.finite(hub_quantile) ||
+        hub_quantile < 0 ||
+        hub_quantile > 1) {
+      stop(
+        "`hub_quantile` must be a finite numeric value between 0 and 1.",
+        call. = FALSE
+      )
+    }
+
+  # ===============================================
+  # 25.2. Identify module genes
+  # ===============================================
+
+  module <- as.character(module)
+
+  module_map <- unique(
+    genes_modules[
+      ,
+      c("Module", "ModuleColor"),
+      drop = FALSE
+    ]
+  )
+
+  selected_module <- module_map[
+    as.character(module_map$Module) == module,
+    ,
+    drop = FALSE
+  ]
+
+  if (nrow(selected_module) == 0L) {
+    stop(
+      sprintf("Module '%s' was not found in the WGCNA network.", module),
+      call. = FALSE
+    )
+  }
+
+  if (nrow(selected_module) > 1L) {
+    stop(
+      "The selected module is associated with multiple colors.",
+      call. = FALSE
+    )
+  }
+
+  module_color <- as.character(selected_module$ModuleColor[1])
+
+  if (module_color == "grey") {
+    stop(
+      "The grey module cannot be visualized as a co-expression module.",
+      call. = FALSE
+    )
+  }
+
+  module_genes <- as.character(
+    genes_modules$Gene[
+      as.character(genes_modules$Module) == module
+    ]
+  )
+
+  if (anyDuplicated(module_genes)) {
+    stop(
+      "Duplicated genes were found in the module assignments.",
+      call. = FALSE
+    )
+  }
+
+  if (length(module_genes) < 2L) {
+    stop(
+      "The selected module must contain at least two genes.",
+      call. = FALSE
+    )
+  }
+
+  # ===============================================
+  # 25.3. Match genes to expression matrix
+  # ===============================================
+
+  gene_idx <- match(
+    module_genes,
+    colnames(datExpr)
+  )
+
+  if (anyNA(gene_idx)) {
+    stop(
+      "Some module genes were not found in the expression matrix.",
+      call. = FALSE
+    )
+  }
+
+  # ===============================================
+  # 25.4. Build node table
+  # ===============================================
+
+  nodes <- data.frame(
+    name = module_genes,
+    gene = module_genes,
+    module = module,
+    module_color = module_color,
+    stringsAsFactors = FALSE
+  )
+
+  # ===============================================
+  # 25.5. Reconstruct adjacency by block
+  # ===============================================
+
+  edge_list <- vector("list", length(net$blockGenes))
+
+  # Store intramodular connectivity
+  k_within <- setNames(
+    numeric(length(module_genes)),
+    module_genes
+  )
+
+  for (b in seq_along(net$blockGenes)) {
+
+    block_idx <- net$blockGenes[[b]]
+
+    # Select genes belonging to the requested module
+    selected_idx <- intersect(
+      block_idx,
+      gene_idx
+    )
+
+    if (length(selected_idx) < 2L) {
+      next
+    }
+
+    block_expr <- datExpr[
+      ,
+      selected_idx,
+      drop = FALSE
+    ]
+
+    # Reconstruct adjacency using original network parameters
+    adj <- WGCNA::adjacency(
+      block_expr,
+      power = wgcna_obj$power,
+      type = wgcna_obj$network_type,
+      corFnc = if (wgcna_obj$cor_method == "pearson") {
+        "cor"
+      } else {
+        "bicor"
+      },
+      corOptions = "use = 'p'"
+    )
+
+    # Calculate intramodular connectivity
+    connectivity <- WGCNA::intramodularConnectivity(
+      adj,
+      colors = rep(module_color, ncol(adj))
+    )
+
+    k_within[rownames(adj)] <- connectivity$kWithin
+
+    # Extract upper-triangular edges above threshold
+    edge_idx <- which(
+      upper.tri(adj) &
+        is.finite(adj) &
+        adj >= edge_threshold,
+      arr.ind = TRUE
+    )
+
+    if (nrow(edge_idx) == 0L) {
+      next
+    }
+
+    edge_list[[b]] <- data.frame(
+      from = rownames(adj)[edge_idx[, 1]],
+      to = colnames(adj)[edge_idx[, 2]],
+      adjacency = adj[edge_idx],
+      stringsAsFactors = FALSE
+    )
+  }
+
+  # Identify hub genes based on intramodular connectivity
+  k_within <- k_within[nodes$name]
+
+  if (anyNA(k_within)) {
+    stop(
+      "Intramodular connectivity could not be calculated for all module genes.",
+      call. = FALSE
+    )
+  }
+
+  nodes$kWithin <- unname(k_within)
+
+  if (hub_quantile == 1) {
+
+    hub_cutoff <- NULL
+    nodes$is_hub <- FALSE
+    nodes$hub_rank <- NA_integer_
+
+  } else {
+
+  hub_cutoff <- stats::quantile(
+    nodes$kWithin,
+    probs = hub_quantile,
+    na.rm = TRUE,
+    names = FALSE
+  )
+
+  nodes$is_hub <- nodes$kWithin >= hub_cutoff
+
+  nodes$hub_rank <- rank(
+    -nodes$kWithin,
+    ties.method = "min"
+  )
+}
+
+  # ===============================================
+  # 25.6. Combine edges
+  # ===============================================
+
+  edge_list <- Filter(
+    Negate(is.null),
+    edge_list
+  )
+
+  if (length(edge_list) == 0L) {
+
+    edges <- data.frame(
+      from = character(),
+      to = character(),
+      adjacency = numeric(),
+      stringsAsFactors = FALSE
+    )
+
+  } else {
+
+    edges <- do.call(rbind, edge_list)
+
+    rownames(edges) <- NULL
+  }
+
+  # ===============================================
+  # 25.7. Return results
+  # ===============================================
+
+  list(
+    nodes = nodes,
+    edges = edges,
+    module = module,
+    module_color = module_color,
+    hub_cutoff = hub_cutoff,
+    hub_quantile = hub_quantile,
+    n_genes = nrow(nodes),
+    n_hubs = sum(nodes$is_hub),
+    n_edges = nrow(edges)
+  )
+}
+
+# =============================================================================
+# 26. Get group-specific WGCNA data
+# =============================================================================
+#' @keywords internal
+
+.get_wgcna_group_data <- function(
+    project,
+    wgcna_obj,
+    group = NULL
+) {
+
+  datExpr <- wgcna_obj$datExpr
+  MEs <- wgcna_obj$MEs
+
+  # ===============================================
+  # 26.1. Global analysis
+  # ===============================================
+
+  if (is.null(group)) {
+    return(list(
+      datExpr = datExpr,
+      MEs = MEs,
+      group = NULL,
+      n_samples = nrow(datExpr)
+    ))
+  }
+  # ===============================================
+  # 26.2. Validate group
+  # ===============================================
+
+  if (!is.character(group) ||
+      length(group) != 1L ||
+      is.na(group) ||
+      !nzchar(trimws(group))) {
+    stop(
+      "`group` must be NULL or a single non-empty character value.",
+      call. = FALSE
+    )
+  }
+
+  # ===============================================
+  # 26.3. Retrieve metadata
+  # ===============================================
+
+  metadata <- .get_meta(project)
+
+  if (!all(c("Sample", "Group") %in% colnames(metadata))) {
+    stop(
+      "Metadata must contain 'Sample' and 'Group' columns.",
+      call. = FALSE
+    )
+  }
+
+  if (anyDuplicated(metadata$Sample)) {
+    stop(
+      "Metadata contains duplicated sample identifiers.",
+      call. = FALSE
+    )
+  }
+
+  if (anyDuplicated(rownames(datExpr))) {
+    stop(
+      "Expression matrix contains duplicated sample identifiers.",
+      call. = FALSE
+    )
+  }
+
+  # ===============================================
+  # 26.4. Align metadata to expression matrix
+  # ===============================================
+
+  meta_idx <- match(rownames(datExpr), metadata$Sample)
+
+  if (anyNA(meta_idx)) {
+    stop(
+      "Some expression samples were not found in metadata.",
+      call. = FALSE
+    )
+  }
+
+  sample_groups <- as.character(metadata$Group[meta_idx])
+
+  available_groups <- unique(
+    sample_groups[!is.na(sample_groups)]
+  )
+
+  if (!group %in% available_groups) {
+    stop(
+      sprintf(
+        "Group '%s' was not found in project metadata. Available groups: %s.",
+        group,
+        paste(available_groups, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  # ===============================================
+  # 26.5. Select group samples
+  # ===============================================
+
+  group_idx <- which(
+    !is.na(sample_groups) & sample_groups == group
+  )
+
+  if (length(group_idx) < 3L) {
+    stop(
+      sprintf(
+        "Group '%s' has fewer than 3 samples.",
+        group
+      ),
+      call. = FALSE
+    )
+  }
+
+  samples_group <- rownames(datExpr)[group_idx]
+
+  datExpr_group <- datExpr[
+    samples_group,
+    ,
+    drop = FALSE
+  ]
+
+  # ===============================================
+  # 26.6. Align eigengenes
+  # ===============================================
+
+  if (is.null(rownames(MEs)) ||
+      anyDuplicated(rownames(MEs))) {
+    stop(
+      "Module eigengenes must have unique sample identifiers.",
+      call. = FALSE
+    )
+  }
+
+  me_idx <- match(samples_group, rownames(MEs))
+
+  if (anyNA(me_idx)) {
+    stop(
+      "Some expression samples were not found in the eigengene matrix.",
+      call. = FALSE
+    )
+  }
+
+  MEs_group <- MEs[
+    me_idx,
+    ,
+    drop = FALSE
+  ]
+
+  if (length(group_idx) < 10L) {
+    warning(
+      sprintf(
+        "Group '%s' contains only %d samples. Group-specific network estimates may be unstable.",
+        group,
+        length(group_idx)
+      ),
+      call. = FALSE
+    )
+  }
+
+  list(
+    datExpr = datExpr_group,
+    MEs = MEs_group,
+    group = group,
+    n_samples = length(group_idx)
+  )
+}

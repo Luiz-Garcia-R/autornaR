@@ -27,16 +27,17 @@ coefficients on the heatmap (default: \code{FALSE}).}
 \item{highlight_outliers}{Logical. If \code{TRUE}, detects and highlights
 outlier samples based on library size (default: \code{TRUE}).}
 
-\item{cluster_rows}{Logical. Whether to cluster rows in the sample correlation
-heatmap (default: \code{FALSE}).}
+\item{cluster_rows}{Logical. Whether to cluster rows in the sample
+correlation heatmap (default: \code{FALSE}).}
 
-\item{cluster_cols}{Logical. Whether to cluster columns in the sample correlation
-heatmap (default: \code{FALSE}).}
+\item{cluster_cols}{Logical. Whether to cluster columns in the sample
+correlation heatmap (default: \code{FALSE}).}
 
-\item{plot}{Logical. If \code{TRUE}, generates diagnostic plots (default: \code{TRUE}).}
-
-\item{save}{Logical. Whether to store results in the active \code{rna_project}
+\item{plot}{Logical. If \code{TRUE}, generates diagnostic plots
 (default: \code{TRUE}).}
+
+\item{save}{Logical. Whether to store results in the active
+\code{rna_project} (default: \code{TRUE}).}
 }
 \value{
 An object of class \code{"rna_QC"} containing:
@@ -54,10 +55,10 @@ correlation structure, and classification of dataset quality.}
 }
 \description{
 Performs comprehensive quality control (QC) on normalized RNA-seq data
-stored in the active \code{rna_project}. This function provides a structured
-overview of sample quality, expression distributions, and overall dataset
-consistency, helping identify technical artifacts and potential outliers
-before downstream analyses.
+stored in the active \code{rna_project}. This function provides a
+structured overview of sample quality, expression distributions, and
+overall dataset consistency, helping identify technical artifacts and
+potential outliers before downstream analyses.
 }
 \details{
 This function evaluates RNA-seq data quality through multiple complementary
@@ -86,7 +87,8 @@ perspectives:
 \strong{4. Biological signal evaluation}
 \itemize{
 \item Estimates whether group structure is preserved in the data
-\item Stronger intra-group than inter-group correlation suggests biological signal
+\item Stronger intra-group than inter-group correlation suggests biological
+signal
 }
 
 \strong{5. Automated QC classification}
@@ -103,8 +105,8 @@ with downstream analyses.
 \section{Interpretation guide}{
 
 \itemize{
-\item \strong{High-quality data}: low library CV, high sample correlation, clear
-group structure
+\item \strong{High-quality data}: low library CV, high sample correlation,
+clear group structure
 \item \strong{Potential issues}:
 \itemize{
 \item High library size variation -> technical variability

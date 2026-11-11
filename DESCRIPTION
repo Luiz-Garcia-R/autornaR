@@ -1,7 +1,7 @@
 Package: autornaR
 Type: Package
 Title: Comprehensive RNAseq Data Analysis and Visualization
-Version: 0.5.0
+Version: 0.6.0
 Authors@R: 
     person("Luiz", "Garcia", 
            email = "luiz.cardoso@ufpr.br", 
@@ -17,7 +17,6 @@ Description: Designed to streamline the analysis of RNA-seq data.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
 Imports:
     ComplexUpset,
     data.table,
@@ -62,8 +61,9 @@ Suggests:
     stringr,
     SummarizedExperiment,
     tibble
-Depends: R (>= 3.5)
+Depends: R (>= 4.1.0)
 NeedsCompilation: no
 Maintainer: Luiz Garcia <luiz.cardoso@ufpr.br>
 VignetteBuilder: knitr
 URL: https://luiz-garcia-r.github.io/autornaR/
+Config/roxygen2/version: 8.1.1

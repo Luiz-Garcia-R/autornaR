@@ -1,35 +1,135 @@
+# =============================================================================
+# RNA GSVA
+# =============================================================================
+
 #' Gene Set Variation Analysis (GSVA)
 #'
 #' @description
-#' Computes pathway activity scores for individual samples using GSVA-based
-#' methods. Gene sets can be obtained directly from a previous
-#' \code{rna_gsea()} analysis, MSigDB collections, or user-supplied pathways.
+#'   Estimates pathway activity scores for individual samples using gene
+#'   expression data and predefined gene sets. Gene sets can be obtained from
+#'   a previous \code{rna_gsea()} analysis, MSigDB collections, or
+#'   user-supplied pathways.
 #'
-#' Unlike GSEA, which evaluates pathway enrichment between groups,
-#' GSVA estimates pathway activity for each sample individually.
+#'   Unlike GSEA, which evaluates pathway enrichment between experimental
+#'   conditions using a ranked gene list, GSVA-based methods estimate
+#'   pathway-level variation across individual samples, allowing downstream
+#'   comparisons and longitudinal analyses.
 #'
-#' @param project rna_project object.
-#' @param source Character. Source of gene sets:
-#'   \code{gsea}, \code{msigdb} or \code{custom}.
-#' @param gsea Optional gsea_result object when \code{source = 'gsea'}.
-#' @param pathways Optional named list of gene sets when
-#'   \code{source = 'custom'}.
-#' @param pathway_scope Character. Determines search scope between:
-#'   \code{top}, \code{significant}, or \code{all}
-#' @param geneset_collection MSigDB collection when
-#'   \code{source = "msigdb"}.
-#' @param geneset_subcollection MSigDB subcollection.
-#' @param method GSVA method:
-#'   \code{gsva}, \code{ssgsea}, \code{zscore} or \code{plage}.
-#' @param kcdf Kernel used by GSVA.
-#' @param min_size Minimum pathway size.
-#' @param max_size Maximum pathway size.
-#' @param save Logical. Save result into project.
+#' @param project An \code{rna_project} object containing normalized gene
+#'   expression data.
+#'
+#' @param source Character specifying the source of gene sets:
+#'   \code{"gsea"} to reuse pathways from a previous GSEA analysis,
+#'   \code{"msigdb"} to retrieve gene sets from MSigDB, or
+#'   \code{"custom"} to use user-supplied pathways.
+#'
+#' @param gsea Optional object of class \code{gsea_result}, required when
+#'   \code{source = "gsea"}.
+#'
+#' @param pathways Optional named list of gene sets, required when
+#'   \code{source = "custom"}. Each element should contain gene identifiers
+#'   corresponding to the expression matrix.
+#'
+#' @param pathway_scope Character specifying which pathways to retrieve from
+#'   a previous GSEA result: \code{"top"}, \code{"significant"}, or
+#'   \code{"all"}. Only applicable when \code{source = "gsea"}.
+#'
+#' @param geneset_collection Character specifying the MSigDB collection
+#'   when \code{source = "msigdb"} (e.g., \code{"H"}, \code{"C2"},
+#'   \code{"C5"}).
+#'
+#' @param geneset_subcollection Optional character specifying an MSigDB
+#'   subcollection (e.g., \code{"CP:REACTOME"}, \code{"GO:BP"}).
+#'
+#' @param method Character specifying the pathway scoring method:
+#'   \code{"gsva"}, \code{"ssgsea"}, \code{"zscore"}, or \code{"plage"}.
+#'
+#' @param kcdf Character specifying the kernel distribution used by GSVA
+#'   to estimate expression distributions.
+#'
+#' @param min_size Integer specifying the minimum number of genes required
+#'   for a gene set to be included in the analysis.
+#'
+#' @param max_size Integer specifying the maximum number of genes allowed
+#'   in a gene set.
+#'
+#' @param save Logical. If \code{TRUE}, stores the GSVA result in the
+#'   \code{rna_project} object.
+#'
+#' @section Gene set sources:
+#'   Gene sets can be obtained from three different sources:
+#'   \itemize{
+#'     \item \strong{GSEA:} reuses pathways from a previous \code{rna_gsea()}
+#'       analysis. The \code{pathway_scope} argument determines whether the
+#'       top-ranked, statistically significant, or all available pathways are
+#'       considered.
+#'
+#'     \item \strong{MSigDB:} retrieves gene sets directly from Molecular
+#'       Signatures Database collections, allowing pathway activity estimation
+#'       independently of a previous GSEA analysis.
+#'
+#'     \item \strong{Custom:} accepts user-defined gene sets, allowing the
+#'       evaluation of specific biological signatures or experimental gene
+#'       lists.
+#'   }
+#'
+#' @section Scoring methods:
+#'   Four methods are available for estimating pathway activity:
+#'   \itemize{
+#'     \item \strong{GSVA:} estimates variation in pathway activity across
+#'       samples using a non-parametric approach based on expression
+#'       distributions.
+#'
+#'     \item \strong{ssGSEA:} calculates enrichment scores for each gene set
+#'       within individual samples based on gene expression rankings.
+#'
+#'     \item \strong{z-score:} combines standardized expression values of genes
+#'       within each gene set to estimate pathway-level scores.
+#'
+#'     \item \strong{PLAGE:} uses singular value decomposition (SVD) to derive
+#'       pathway activity scores from the expression profiles of genes within
+#'       each set.
+#'   }
+#'
+#'   These methods differ in their scoring assumptions and numerical properties.
+#'   Scores obtained using different methods should not be assumed to be
+#'   directly comparable.
+#'
+#' @section Interpretation:
+#'   The resulting scores represent relative pathway-level expression patterns
+#'   across samples and can be used in downstream analyses, including
+#'   differential comparisons, clustering, correlation analysis, and
+#'   longitudinal modeling.
+#'
+#'   Higher scores generally indicate stronger representation of the
+#'   corresponding gene expression signature, but do not necessarily demonstrate
+#'   increased biochemical activity or functional activation of the pathway.
+#'   For PLAGE, score direction is arbitrary and should be interpreted with
+#'   respect to the underlying expression patterns.
+#'
+#'   Results depend on the selected gene sets, gene identifier compatibility,
+#'   expression data, and scoring method. Gene sets containing too few or too
+#'   many genes after matching to the expression matrix are excluded according
+#'   to \code{min_size} and \code{max_size}.
+#'
+#' @section Pipeline context:
+#'   GSVA is typically performed after expression normalization and before
+#'   downstream statistical analyses. Unlike GSEA, it does not require a
+#'   previous differential expression comparison and can therefore be used
+#'   to investigate pathway-level variation across all samples in a project.
 #'
 #' @return
-#' Object of class \code{gsva_result}.
+#'   An object of class \code{gsva_result} containing the pathway activity
+#'   scores and associated analysis information.
+#'
+#' @seealso
+#'   \code{\link{rna_gsea}},
+#'   \code{\link{rna_compare}},
+#'   \code{\link[GSVA]{gsva}}
 #'
 #' @export
+
+
 
 rna_gsva <- function(
     project,

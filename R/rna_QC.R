@@ -1,29 +1,41 @@
+# =============================================================================
+# RNA QC
+# =============================================================================
+
 #' RNA-seq Quality Control (QC)
 #'
 #' @description
-#' Performs comprehensive quality control (QC) on normalized RNA-seq data
-#' stored in the active \code{rna_project}. This function provides a structured
-#' overview of sample quality, expression distributions, and overall dataset
-#' consistency, helping identify technical artifacts and potential outliers
-#' before downstream analyses.
+#'   Performs comprehensive quality control (QC) on normalized RNA-seq data
+#'   stored in the active \code{rna_project}. This function provides a
+#'   structured overview of sample quality, expression distributions, and
+#'   overall dataset consistency, helping identify technical artifacts and
+#'   potential outliers before downstream analyses.
 #'
 #' @param project \code{rna_project} object created by \code{rna_project()}.
+#'
 #' @param group_col Character. Column in metadata indicating biological groups
 #'   (default: \code{"Group"}).
+#'
 #' @param display_corr_values Logical. If \code{TRUE}, overlays correlation
-#' coefficients on the heatmap (default: \code{FALSE}).
+#'   coefficients on the heatmap (default: \code{FALSE}).
+#'
 #' @param highlight_outliers Logical. If \code{TRUE}, detects and highlights
-#' outlier samples based on library size (default: \code{TRUE}).
-#' @param cluster_rows Logical. Whether to cluster rows in the sample correlation
-#'   heatmap (default: \code{FALSE}).
-#' @param cluster_cols Logical. Whether to cluster columns in the sample correlation
-#'   heatmap (default: \code{FALSE}).
-#' @param plot Logical. If \code{TRUE}, generates diagnostic plots (default: \code{TRUE}).
-#' @param save Logical. Whether to store results in the active \code{rna_project}
+#'   outlier samples based on library size (default: \code{TRUE}).
+#'
+#' @param cluster_rows Logical. Whether to cluster rows in the sample
+#'   correlation heatmap (default: \code{FALSE}).
+#'
+#' @param cluster_cols Logical. Whether to cluster columns in the sample
+#'   correlation heatmap (default: \code{FALSE}).
+#'
+#' @param plot Logical. If \code{TRUE}, generates diagnostic plots
 #'   (default: \code{TRUE}).
 #'
+#' @param save Logical. Whether to store results in the active
+#'   \code{rna_project} (default: \code{TRUE}).
+#'
 #' @return
-#' An object of class \code{"rna_QC"} containing:
+#'   An object of class \code{"rna_QC"} containing:
 #' \describe{
 #'   \item{data_ready}{Expression matrix used for QC.}
 #'   \item{corr_matrix_samples}{Sample-wise correlation matrix.}
@@ -37,49 +49,50 @@
 #' }
 #'
 #' @details
-#' This function evaluates RNA-seq data quality through multiple complementary
-#' perspectives:
+#'   This function evaluates RNA-seq data quality through multiple complementary
+#'   perspectives:
 #'
 #' \strong{1. Library size assessment}
-#' - Computes total counts per sample
-#' - Identifies outliers using IQR-based thresholds
-#' - Calculates coefficient of variation (CV) across samples
+#'   - Computes total counts per sample
+#'   - Identifies outliers using IQR-based thresholds
+#'   - Calculates coefficient of variation (CV) across samples
 #'
 #' \strong{2. Expression distribution}
-#' - Boxplots reveal global expression differences between samples
-#' - Density plots highlight distribution shifts across groups
+#'   - Boxplots reveal global expression differences between samples
+#'   - Density plots highlight distribution shifts across groups
 #'
 #' \strong{3. Sample correlation structure}
-#' - Computes pairwise Pearson correlation between samples
-#' - Identifies low-correlation samples
-#' - Compares intra-group vs inter-group similarity
+#'   - Computes pairwise Pearson correlation between samples
+#'   - Identifies low-correlation samples
+#'   - Compares intra-group vs inter-group similarity
 #'
 #' \strong{4. Biological signal evaluation}
-#' - Estimates whether group structure is preserved in the data
-#' - Stronger intra-group than inter-group correlation suggests biological signal
+#'   - Estimates whether group structure is preserved in the data
+#'   - Stronger intra-group than inter-group correlation suggests biological
+#'     signal
 #'
 #' \strong{5. Automated QC classification}
-#' - Library quality (based on CV)
-#' - Correlation consistency
-#' - Overall dataset assessment with diagnostic flags
+#'   - Library quality (based on CV)
+#'   - Correlation consistency
+#'   - Overall dataset assessment with diagnostic flags
 #'
-#' These metrics are summarized into an interpretable QC report, helping guide
-#' decisions such as removing samples, revisiting normalization, or proceeding
-#' with downstream analyses.
+#'   These metrics are summarized into an interpretable QC report, helping guide
+#'   decisions such as removing samples, revisiting normalization, or proceeding
+#'   with downstream analyses.
 #'
 #' @section Interpretation guide:
-#' - \strong{High-quality data}: low library CV, high sample correlation, clear
-#' group structure
-#' - \strong{Potential issues}:
-#'   - High library size variation -> technical variability
-#'   - Low correlation samples -> possible outliers or batch effects
-#'   - Weak group separation -> low biological signal or noisy data
+#'   - \strong{High-quality data}: low library CV, high sample correlation,
+#'     clear group structure
+#'   - \strong{Potential issues}:
+#'     - High library size variation -> technical variability
+#'     - Low correlation samples -> possible outliers or batch effects
+#'     - Weak group separation -> low biological signal or noisy data
 #'
-#' QC should always be interpreted in context: biological heterogeneity,
-#' experimental design, and normalization method can all influence these metrics.
+#'   QC should always be interpreted in context: biological heterogeneity,
+#'   experimental design, and normalization method can all influence these metrics.
 #'
 #' @section Pipeline context:
-#' This function is typically used after \code{rna_normalize()}.
+#'   This function is typically used after \code{rna_normalize()}.
 #'
 #' @examples
 #' \dontrun{

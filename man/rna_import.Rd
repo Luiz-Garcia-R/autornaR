@@ -56,7 +56,8 @@ by removing file extensions and special characters.}
 
 \item{strict}{Logical. If \code{TRUE}, stops execution on validation errors.}
 
-\item{save}{Logical. Whether to store results in the active \code{rna_project}.}
+\item{save}{Logical. Whether to store results in the active
+\code{rna_project}.}
 
 \item{envir}{Environment where to assign the object.}
 }

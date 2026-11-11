@@ -1,3 +1,7 @@
+# =============================================================================
+# RNA HEATMAP
+# =============================================================================
+
 #' Expression heatmap of normalized RNA-seq data
 #'
 #' Generates a clustered heatmap from normalized expression data, allowing
@@ -5,28 +9,41 @@
 #' variance, or user-defined gene sets.
 #'
 #' @param project \code{rna_project} object created by \code{rna_project()}.
+#'
 #' @param group_col Character. Column name in metadata defining sample groups
 #'   for column annotation (default: \code{"Group"}).
+#'
 #' @param top_n Integer. Number of genes to include (default: \code{100}).
+#'
 #' @param genes Character vector. User-defined gene identifiers to include in
 #'   the heatmap. Overrides other selection methods if provided.
+#'
 #' @param use_variance Logical. If \code{TRUE}, selects the top \code{top_n}
 #'   most variable genes across samples (default: \code{FALSE}).
+#'
 #' @param zscore Logical. If \code{TRUE}, applies row-wise z-score normalization
 #'   prior to plotting (default: \code{TRUE}).
+#'
 #' @param cluster_rows Logical. Whether to cluster genes (rows)
 #'   (default: \code{TRUE}).
+#'
 #' @param cluster_cols Logical. Whether to cluster samples (columns)
 #'   (default: \code{TRUE}).
+#'
 #' @param group_colors Character. Vector or named list for group colors.
+#'
 #' @param show_rownames Logical. Whether to display gene names
 #'   (default: \code{FALSE}).
+#'
 #' @param show_colnames Logical. Whether to display sample names
 #'   (default: \code{FALSE}).
+#'
 #' @param show_regulation Logical. If \code{TRUE}, adds a row annotation
 #'   indicating up- and down-regulated genes (default: \code{FALSE}).
+#'
 #' @param seed Optional integer used to set the random seed for reproducibility.
 #' If `NULL`, the existing random number generator state is used.
+#'
 #' @param save Logical. Whether to store results in the active
 #'   \code{rna_project} (default: \code{TRUE}).
 #'
@@ -42,9 +59,9 @@
 #' @details
 #' Gene selection follows a mutually exclusive strategy:
 #' \itemize{
-#'   \item \code{use_variance}: selects genes with highest variance across samples.
-#'   When \code{FALSE}, selects genes based on differential expression statistics
-#'   (typically lowest \code{padj} or \code{pvalue}).
+#'   \item \code{use_variance}: selects genes with highest variance across
+#'     samples. When \code{FALSE}, selects genes based on differential
+#'     expression statistics (typically lowest \code{padj} or \code{pvalue}).
 #'   \item \code{genes}: uses a user-defined gene set.
 #' }
 #'

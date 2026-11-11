@@ -1,3 +1,7 @@
+# =============================================================================
+# RNA DIMRED
+# =============================================================================
+
 #' Dimensionality reduction for RNA-seq data (PCA, UMAP, t-SNE)
 #'
 #' @description
@@ -13,9 +17,10 @@
 #' @param project \code{rna_project} object created by \code{rna_project()}.
 #' @param group_col Character. Metadata column used to define sample groups
 #'   for coloring plots (default: \code{"Group"}).
-#' @param run_tsne Logical. Whether to compute t-SNE embeddings (default: \code{FALSE}).
-#' @param add_ellipse Logical. If \code{TRUE}, adds confidence ellipses to PCA plot
-#'   when group sizes allow (default: \code{FALSE}).
+#' @param run_tsne Logical. Whether to compute t-SNE embeddings
+#'   (default: \code{FALSE}).
+#' @param add_ellipse Logical. If \code{TRUE}, adds confidence ellipses to PCA
+#'   plot when group sizes allow (default: \code{FALSE}).
 #' @param ellipse_level Numeric. Confidence level for PCA ellipses
 #'   (default: \code{0.95}).
 #' @param colors Character. Optional point colors.
@@ -25,8 +30,8 @@
 #'   automatically set based on sample size.
 #' @param tsne_perplexity Numeric. Initial perplexity for t-SNE
 #'   (automatically adjusted if too large; default: \code{30}).
-#' @param use_pca_preprocessing Logical. Whether to use PCA-reduced space as input
-#'   for UMAP and t-SNE (default: \code{TRUE}).
+#' @param use_pca_preprocessing Logical. Whether to use PCA-reduced space as
+#'   input for UMAP and t-SNE (default: \code{TRUE}).
 #' @param pca_method Character. Strategy for selecting number of PCs:
 #'   \itemize{
 #'     \item \code{"auto"}: selects PCs based on cumulative variance threshold
@@ -35,15 +40,18 @@
 #'   }
 #' @param pca_var_threshold Numeric. Target cumulative variance explained when
 #'   using adaptive PCA selection (default: \code{0.8}).
-#' @param pca_max_dims Integer. Maximum number of PCs allowed (default: \code{50}).
-#' @param pca_min_dims Integer. Minimum number of PCs enforced (default: \code{10}).
-#' @param point_size Numeric. Size of points in plots (default: \code{2}).
+#' @param pca_max_dims Integer. Maximum number of PCs allowed
+#'   (default: \code{50}).
+#' @param pca_min_dims Integer. Minimum number of PCs enforced
+#'   (default: \code{10}).
+#' @param point_size Numeric. Size of points in plots
+#'   (default: \code{2}).
 #' @param seed Optional integer used to set the random seed for reproducibility.
 #' If `NULL`, the existing random number generator state is used.
 #' @param save Logical. Whether to store results in the active
 #'   \code{rna_project} (default: \code{TRUE}).
-#' @param verbose Logical. If \code{TRUE}, prints progress messages and displays plots
-#'   (default: \code{TRUE}).
+#' @param verbose Logical. If \code{TRUE}, prints progress messages and
+#'   displays plots (default: \code{TRUE}).
 #'
 #' @details
 #' The function expects normalized expression data available in
@@ -58,7 +66,8 @@
 #'
 #' \strong{Adaptive behavior:}
 #' \itemize{
-#'   \item UMAP neighbors are set to \code{floor(n_samples / 2)} when unspecified
+#'   \item UMAP neighbors are set to \code{floor(n_samples / 2)} when
+#'     unspecified
 #'   \item t-SNE perplexity is capped at \code{floor((n_samples - 1)/3)}
 #'   \item t-SNE is skipped when \code{n_samples < 6}
 #'   \item PCA dimensionality is automatically selected when
@@ -77,7 +86,8 @@
 #' \describe{
 #'   \item{res_dimred}{List with dimensionality reduction results:
 #'     \itemize{
-#'       \item \code{summary}: dataset overview (samples, genes, grouping, seed and rng state)
+#'       \item \code{summary}: dataset overview
+#'         (samples, genes, grouping, seed and rng state)
 #'       \item \code{preprocessing}: PCA preprocessing parameters
 #'       \item \code{PCA}: PCA model, variance explained, loadings, coordinates
 #'       \item \code{UMAP}: UMAP model, coordinates, and parameters

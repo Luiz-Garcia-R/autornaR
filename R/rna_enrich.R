@@ -1,3 +1,7 @@
+# =============================================================================
+# RNA ENRICH
+# =============================================================================
+
 #' Gene Ontology (GO) enrichment analysis for differential expression results
 #'
 #' @description
@@ -66,8 +70,10 @@
 #'   \item{contrast}{Group contrast (test vs reference)}
 #'   \item{organism}{Organism used for annotation}
 #'   \item{gene_id_type}{Gene identifier type used in enrichment}
-#'   \item{up}{Named list of enrichment results for up-regulated genes (per ontology)}
-#'   \item{down}{Named list of enrichment results for down-regulated genes (per ontology)}
+#'   \item{up}{Named list of enrichment results for up-regulated genes
+#'     (per ontology)}
+#'   \item{down}{Named list of enrichment results for down-regulated genes
+#'     (per ontology)}
 #'   \item{params}{List of parameters used in the analysis}
 #' }
 #'
@@ -110,22 +116,20 @@ rna_enrich <- function(project,
                        save = TRUE
 ) {
 
-plot_style <- match.arg(plot_style)
-
 # =============================================================================
 # 0. Basic checks
 # =============================================================================
 
-ont <- match.arg(ont, several.ok = TRUE)
-
 .check_dependencies("clusterProfiler")
 
 if (plot) {
-  .check_dependencies("ggplot2")
-}
 
-if (plot && plot_style == "dotplot") {
-  .check_dependencies("enrichplot")
+  .check_dependencies("ggplot2")
+
+  if (plot_style == "dotplot") {
+    .check_dependencies("enrichplot")
+  }
+
 }
 
 # =============================================================================
@@ -137,6 +141,9 @@ proj <- project
 organism <- .get_organism(proj)
 gene_id_type <- .get_gene_id_type(proj)
 comp_obj <- .get_comp(proj)
+
+plot_style <- match.arg(plot_style)
+ont <- match.arg(ont, several.ok = TRUE)
 
 # =============================================================================
 # 2. Validate input
@@ -166,7 +173,7 @@ org_pkg <- switch(
   stop("`organism` must be 'human', 'mouse' or 'zebrafish'.")
 )
 
-.check_dependencies(c("clusterProfiler", "enrichplot", "ggplot2", org_pkg))
+.check_dependencies(org_pkg)
 
 # Select organism database
 OrgDb <- switch(

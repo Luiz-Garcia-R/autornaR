@@ -1,10 +1,4 @@
 url: https://luiz-garcia-r.github.io/autornaR/
-
 template:
   bootstrap: 5
 
-articles:
-  - title: Getting started
-    navbar: ~
-    contents:
-      - overview

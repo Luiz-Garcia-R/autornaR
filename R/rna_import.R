@@ -1,3 +1,7 @@
+# =============================================================================
+# RNA IMPORT
+# =============================================================================
+
 #' Import RNA-seq count data from multiple formats
 #'
 #' @description
@@ -18,30 +22,43 @@
 #' Summary information (e.g., group sizes) is reported when available.
 #'
 #' @param project \code{rna_project} object created by \code{rna_project()}.
+#'
 #' @param count_matrix Data frame containing raw counts and gene identifiers.
+#'
 #' @param metadata Optional data frame with sample information. The sample
 #' column is automatically detected based on column names or matching values
 #' with the count matrix. If detection fails, the function will return an error
 #' (in strict mode).
+#'
 #' @param format Character. Input format: \code{"clean"}, \code{"hisat2"},
 #'   \code{"star"}, \code{"featureCounts"}, or \code{"tximport"}.
+#'
 #' @param gene_col Optional character specifying the column containing gene
 #' identifiers. If \code{NULL} (default), the function will attempt to detect
 #' the gene column automatically. If no suitable column is found, row names
 #' will be used when possible.
+#'
 #' @param group_col Optional character specifying the column containing sample
 #' groups. If \code{NULL} (default).
+#'
 #' @param rename_samples Optional character vector to rename sample columns.
 #' Must have the same length and order as the detected sample columns.
+#'
 #' @param gene_id_type Character. Gene identifier type:
 #'   \code{"auto"}, \code{"ENSEMBL"}, \code{"SYMBOL"}, \code{"ENTREZ"}.
 #'   Default is \code{"auto"}.
+#'
 #' @param organism Character. Organism name:
 #'   \code{"auto"}, \code{"mouse"}, \code{"human"}, or \code{"zebrafish"}.
+#'
 #' @param clean_names Logical. If \code{TRUE}, automatically cleans sample names
 #'   by removing file extensions and special characters.
+#'
 #' @param strict Logical. If \code{TRUE}, stops execution on validation errors.
-#' @param save Logical. Whether to store results in the active \code{rna_project}.
+#'
+#' @param save Logical. Whether to store results in the active
+#'   \code{rna_project}.
+#'
 #' @param envir Environment where to assign the object.
 #'
 #' @return

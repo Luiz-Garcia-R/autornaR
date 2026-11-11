@@ -111,4 +111,9 @@ Useful links:
 \author{
 \strong{Maintainer}: Luiz Garcia \email{luiz.cardoso@ufpr.br} (\href{https://orcid.org/0000-0002-9616-0927}{ORCID})
 
+Authors:
+\itemize{
+  \item Luiz Garcia \email{luiz.cardoso@ufpr.br} (\href{https://orcid.org/0000-0002-9616-0927}{ORCID})
+}
+
 }

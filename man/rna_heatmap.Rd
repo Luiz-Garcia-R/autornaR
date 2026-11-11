@@ -79,9 +79,9 @@ variance, or user-defined gene sets.
 \details{
 Gene selection follows a mutually exclusive strategy:
 \itemize{
-\item \code{use_variance}: selects genes with highest variance across samples.
-When \code{FALSE}, selects genes based on differential expression statistics
-(typically lowest \code{padj} or \code{pvalue}).
+\item \code{use_variance}: selects genes with highest variance across
+samples. When \code{FALSE}, selects genes based on differential
+expression statistics (typically lowest \code{padj} or \code{pvalue}).
 \item \code{genes}: uses a user-defined gene set.
 }
 

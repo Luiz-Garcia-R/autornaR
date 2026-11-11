@@ -1,17 +1,22 @@
+# =============================================================================
+# RNA NORMALIZE
+# =============================================================================
+
 #' Normalize RNA-seq count data with integrated QC and filtering
 #'
 #' @description
-#' Performs normalization of raw RNA-seq count data stored in the active
-#' \code{rna_project} object (created with \code{rna_project()} and populated
-#' via \code{rna_import()}). The function integrates gene filtering,
-#' outlier detection, and multiple normalization strategies into a single,
-#' reproducible workflow.
+#'   Performs normalization of raw RNA-seq count data stored in the active
+#'   \code{rna_project} object (created with \code{rna_project()} and populated
+#'   via \code{rna_import()}). The function integrates gene filtering, outlier
+#'   detection, and multiple normalization strategies into a single,
+#'   reproducible workflow.
 #'
-#' The resulting normalized dataset is stored internally and used as the
-#' standardized input for downstream analyses (e.g., differential expression,
-#' clustering, and pathway analysis).
+#'   The resulting normalized dataset is stored internally and used as the
+#'   standardized input for downstream analyses (e.g., differential expression,
+#'   clustering, and pathway analysis).
 #'
 #' @param project \code{rna_project} object created by \code{rna_project()}.
+#'
 #' @param method Character. Normalization method to apply:
 #' \itemize{
 #'   \item \code{"none"}: No normalization (raw counts retained)
@@ -26,57 +31,66 @@
 #'
 #' @param filter_low Logical. If \code{TRUE}, removes lowly expressed genes
 #'   prior to normalization (default: \code{TRUE}).
+#'
 #' @param min_expr Numeric. Minimum count threshold used to define expression
 #'   (default: \code{10}).
+#'
 #' @param filter_min_prop Numeric. Minimum proportion of samples in which a gene
-#'   must be expressed (above \code{min_expr}) to be retained (default: \code{0.1}).
+#'   must be expressed (above \code{min_expr}) to be retained (default:
+#'   \code{0.1}).
+#'
 #' @param remove_outlier_samples Logical. If \code{TRUE}, detects and removes
 #'   samples with abnormal library sizes (default: \code{TRUE}).
-#' @param remove_outlier_genes Logical. If \code{TRUE}, removes genes with extreme
-#'   variance profiles (default: \code{TRUE}).
+#'
+#' @param remove_outlier_genes Logical. If \code{TRUE}, removes genes with
+#'   extreme variance profiles (default: \code{TRUE}).
+#'
 #' @param outlier_method Character. Method for outlier detection:
 #'   \code{"iqr"} (robust, default) or \code{"zscore"}.
+#'
 #' @param clean_gene_versions Logical. If \code{TRUE}, removes version suffixes
 #'   from gene identifiers (e.g., \code{ENSG000001.5 -> ENSG000001}) when using
 #'   Ensembl IDs (default: \code{TRUE}).
+#'
 #' @param gene_id_sep Character. Regular expression defining the separator used
 #'   for gene version removal (default: \code{"\\."}).
+#'
 #' @param save Logical. Whether to store the normalized data inside the active
 #'   \code{rna_project} (default: \code{TRUE}).
 #'
 #' @return
-#' Invisibly returns an object of class \code{"normalized_data"} containing:
+#'   Invisibly returns an object of class \code{"normalized_data"} containing:
 #' \describe{
 #'   \item{expr_matrix}{Normalized expression matrix (genes × samples).}
 #'   \item{metadata}{Aligned sample metadata.}
 #'   \item{method}{Normalization method used.}
-#'   \item{removed_genes}{Number of genes removed during filtering/outlier steps.}
+#'   \item{removed_genes}{Number of genes removed during filtering steps.}
 #'   \item{removed_samples}{Number of samples removed as outliers.}
-#'   \item{QC_metrics}{Data frame with per-sample QC metrics (library size and detected genes).}
-#'   \item{gene_id_version_cleaned}{Logical indicating whether gene IDs were cleaned.}
+#'   \item{QC_metrics}{Data frame with per-sample QC metrics.}
+#'   \item{gene_id_version_cleaned}{Indicating whether gene IDs were cleaned.}
 #'   \item{gene_id_type}{Original gene identifier type (e.g., ENSEMBL, SYMBOL).}
 #' }
 #'
 #' @details
-#' The normalization workflow is structured into sequential steps:
+#'   The normalization workflow is structured into sequential steps:
 #'
 #' \strong{1. Gene filtering} \cr
-#' Genes with insufficient expression are removed based on the proportion
-#' of samples exceeding \code{min_expr}. This reduces noise and improves
-#' statistical stability in downstream analyses.
+#'   Genes with insufficient expression are removed based on the proportion of
+#'   samples exceeding \code{min_expr}. This reduces noise and improves
+#'   statistical stability in downstream analyses.
 #'
 #' \strong{2. Outlier detection} \cr
-#' Outlier samples are identified based on library size distributions, while
-#' outlier genes are detected using variance-based criteria. Two strategies
-#' are available:
+#'   Outlier samples are identified based on library size distributions, while
+#'   outlier genes are detected using variance-based criteria. Two strategies
+#'   are available:
 #' \itemize{
 #'   \item \code{"iqr"}: Robust, recommended for most datasets
 #'   \item \code{"zscore"}: Sensitive to extreme deviations
 #' }
 #'
 #' \strong{3. Normalization} \cr
-#' The selected normalization method is applied. Methods differ in their
-#' assumptions:
+#'   The selected normalization method is applied. Methods differ in their
+#'   assumptions:
 #' \itemize{
 #'   \item Count-based scaling (\code{cpm}, \code{upper-quartile})
 #'   \item Length-aware normalization (\code{tpm})
@@ -85,26 +99,25 @@
 #' }
 #'
 #' \strong{4. Quality control metrics} \cr
-#' Basic QC metrics are computed, including library size and number of
-#' detected genes per sample, enabling rapid inspection of data quality.
+#'   Basic QC metrics are computed, including library size and number of
+#'   detected genes per sample, enabling rapid inspection of data quality.
 #'
 #' \strong{5. Gene ID harmonization} \cr
-#' When Ensembl IDs include version suffixes, they are optionally removed
-#' to ensure compatibility with annotation databases and downstream tools.
-#' If duplicates arise after cleaning, counts are aggregated by gene.
+#'   When Ensembl IDs include version suffixes, they are optionally removed to
+#'   ensure compatibility with annotation databases and downstream tools. If
+#'   duplicates arise after cleaning, counts are aggregated by gene.
 #'
 #' \strong{TPM requirement} \cr
-#' TPM normalization requires a \code{gene_length} column in
-#' \code{rna_project$input$imp_data$annotation}.
+#'   TPM normalization requires a \code{gene_length} column in
+#'   \code{rna_project$input$imp_data$annotation}.
 #'
 #' @section Filtering strategies and use cases:
+#'   Filtering parameters can strongly influence downstream analyses. The
+#'   default configuration is optimized for general RNA-seq workflows,
+#'   particularly differential expression analysis.
 #'
-#' Filtering parameters can strongly influence downstream analyses.
-#' The default configuration is optimized for general RNA-seq workflows,
-#' particularly differential expression analysis.
-#'
-#' However, more permissive filtering may be required when the goal is to
-#' preserve genes expressed in rare or specific cell populations.
+#'   However, more permissive filtering may be required when the goal is to
+#'   preserve genes expressed in rare or specific cell populations.
 #'
 #' \strong{Standard analysis (default)}
 #' \itemize{
@@ -121,7 +134,8 @@
 #' \strong{Deconvolution / gene set scoring}
 #' \itemize{
 #'   \item Preserves low-abundance and cell-type-specific genes
-#'   \item Recommended for immune profiling, cell signatures, and scoring methods
+#'   \item Recommended for immune profiling, cell signatures, and scoring
+#'     methods
 #'   \item Suggested parameters:
 #'     \itemize{
 #'       \item \code{min_expr = 1}
@@ -140,14 +154,17 @@
 #' @examples
 #' \dontrun{
 #'
-#' Example 1: basic normalization using default settings (suitable for general analysis)
+#' Example 1: basic normalization using default settings
+#' (suitable for general analysis)
+#'
 #' rna_normalize(project = my_project)
 #'
 #' # Example 2: log2 transformation only (quick exploratory analysis)
 #' rna_normalize(my_project,
 #'               method = "log2")
 #'
-#' # Example 3: Using relaxed filtering thresholds for deconvolution and gene set scoring
+#' # Example 3: Using relaxed filtering thresholds for deconvolution and gene
+#' set scoring
 #' proj <- rna_normalize(my_project,
 #'                       method = "vst",   # or "log2"
 #'                       filter_low = TRUE,

@@ -1,15 +1,16 @@
 #' Pathway gene coexpression network from RNA-seq data
 #'
 #' @description
-#' Builds a gene coexpression network for genes belonging to a selected pathway
-#' using normalized RNA-seq expression data stored in the active \code{rna_project}.
+#'   Builds a gene coexpression network for genes belonging to a selected
+#'   pathway using normalized RNA-seq expression data stored in the active
+#'   \code{rna_project}.
 #'
-#' The function translates pathway-level gene sets (from GSEA results) into a
-#' correlation-based network, where edges represent gene-gene coexpression
-#' within a defined experimental group.
+#'   The function translates pathway-level gene sets (from GSEA results) into a
+#'   correlation-based network, where edges represent gene-gene coexpression
+#'   within a defined experimental group.
 #'
-#' Beyond network construction, the function supports two complementary
-#' analytical views:
+#'   Beyond network construction, the function supports two complementary
+#'   analytical views:
 #'
 #' \itemize{
 #'   \item \strong{Global structure (\code{node_filter = "all"})}:
@@ -21,27 +22,34 @@
 #'   regulatory influence and core network drivers.
 #' }
 #'
-#' These two modes represent different biological perspectives rather than
-#' simple visual filtering.
+#'   These two modes represent different biological perspectives rather than
+#'   simple visual filtering.
 #'
 #' @param project \code{rna_project} object created by \code{rna_project()}.
+#'
 #' @param pathway Character or numeric. Pathway name or index from GSEA results.
+#'
 #' @param group Character. Experimental group used to compute correlations.
-#' @param threshold Numeric. Minimum absolute correlation required to define an edge.
+#'
+#' @param threshold Numeric. Minimum absolute correlation required to define an
+#'   edge.
 #' @param cor_p Numeric. Maximum p-value allowed for correlations.
+#'
 #' @param node_filter Character. Defines the structural view of the network:
 #' \itemize{
-#'   \item \code{"all"}: full pathway network (recommended for structural interpretation)
-#'   \item \code{"top"}: restricted network containing only the most central genes
+#'   \item \code{"all"}: full pathway network
+#'     (recommended for structural interpretation)
+#'   \item \code{"top"}: restricted network containing only the most central
+#'     genes
 #' }
 #'
 #' \strong{Important:}
-#' When \code{node_filter = "top"}, the network is no longer a full pathway graph
-#' but a \emph{centrality-enriched subnetwork}, highlighting influential genes
-#' rather than full modular architecture.
+#'   When \code{node_filter = "top"}, the network is no longer a full pathway
+#'   graph but a \emph{centrality-enriched subnetwork}, highlighting influential
+#'   genes rather than full modular architecture.
 #'
 #' @param top_nodes Numeric. Fraction of most central nodes retained when
-#' \code{node_filter = "top"} (default: \code{0.2}).
+#'   \code{node_filter = "top"} (default: \code{0.2}).
 #'
 #' @param cor_method Character. Correlation method used:
 #' \itemize{
@@ -68,7 +76,8 @@
 #' \itemize{
 #'   \item \code{"fr"}: fast global layout, good for overview plots
 #'   \item \code{"kk"}: balanced structure-preserving layout
-#'   \item \code{"stress"}: best preservation of relational distances (recommended for top nodes)
+#'   \item \code{"stress"}: best preservation of relational distances
+#'     (recommended for top nodes)
 #'   \item \code{"lgl"}: scalable layout for larger networks
 #'   \item \code{"graphopt"}: compact structure visualization
 #' }
@@ -95,17 +104,19 @@
 #' @param save Logical. Whether to store results in \code{rna_project}.
 #'
 #' @details
-#' The function expects pre-computed GSEA results and normalized expression data.
+#'   The function expects pre-computed GSEA results and normalized expression
+#'   data.
 #'
-#' The resulting network is sensitive to filtering choices:
+#'   The resulting network is sensitive to filtering choices:
 #'
 #' \itemize{
 #'   \item Lower \code{threshold} increases connectivity and density
-#'   \item \code{node_filter = "top"} shifts interpretation toward central regulators
+#'   \item \code{node_filter = "top"} shifts interpretation toward central
+#'     regulators
 #'   \item Community structure becomes less stable in highly filtered networks
 #' }
 #'
-#' Therefore, parameter selection should reflect the biological question:
+#'   Therefore, parameter selection should reflect the biological question:
 #'
 #' \strong{Recommended usage patterns:}
 #' \itemize{
@@ -115,38 +126,38 @@
 #' }
 #'
 #' @section Interpretation note:
-#' Networks generated with \code{node_filter = "top"} represent a
-#' \emph{centrality-enriched projection of the pathway}, not the full
-#' coexpression topology.
+#'   Networks generated with \code{node_filter = "top"} represent a
+#'   \emph{centrality-enriched projection of the pathway}, not the full
+#'   coexpression topology.
 #'
 #' @section Network centrality:
-#' Network centrality is characterized using three complementary metrics:
+#'   Network centrality is characterized using three complementary metrics:
 #' \itemize{
-#'   \item \strong{Degree}: number of direct connections, representing local connectivity.
-#'   \item \strong{Betweenness centrality}: measures how frequently a node
-#'   lies on shortest paths between other nodes, highlighting potential
-#'   bridging positions in the network.
-#'   \item \strong{Harmonic centrality}: quantifies node accessibility
-#'   using the inverse of shortest-path distances to other nodes.
+#'   \item \strong{Degree}: number of direct connections, representing local
+#'     connectivity.
+#'   \item \strong{Betweenness centrality}: measures how frequently a node lies
+#'     on shortest paths between other nodes, highlighting potential bridging
+#'     positions in the network.
+#'   \item \strong{Harmonic centrality}: quantifies node accessibility using the
+#'     inverse of shortest-path distances to other nodes.
 #' }
 #'
-#' Harmonic centrality is used instead of conventional closeness centrality
-#' because pathway coexpression networks may contain disconnected components.
-#' Unlike conventional closeness centrality, harmonic centrality accounts
-#' for unreachable nodes by assigning them zero contribution, allowing
-#' comparisons across nodes in disconnected networks.
+#'   Harmonic centrality is used instead of conventional closeness centrality
+#'   because pathway coexpression networks may contain disconnected components.
+#'   Unlike conventional closeness centrality, harmonic centrality accounts for
+#'   unreachable nodes by assigning them zero contribution, allowing comparisons
+#'   across nodes in disconnected networks.
 #'
-#' Shortest-path distances are derived from absolute correlation weights,
-#' such that stronger correlations correspond to shorter distances.
+#'   Shortest-path distances are derived from absolute correlation weights, such
+#'   that stronger correlations correspond to shorter distances.
 #'
-#' The \code{hub_score} is calculated as the sum of the standardized degree,
-#' betweenness centrality, and harmonic centrality values. It represents
-#' a composite exploratory measure of network centrality rather than
-#' a validated biological measure of regulatory influence.
-#'
+#'   The \code{hub_score} is calculated as the sum of the standardized degree,
+#'   betweenness centrality, and harmonic centrality values. It represents a
+#'   composite exploratory measure of network centrality rather than a validated
+#'   biological measure of regulatory influence.
 #'
 #' @return
-#' An object of class \code{"rna_network"} containing:
+#'   An object of class \code{"rna_network"} containing:
 #' \describe{
 #'   \item{params}{List of parameters used to build the network}
 #'   \item{pathway}{Selected pathway name}
@@ -158,18 +169,18 @@
 #'   hub classification, and the composite hub score, where applicable.}
 #' }
 #'
-#' The function invisibly returns a list containing:
+#'   The function invisibly returns a list containing:
 #' \itemize{
 #'   \item \code{result}: the network object
 #'   \item \code{project}: updated project object (when \code{save = TRUE})
 #' }
 #'
 #' @section Stored output:
-#' When \code{save = TRUE}, the network object is stored in:
+#'   When \code{save = TRUE}, the network object is stored in:
 #'
-#' \code{rna_project$analyses$network}
+#'   \code{rna_project$analyses$network}
 #'
-#' allowing reproducibility and downstream reuse.
+#'   allowing reproducibility and downstream reuse.
 #'
 #' @examples
 #' \dontrun{
@@ -222,12 +233,6 @@ rna_network <- function(project,
                         plot = TRUE,
                         save = TRUE) {
 
-cor_method <- match.arg(cor_method)
-node_filter <- match.arg(node_filter)
-community_method <- match.arg(community_method)
-layout <- match.arg(layout)
-color_by <- match.arg(color_by)
-
 # =============================================================================
 # 0. Basic checks
 # =============================================================================
@@ -263,6 +268,12 @@ comp_obj <- .get_comp(proj)
 # =============================================================================
 # 2. Validate input
 # =============================================================================
+
+cor_method <- match.arg(cor_method)
+node_filter <- match.arg(node_filter)
+community_method <- match.arg(community_method)
+layout <- match.arg(layout)
+color_by <- match.arg(color_by)
 
 # Validate layout
 valid_layouts <- c("fr","kk","stress","lgl","graphopt")

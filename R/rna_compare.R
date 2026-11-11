@@ -1,3 +1,7 @@
+# =============================================================================
+# RNA COMPARE
+# =============================================================================
+
 #' Differential expression analysis using DESeq2 or limma-voom
 #'
 #' @description
@@ -22,13 +26,16 @@
 #'   }
 #' @param plot Logical. If \code{TRUE}, displays diagnostic plots:
 #'   MA plot (both methods) and dispersion plot (DESeq2 only).
-#' @param save Logical. Whether to store results in the active \code{rna_project}.
-#' @param store_model Logical. Wheter to store the complete model results in the active \code{rna_project}.
+#' @param save Logical. Whether to store results in the active
+#'   \code{rna_project}.
+#' @param store_model Logical. Wheter to store the complete model results in the
+#'   active \code{rna_project}.
 #' @param verbose Logical. Whether to print progress messages.
 #'
 #' @details
-#' The function requires raw count data and expects that normalization has been
-#' performed with \code{rna_normalize(method = "none")} to preserve integer counts.
+#'   The function requires raw count data and expects that normalization has been
+#'   performed with \code{rna_normalize(method = "none")} to preserve integer
+#'   counts.
 #'
 #' \strong{Contrast definition:}
 #' All contrasts are defined as \strong{test − reference}, which determines

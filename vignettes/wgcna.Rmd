@@ -1,0 +1,18 @@
+---
+title: "WGCNA module"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{WGCNA module}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<img src="figures/header_autornaR.png"
+     alt="autor naR package banner"
+     style="display: block; width: 100%; height: auto;">
+
+<br>
+
+## WGCNA module
+
+This vignette is currently under development and will be available in a future package update.

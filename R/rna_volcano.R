@@ -1,54 +1,67 @@
+# =============================================================================
+# RNA VOLCANO
+# =============================================================================
+
 #' Volcano plot for differential expression results
 #'
 #' @description
-#' Generates a volcano plot from differential expression results stored
-#' in the active \code{rna_project}. The function visualizes the relationship
-#' between effect size (log2 fold-change) and statistical significance
-#' (-log10 p-value), highlighting significantly up- and down-regulated genes.
+#'   Generates a volcano plot from differential expression results stored in the
+#'   active \code{rna_project}. The function visualizes the relationship between
+#'   effect size (log2 fold-change) and statistical significance
+#'   (-log10 p-value), highlighting significantly up- and down-regulated genes.
 #'
 #' @details
-#' This function retrieves results produced by \code{rna_compare()} and does not
-#' perform differential expression analysis itself.
+#'   This function retrieves results produced by \code{rna_compare()} and does
+#'   not perform differential expression analysis itself.
 #'
-#' Genes are classified into three categories:
+#'   Genes are classified into three categories:
 #' \itemize{
 #'   \item Upregulated genes (significant and above log2FC threshold)
 #'   \item Downregulated genes (significant and below negative log2FC threshold)
 #'   \item Non-significant genes
 #' }
 #'
-#' Significance is defined using the adjusted p-value threshold (\code{padj_threshold}),
-#' while biological relevance is controlled via the log2 fold-change threshold
-#' (\code{log2fc_threshold}).
+#'   Significance is defined using the adjusted p-value threshold
+#'   (\code{padj_threshold}), while biological relevance is controlled via the
+#'   log2 fold-change threshold (\code{log2fc_threshold}).
 #'
-#' The function supports optional labeling of genes directly on the plot using
-#' \code{ggrepel}, which is useful for highlighting key markers.
+#'   The function supports optional labeling of genes directly on the plot using
+#'   \code{ggrepel}, which is useful for highlighting key markers.
 #'
 #'
 #' @param project \code{rna_project} object created by \code{rna_project()}.
+#'
 #' @param genes Optional character vector of genes to label on the plot.
-#'   Gene identifiers can be provided either as gene symbols (e.g. \code{"TP53"})
-#'   or as gene IDs matching the rownames of the differential expression results
-#'   (e.g. Ensembl IDs). Matching is performed automatically using the project
-#'   annotation, and both representations are supported transparently.
-#'   When provided, this argument takes precedence over \code{top_genes}.
+#'   Gene identifiers can be provided either as gene symbols
+#'   (e.g. \code{"TP53"}) or as gene IDs matching the rownames of the
+#'   differential expression results (e.g. Ensembl IDs). Matching is performed
+#'   automatically using the project annotation, and both representations are
+#'   supported transparently. When provided, this argument takes precedence over
+#'   \code{top_genes}.
+#'
 #' @param top_genes Optional integer specifying the number of genes to label
 #'   automatically based on statistical significance and effect size.
-#'   Genes are ranked primarily by adjusted p-value (\code{padj}) and secondarily
-#'   by absolute log2 fold-change, prioritizing genes that are both highly
-#'   significant and strongly regulated. Ignored if \code{genes} is provided.
+#'   Genes are ranked primarily by adjusted p-value (\code{padj}) and
+#'   secondarily by absolute log2 fold-change, prioritizing genes that are both
+#'   highly significant and strongly regulated. Ignored if \code{genes} is
+#'   provided.
+#'
 #' @param padj_threshold Numeric. Adjusted p-value cutoff for statistical
 #'   significance (default \code{0.05}).
+#'
 #' @param log2fc_threshold Numeric. Absolute log2 fold-change cutoff for
 #'   biological relevance (default \code{0.5}).
+#'
 #' @param colors Character. Optional points colors.
+#'
 #' @param save Logical. Whether to store results in the active \code{rna_project}
 #'   (default \code{TRUE}).
-#' @param verbose Logical. If \code{TRUE}, prints the plot and summary to the console
-#'   (default \code{TRUE}).
+#'
+#' @param verbose Logical. If \code{TRUE}, prints the plot and summary to the
+#'   console (default \code{TRUE}).
 #'
 #' @return
-#' An object of class \code{"rna_volcano"} containing:
+#'   An object of class \code{"rna_volcano"} containing:
 #' \describe{
 #'   \item{plot}{The ggplot object representing the volcano plot.}
 #'   \item{thresholds}{List with \code{padj} and \code{log2fc} thresholds used.}
@@ -66,17 +79,18 @@
 #'
 #' @section \strong{Interpretation guidelines}:
 #' \itemize{
-#'   \item Genes in the upper left and upper right quadrants are the most significant
-#'   and biologically relevant.
-#'   \item Symmetry around zero log2FC may indicate balanced regulation across conditions.
-#'   \item Large numbers of significant genes may reflect strong biological signal or
-#'   potential confounding factors (e.g., batch effects).
+#'   \item Genes in the upper left and upper right quadrants are the most
+#'     significant and biologically relevant.
+#'   \item Symmetry around zero log2FC may indicate balanced regulation across
+#'     conditions.
+#'   \item Large numbers of significant genes may reflect strong biological
+#'     signal or potential confounding factors (e.g., batch effects).
 #' }
 #'
 #' @section \strong{Side effects}:
-#' If \code{save = TRUE}, the result is stored in the active \code{rna_project}
-#' under \code{analyses$volcano}, along with metadata describing thresholds
-#' and comparison used.
+#'   If \code{save = TRUE}, the result is stored in the active
+#'   \code{rna_project} under \code{analyses$volcano}, along with metadata
+#'   describing thresholds and comparison used.
 #'
 #' @examples
 #' \dontrun{

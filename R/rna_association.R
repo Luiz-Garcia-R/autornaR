@@ -1,3 +1,7 @@
+# =============================================================================
+# RNA ASSOCIATION
+# =============================================================================
+
 #' Association analysis between genes and/or metadata variables
 #'
 #' Computes pairwise associations between features derived from normalized

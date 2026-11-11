@@ -37,9 +37,11 @@ If present in metadata, it is included in the design formula.}
 \item{plot}{Logical. If \code{TRUE}, displays diagnostic plots:
 MA plot (both methods) and dispersion plot (DESeq2 only).}
 
-\item{save}{Logical. Whether to store results in the active \code{rna_project}.}
+\item{save}{Logical. Whether to store results in the active
+\code{rna_project}.}
 
-\item{store_model}{Logical. Wheter to store the complete model results in the active \code{rna_project}.}
+\item{store_model}{Logical. Wheter to store the complete model results in the
+active \code{rna_project}.}
 
 \item{verbose}{Logical. Whether to print progress messages.}
 }
@@ -70,7 +72,8 @@ and result extraction, returning standardized outputs across methods.
 }
 \details{
 The function requires raw count data and expects that normalization has been
-performed with \code{rna_normalize(method = "none")} to preserve integer counts.
+performed with \code{rna_normalize(method = "none")} to preserve integer
+counts.
 
 \strong{Contrast definition:}
 All contrasts are defined as \strong{test − reference}, which determines

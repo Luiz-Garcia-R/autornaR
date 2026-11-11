@@ -2,7 +2,8 @@
 % Please edit documentation in R/rna_sets.R
 \name{rna_sets}
 \alias{rna_sets}
-\title{Build DEG sets and structured gene membership from differential expression results}
+\title{Build DEG sets and structured gene membership from differential expression
+results}
 \usage{
 rna_sets(
   project,
@@ -18,47 +19,53 @@ rna_sets(
 \arguments{
 \item{project}{\code{rna_project} object created by \code{rna_project()}.}
 
-\item{padj_cutoff}{Numeric. Adjusted p-value threshold used to define significance
-(default: \code{0.05}).}
+\item{padj_cutoff}{Numeric. Adjusted p-value threshold used to define
+significance (default: \code{0.05}).}
 
-\item{log2fc_cutoff}{Numeric. Log2 fold-change threshold for directional classification
-(default: \code{0.5}).}
+\item{log2fc_cutoff}{Numeric. Log2 fold-change threshold for directional
+classification (default: \code{0.5}).}
 
-\item{direction}{Character. One of \code{"both"}, \code{"up"}, or \code{"down"}.
-Determines which genes are flagged as DEGs in the main output (default: \code{"both"}).}
+\item{direction}{Character. One of \code{"both"}, \code{"up"}, or
+\code{"down"}. Determines which genes are flagged as DEGs in the main
+output (default: \code{"both"}).}
 
 \item{colors}{Character. Optional bars colors.}
 
-\item{plot}{Logical. If \code{TRUE}, displays a barplot summarizing
-DEG counts per group (default: \code{FALSE}).}
+\item{plot}{Logical. If \code{TRUE}, displays a barplot summarizing DEG
+counts per group (default: \code{FALSE}).}
 
-\item{save}{Logical. Whether to store results in the
-active \code{rna_project} (default: \code{TRUE}).}
+\item{save}{Logical. Whether to store results in the active
+\code{rna_project} (default: \code{TRUE}).}
 
-\item{verbose}{Logical. If \code{TRUE}, prints a summary to the
-console (default: \code{TRUE}).}
+\item{verbose}{Logical. If \code{TRUE}, prints a summary to the console
+(default: \code{TRUE}).}
 }
 \value{
 An object of class \code{"rna_sets"} containing:
 \describe{
-\item{deg}{Logical vector indicating DEG membership after applying \code{direction}.}
-\item{deg_all}{Logical vector indicating all DEGs (independent of direction).}
+\item{deg}{Logical vector indicating DEG membership after applying
+\code{direction}.}
+\item{deg_all}{Logical vector indicating all DEGs
+(independent of direction).}
 \item{up}{Logical vector for genes upregulated in the test group.}
 \item{down}{Logical vector for genes upregulated in the reference group.}
-\item{one_hot}{Data frame encoding gene membership across groups (one-hot format).}
+\item{one_hot}{Data frame encoding gene membership across groups
+(one-hot format).}
 \item{params}{List of parameters and thresholds used to define sets.}
 }
 }
 \description{
-Constructs structured gene sets from differential expression results stored in
-the active \code{rna_project}. This function formalizes DEGs as explicit sets,
-enabling downstream analyses such as overlaps, enrichment, and custom visualization.
+Constructs structured gene sets from differential expression results stored
+in the active \code{rna_project}. This function formalizes DEGs as explicit
+sets, enabling downstream analyses such as overlaps, enrichment, and custom
+visualization.
 
-Optionally, a summary plot of up- and down-regulated genes can be generated.
+Optionally, a summary plot of up- and down-regulated genes can be
+generated.
 }
 \details{
-This function transforms differential expression results into explicit gene sets
-based on statistical significance and effect size thresholds.
+This function transforms differential expression results into explicit gene
+sets based on statistical significance and effect size thresholds.
 
 \strong{DEG definition}
 Genes are considered differentially expressed if:
@@ -87,8 +94,10 @@ enrichment analysis, and visualization.
 \section{Interpretation guide}{
 
 \itemize{
-\item The number of DEGs depends strongly on both \code{padj_cutoff} and \code{log2fc_cutoff}
-\item Increasing the fold-change threshold yields more conservative, high-effect genes
+\item The number of DEGs depends strongly on both \code{padj_cutoff} and
+\code{log2fc_cutoff}
+\item Increasing the fold-change threshold yields more conservative,
+high-effect genes
 \item Directional filtering is useful for asymmetric biological interpretations
 }
 
@@ -98,8 +107,9 @@ used in the original comparison.
 
 \section{Pipeline context}{
 
-This function is typically used after \code{rna_compare()} to formalize DEG sets.
-The resulting object is designed to be used with downstream tools such as:
+This function is typically used after \code{rna_compare()} to formalize DEG
+sets. The resulting object is designed to be used with downstream tools
+such as:
 \itemize{
 \item visualization (e.g., heatmaps, Venn diagrams)
 \item enrichment analysis
@@ -117,18 +127,18 @@ DEG sets can vary substantially depending on cutoff choices. Always inspect
 results across multiple thresholds when possible.
 
 \strong{Directionality depends on contrast}
-The meaning of "up" and "down" is tied to the test vs reference groups defined
-in the original comparison.
+The meaning of "up" and "down" is tied to the test vs reference groups
+defined in the original comparison.
 
 \strong{Gene universe consistency}
-Only genes present in both the expression matrix and comparison results
-are retained.
+Only genes present in both the expression matrix and comparison results are
+retained.
 }
 
 \section{Side effects}{
 
-If \code{save = TRUE}, results are stored in the \code{rna_project} under the
-\code{analyses$rna_sets} slot.
+If \code{save = TRUE}, results are stored in the \code{rna_project} under
+the \code{analyses$rna_sets} slot.
 }
 
 \examples{

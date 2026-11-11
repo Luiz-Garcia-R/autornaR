@@ -53,8 +53,10 @@ An object of class \code{"enrich_result"} containing:
 \item{contrast}{Group contrast (test vs reference)}
 \item{organism}{Organism used for annotation}
 \item{gene_id_type}{Gene identifier type used in enrichment}
-\item{up}{Named list of enrichment results for up-regulated genes (per ontology)}
-\item{down}{Named list of enrichment results for down-regulated genes (per ontology)}
+\item{up}{Named list of enrichment results for up-regulated genes
+(per ontology)}
+\item{down}{Named list of enrichment results for down-regulated genes
+(per ontology)}
 \item{params}{List of parameters used in the analysis}
 }
 }
