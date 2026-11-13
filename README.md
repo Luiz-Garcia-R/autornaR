@@ -16,7 +16,7 @@ It provides functions for filtering, imputation, outlier detection, gene ranking
 
 <td width="30%" align="center" valign="middle">
 
-<img src="man/figures/logo_autornaR.png" width="160">
+<img src="man/figures/logo_autornaR.png" alt="autornaR package logo" width="160">
 
 </td>
 </tr>

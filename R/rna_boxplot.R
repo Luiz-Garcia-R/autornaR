@@ -78,7 +78,7 @@
 #' # Changing style
 #' rna_boxplot(my_project,
 #'             gene = "TP53",
-#'             style = "violin"
+#'             style = "violin")
 #' }
 #'
 #' @importFrom ggplot2 ggplot aes geom_violin geom_boxplot geom_point

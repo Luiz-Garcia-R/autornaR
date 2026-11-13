@@ -101,7 +101,7 @@ rna_boxplot(project = my_project,
 # Changing style
 rna_boxplot(my_project,
             gene = "TP53",
-            style = "violin"
+            style = "violin")
 }
 
 }

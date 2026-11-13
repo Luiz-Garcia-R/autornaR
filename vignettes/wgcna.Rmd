@@ -13,6 +13,4 @@ vignette: >
 
 <br>
 
-## WGCNA module
-
 This vignette is currently under development and will be available in a future package update.

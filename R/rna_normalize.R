@@ -154,24 +154,20 @@
 #' @examples
 #' \dontrun{
 #'
-#' Example 1: basic normalization using default settings
-#' (suitable for general analysis)
-#'
+#' # Example 1: basic normalization using default settings
 #' rna_normalize(project = my_project)
 #'
 #' # Example 2: log2 transformation only (quick exploratory analysis)
 #' rna_normalize(my_project,
 #'               method = "log2")
 #'
-#' # Example 3: Using relaxed filtering thresholds for deconvolution and gene
-#' set scoring
+#' # Example 3: Using relaxed filtering thresholds for deconvolution and GSEA
 #' proj <- rna_normalize(my_project,
 #'                       method = "vst",   # or "log2"
 #'                       filter_low = TRUE,
 #'                       min_expr = 1,
 #'                       filter_min_prop = 0.05,
-#'                       remove_outlier_genes = FALSE
-#' )
+#'                       remove_outlier_genes = FALSE)
 #' }
 #'
 #' @importFrom stats quantile sd
