@@ -8,13 +8,13 @@
 ## Citation
 
 Cardoso Garcia L (2025). *autornaR: Tools for streamlined RNA-seq data
-analysis*. R package version 0.5.0,
+analysis*. R package version 0.6.1,
 <https://github.com/Luiz-Garcia-R/autornaR>.
 
     @Manual{,
       title = {autornaR: Tools for streamlined RNA-seq data analysis},
       author = {Luiz Fernando {Cardoso Garcia}},
       year = {2025},
-      note = {R package version 0.5.0},
+      note = {R package version 0.6.1},
       url = {https://github.com/Luiz-Garcia-R/autornaR},
     }

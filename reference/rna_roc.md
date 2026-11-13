@@ -81,8 +81,7 @@ An object of class `"roc_result"` containing:
 
 - method:
 
-  Scoring strategy used (`"single_gene"`, `"logistic"`, or
-  `"signature"`).
+  Scoring strategy used (`"single_gene"`, `"logistic"`, `"signature"`).
 
 - score_method:
 

@@ -93,5 +93,17 @@
 - [`rna_wgcna()`](https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna.md)
   : Construct a weighted gene co-expression network and detect modules
 
+- [`rna_wgcna_enrichment()`](https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_enrichment.md)
+  : Characterize WGCNA modules through functional enrichment analysis
+
 - [`rna_wgcna_metrics()`](https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_metrics.md)
   : Calculate WGCNA Network Metrics
+
+- [`rna_wgcna_module_trait()`](https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_module_trait.md)
+  : Evaluate module-trait relationships in a WGCNA network
+
+- [`rna_wgcna_plot()`](https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_plot.md)
+  : Visualize WGCNA Module Networks
+
+- [`rna_wgcna_stability()`](https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_stability.md)
+  : Evaluate WGCNA module preservation and network stability

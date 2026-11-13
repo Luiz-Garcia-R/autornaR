@@ -126,3 +126,17 @@ The plot combines:
 Results can be stored in the active `rna_project` for reproducibility.
 
 ## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Basic usage
+rna_boxplot(project = my_project,
+            gene = "TP53")
+
+
+# Changing style
+rna_boxplot(my_project,
+            gene = "TP53",
+            style = "violin")
+} # }
+```

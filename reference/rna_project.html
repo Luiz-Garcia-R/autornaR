@@ -23,7 +23,7 @@ rna_compare())."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">autornaR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,6 +35,7 @@ rna_compare())."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/overview.html">Getting started with autornaR</a></li>
+    <li><a class="dropdown-item" href="../articles/wgcna.html">WGCNA module</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -100,17 +101,19 @@ preprocessing steps, list of downstream analyses).</p></dd>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The <code>rna_project</code> object acts as a lightweight state manager for the
-analysis workflow. Instead of passing data manually between functions,
-each step reads from and writes to this centralized structure.</p>
+analysis workflow. Instead of passing data manually between functions, each
+step reads from and writes to this centralized structure.</p>
 <p><strong>Design principles:</strong></p><ul><li><p><em>Reproducibility</em>: All steps are stored and traceable via logs.</p></li>
-<li><p><em>Modularity</em>: Each function updates a specific part of the project.</p></li>
+<li><p><em>Modularity</em>: Each function updates a specific part of the
+project.</p></li>
 <li><p><em>State awareness</em>: The current analysis state is always explicit.</p></li>
 <li><p><em>Safety</em>: Prevents loss of intermediate results across steps.</p></li>
 </ul><p><strong>Typical workflow:</strong></p><ol><li><p>Initialize project with <code>rna_project()</code></p></li>
 <li><p>Import data using <code><a href="rna_import.html">rna_import()</a></code></p></li>
 <li><p>Normalize expression with <code><a href="rna_normalize.html">rna_normalize()</a></code></p></li>
 <li><p>Perform analyses (e.g., <code><a href="rna_compare.html">rna_compare()</a></code>, <code><a href="rna_gsea.html">rna_gsea()</a></code>)</p></li>
-</ol><p>Calling <code>rna_project()</code> again will overwrite the current active project.</p>
+</ol><p>Calling <code>rna_project()</code> again will overwrite the current active
+project.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">autornaR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,6 +36,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="articles/overview.html">Getting started with autornaR</a></li>
+    <li><a class="dropdown-item" href="articles/wgcna.html">WGCNA module</a></li>
   </ul>
 </li>
       </ul>
@@ -62,7 +63,7 @@
 <p>It provides functions for filtering, imputation, outlier detection, gene ranking, ROC curves, dimensionality reduction, correlation, and differential expression analysis.</p>
 </td>
 <td width="30%" align="center" valign="middle">
-<p><img src="reference/figures/logo_autornaR.png" width="160"></p>
+<p><img src="reference/figures/logo_autornaR.png" alt="autornaR package logo" width="160"></p>
 </td>
 </tr></table>
 <div class="section level2">
@@ -173,11 +174,30 @@
 <div class="section level1">
 <h1 id="exploratory-and-differential-analysis">Exploratory and Differential Analysis<a class="anchor" aria-label="anchor" href="#exploratory-and-differential-analysis"></a>
 </h1>
-<p>For deeper insights and pairwise comparisons: - rna_compare() - Performs differential expression analysis (Limma or DESeq2) between two groups - rna_association() - Compute gene or clinical features correlations among samples - rna_enrich() - performs Gene Ontology (GO) enrichment analysis - rna_degs() - Identify differentially expressed genes - rna_dimred() - Perform PCA and UMAP for dimensionality reduction - rna_heatmap() - Visualize top variable genes with heatmaps - rna_gsea() - Perform a GSEA rank to visualize top enriched pathway - rna_gsva() - Perform a GSVA to visualize individual enriched pathway - rna_network() - Build a gene-gene network using pathways identified by rna_gsea() - rna_roc() - Assess discriminatory power of specific genes - rna_boxplot() - Perform Limma t-tests for gene-level differences - rna_sets() - Evaluate differential expressed genes distribution - rna_volcano() - Generate volcano plots for differential expression analysis - rna_wgcna() - Performs a weighted correlation network analysis</p>
+<p>For deeper insights and pairwise comparisons: - rna_compare() - Performs differential expression analysis (Limma or DESeq2) between two groups - rna_association() - Compute gene or clinical features correlations among samples - rna_enrich() - performs Gene Ontology (GO) enrichment analysis - rna_degs() - Identify differentially expressed genes - rna_dimred() - Perform PCA and UMAP for dimensionality reduction - rna_heatmap() - Visualize top variable genes with heatmaps - rna_roc() - Assess discriminatory power of specific genes - rna_boxplot() - Perform Limma t-tests for gene-level differences - rna_sets() - Evaluate differential expressed genes distribution - rna_volcano() - Generate volcano plots for differential expression analysis - rna_wgcna() - Performs a weighted correlation network analysis</p>
+<div class="section level2">
+<h2 id="gsea-module">GSEA module<a class="anchor" aria-label="anchor" href="#gsea-module"></a>
+</h2>
+<ul>
+<li>rna_gsea() - Perform a GSEA rank to visualize top enriched pathway</li>
+<li>rna_gsva() - Perform a GSVA to visualize individual enriched pathway</li>
+<li>rna_network() - Build a gene-gene network using pathways identified by rna_gsea()</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="wgcna-module">WGCNA module<a class="anchor" aria-label="anchor" href="#wgcna-module"></a>
+</h2>
+<div class="sourceCode" id="cb4"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="sc">-</span> <span class="fu">rna_wgcna</span>() <span class="sc">-</span> Build a coexpression matrix</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="sc">-</span> <span class="fu">rna_wgcna_metrics</span>() <span class="sc">-</span> Perform a general evaluation of coexpression network </span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="sc">-</span> <span class="fu">rna_wgcna_module_trait</span>() <span class="sc">-</span> Evaluate relationship between modules and phenotype</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="sc">-</span> <span class="fu">rna_wgcna_stability</span>() <span class="sc">-</span> Perform a evaluation of coexpression network stability</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="sc">-</span> <span class="fu">rna_wgcna_plot</span>() <span class="sc">-</span> Plot general or module specific coexpression network</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="sc">-</span> <span class="fu">rna_wgcna_enrichment</span>() <span class="sc">-</span> Perform a enrichment analysis of modules</span></code></pre></div>
+</div>
 <div class="section level2">
 <h2 id="example-workflow-minimal">Example Workflow (Minimal)<a class="anchor" aria-label="anchor" href="#example-workflow-minimal"></a>
 </h2>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Example raw counts</span></span>
 <span><span class="va">raw_counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  GeneID <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ENSG000001"</span>,<span class="st">"ENSG000002"</span>,<span class="st">"ENSG000003"</span><span class="op">)</span>,</span>

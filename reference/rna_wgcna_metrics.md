@@ -5,6 +5,12 @@ existing WGCNA network. Metrics include module membership (kME),
 intramodular connectivity (kWithin), and connectivity to genes outside
 the assigned module (kOut and kTotal).
 
+The function calculates metrics for the global network and can
+optionally perform additional group-specific evaluations using the same
+globally defined modules. Group-specific evaluations recalculate
+connectivity and module membership within each selected group without
+reconstructing the network or redefining module assignments.
+
 ## Usage
 
 ``` r
@@ -69,12 +75,6 @@ If `save = FALSE`, invisibly returns an object of class
   Date and time at which the metrics were calculated.
 
 ## Details
-
-The function calculates metrics for the global network and can
-optionally perform additional group-specific evaluations using the same
-globally defined modules. Group-specific evaluations recalculate
-connectivity and module membership within each selected group without
-reconstructing the network or redefining module assignments.
 
 The following metrics are calculated for each gene:
 

@@ -88,16 +88,30 @@ rna_association() - Compute gene or clinical features correlations among
 samples - rna_enrich() - performs Gene Ontology (GO) enrichment
 analysis - rna_degs() - Identify differentially expressed genes -
 rna_dimred() - Perform PCA and UMAP for dimensionality reduction -
-rna_heatmap() - Visualize top variable genes with heatmaps -
-rna_gsea() - Perform a GSEA rank to visualize top enriched pathway -
-rna_gsva() - Perform a GSVA to visualize individual enriched pathway -
-rna_network() - Build a gene-gene network using pathways identified by
-rna_gsea() - rna_roc() - Assess discriminatory power of specific genes -
-rna_boxplot() - Perform Limma t-tests for gene-level differences -
-rna_sets() - Evaluate differential expressed genes distribution -
-rna_volcano() - Generate volcano plots for differential expression
-analysis - rna_wgcna() - Performs a weighted correlation network
-analysis
+rna_heatmap() - Visualize top variable genes with heatmaps - rna_roc() -
+Assess discriminatory power of specific genes - rna_boxplot() - Perform
+Limma t-tests for gene-level differences - rna_sets() - Evaluate
+differential expressed genes distribution - rna_volcano() - Generate
+volcano plots for differential expression analysis - rna_wgcna() -
+Performs a weighted correlation network analysis
+
+## GSEA module
+
+- rna_gsea() - Perform a GSEA rank to visualize top enriched pathway
+- rna_gsva() - Perform a GSVA to visualize individual enriched pathway
+- rna_network() - Build a gene-gene network using pathways identified by
+  rna_gsea()
+
+## WGCNA module
+
+``` R
+- rna_wgcna() - Build a coexpression matrix
+- rna_wgcna_metrics() - Perform a general evaluation of coexpression network 
+- rna_wgcna_module_trait() - Evaluate relationship between modules and phenotype
+- rna_wgcna_stability() - Perform a evaluation of coexpression network stability
+- rna_wgcna_plot() - Plot general or module specific coexpression network
+- rna_wgcna_enrichment() - Perform a enrichment analysis of modules
+```
 
 ## Example Workflow (Minimal)
 
@@ -252,12 +266,26 @@ Thank you for using autornaR!
 - [`rna_wgcna()`](https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna.md)
   : Construct a weighted gene co-expression network and detect modules
 
+- [`rna_wgcna_enrichment()`](https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_enrichment.md)
+  : Characterize WGCNA modules through functional enrichment analysis
+
 - [`rna_wgcna_metrics()`](https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_metrics.md)
   : Calculate WGCNA Network Metrics
 
+- [`rna_wgcna_module_trait()`](https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_module_trait.md)
+  : Evaluate module-trait relationships in a WGCNA network
+
+- [`rna_wgcna_plot()`](https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_plot.md)
+  : Visualize WGCNA Module Networks
+
+- [`rna_wgcna_stability()`](https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_stability.md)
+  : Evaluate WGCNA module preservation and network stability
+
 # Articles
 
-### Getting started
+### All vignettes
 
 - [Getting started with
   autornaR](https://luiz-garcia-r.github.io/autornaR/articles/overview.md):
+- [WGCNA
+  module](https://luiz-garcia-r.github.io/autornaR/articles/wgcna.md):

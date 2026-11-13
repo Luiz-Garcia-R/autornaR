@@ -4,6 +4,7 @@
 <url><loc>https://luiz-garcia-r.github.io/autornaR/LICENSE.html</loc></url>
 <url><loc>https://luiz-garcia-r.github.io/autornaR/articles/index.html</loc></url>
 <url><loc>https://luiz-garcia-r.github.io/autornaR/articles/overview.html</loc></url>
+<url><loc>https://luiz-garcia-r.github.io/autornaR/articles/wgcna.html</loc></url>
 <url><loc>https://luiz-garcia-r.github.io/autornaR/authors.html</loc></url>
 <url><loc>https://luiz-garcia-r.github.io/autornaR/index.html</loc></url>
 <url><loc>https://luiz-garcia-r.github.io/autornaR/reference/autornaR.html</loc></url>
@@ -35,6 +36,10 @@
 <url><loc>https://luiz-garcia-r.github.io/autornaR/reference/rna_sets.html</loc></url>
 <url><loc>https://luiz-garcia-r.github.io/autornaR/reference/rna_volcano.html</loc></url>
 <url><loc>https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna.html</loc></url>
+<url><loc>https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_enrichment.html</loc></url>
 <url><loc>https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_metrics.html</loc></url>
+<url><loc>https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_module_trait.html</loc></url>
+<url><loc>https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_plot.html</loc></url>
+<url><loc>https://luiz-garcia-r.github.io/autornaR/reference/rna_wgcna_stability.html</loc></url>
 </urlset>
 

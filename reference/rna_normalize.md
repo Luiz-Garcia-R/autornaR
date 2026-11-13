@@ -121,7 +121,7 @@ Invisibly returns an object of class `"normalized_data"` containing:
 
 - removed_genes:
 
-  Number of genes removed during filtering/outlier steps.
+  Number of genes removed during filtering steps.
 
 - removed_samples:
 
@@ -129,12 +129,11 @@ Invisibly returns an object of class `"normalized_data"` containing:
 
 - QC_metrics:
 
-  Data frame with per-sample QC metrics (library size and detected
-  genes).
+  Data frame with per-sample QC metrics.
 
 - gene_id_version_cleaned:
 
-  Logical indicating whether gene IDs were cleaned.
+  Indicating whether gene IDs were cleaned.
 
 - gene_id_type:
 
@@ -230,3 +229,23 @@ markers, especially for rare cell populations.
 [`rna_qc`](https://luiz-garcia-r.github.io/autornaR/reference/rna_qc.md)
 
 ## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+
+# Example 1: basic normalization using default settings
+rna_normalize(project = my_project)
+
+# Example 2: log2 transformation only (quick exploratory analysis)
+rna_normalize(my_project,
+              method = "log2")
+
+# Example 3: Using relaxed filtering thresholds for deconvolution and GSEA
+proj <- rna_normalize(my_project,
+                      method = "vst",   # or "log2"
+                      filter_low = TRUE,
+                      min_expr = 1,
+                      filter_min_prop = 0.05,
+                      remove_outlier_genes = FALSE)
+} # }
+```

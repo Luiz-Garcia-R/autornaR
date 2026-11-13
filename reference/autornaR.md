@@ -59,6 +59,11 @@ Useful links:
 **Maintainer**: Luiz Garcia <luiz.cardoso@ufpr.br>
 ([ORCID](https://orcid.org/0000-0002-9616-0927))
 
+Authors:
+
+- Luiz Garcia <luiz.cardoso@ufpr.br>
+  ([ORCID](https://orcid.org/0000-0002-9616-0927))
+
 ## Examples
 
 ``` r

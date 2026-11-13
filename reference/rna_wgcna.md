@@ -1,7 +1,7 @@
 # Construct a weighted gene co-expression network and detect modules
 
 Constructs a weighted gene co-expression network using normalized
-expression data stored in an `rna_project` object and identifies gene
+expression data stored in an `rna_project` object and identifies
 co-expression modules using the WGCNA framework.
 
 The function filters genes with zero or invalid variance, optionally
@@ -10,9 +10,9 @@ control, constructs the network using a predefined soft-thresholding
 power, and detects modules through hierarchical clustering of the
 topological overlap matrix (TOM).
 
-Module assignments, module eigengenes, network information, and analysis
+Module assignments, eigengenes, network information, and analysis
 metadata are organized into a result object. Diagnostic dendrogram plots
-can also be generated to visualize the identified modules.
+can also be generated to visualize module assignments.
 
 ## Usage
 
@@ -63,11 +63,11 @@ rna_wgcna(
 - network_type:
 
   Character string specifying the network type used by WGCNA. Supported
-  values are `"signed"`, `"unsigned"`, and `"signed hybrid"`. A signed
-  network preserves the distinction between positive and negative
-  correlations; an unsigned network uses the magnitude of correlations;
-  and a signed hybrid network excludes negative correlations from the
-  adjacency calculation. Defaults to `"signed"`.
+  values are `"signed"`, `"unsigned"`, and `"signed hybrid"`. Signed
+  networks distinguish positive from negative correlations, whereas
+  unsigned networks use the absolute correlation magnitude. Signed
+  hybrid networks assign zero adjacency to negative correlations.
+  Defaults to `"signed"`.
 
 - tom_type:
 
@@ -75,21 +75,21 @@ rna_wgcna(
   (TOM) used for module detection. Supported values are `"signed"`,
   `"unsigned"`, `"unsigned 2"`, `"signed Nowick"`, and
   `"signed Nowick 2"`. This parameter controls how topological overlap
-  is calculated and is independent of the adjacency network type
-  specified by `network_type`. Defaults to `"signed"`.
+  is calculated and is specified independently of the adjacency network
+  type. Defaults to `"signed"`.
 
 - cor_method:
 
   Character string specifying the correlation method used during network
-  construction. Currently supports `"pearson"`, which is also used in
-  downstream calculations of module membership (kME) to ensure
+  construction. Currently supports only `"pearson"`, which is also used
+  in downstream calculations of module membership (kME) to ensure
   consistency with the original network. Defaults to `"pearson"`.
 
 - max_block_size:
 
   Integer specifying the maximum number of genes allowed in each block
-  during network construction. When the number of genes exceeds this
-  limit, WGCNA divides the data into multiple blocks and constructs
+  during network construction. When the number of selected genes exceeds
+  this limit, WGCNA divides the data into multiple blocks and constructs
   networks separately. Larger values may increase memory requirements.
   Defaults to `20000`.
 
@@ -103,21 +103,20 @@ rna_wgcna(
 
   Integer between 0 and 4 controlling the sensitivity of dynamic tree
   cutting. Higher values generally produce more modules by allowing
-  finer subdivisions of the gene dendrogram. Higher values correspond to
-  more aggressive module detection. Defaults to `2`.
+  finer subdivisions of the gene dendrogram. Defaults to `2`.
 
 - merge_cut_height:
 
   Numeric value between 0 and 1 specifying the threshold for merging
-  modules based on the dissimilarity between their module eigengenes.
-  Lower values result in more conservative merging, whereas higher
-  values allow more modules to be merged. Defaults to `0.25`.
+  modules based on the dissimilarity between their eigengenes. Lower
+  values result in more conservative merging, whereas higher values
+  allow more modules to be merged. Defaults to `0.25`.
 
 - reassign_threshold:
 
-  Numeric value between 0 and 1 specifying the threshold used for gene
-  reassignment based on module membership significance during module
-  detection. A value of `0` disables reassignment based on this
+  Numeric value between 0 and 1 specifying the p-value threshold used
+  for gene reassignment based on module membership significance during
+  module detection. A value of `0` disables reassignment based on this
   threshold. Defaults to `1e-6`.
 
 - numeric_labels:
@@ -145,7 +144,7 @@ rna_wgcna(
 
 - plot:
 
-  Logical. If `TRUE`, generates diagnostic dendrogram plots showing the
+  Logical. If `TRUE`, generates diagnostic dendrogram plots showing
   module color assignments for each network block. Defaults to `TRUE`.
 
 - save:
@@ -167,13 +166,17 @@ If `save = FALSE`, invisibly returns an object of class
 - `network`: the complete network object returned by
   [`blockwiseModules`](https://rdrr.io/pkg/WGCNA/man/blockwiseModules.html).
 
+- `datExpr`: the expression matrix used for network construction, with
+  samples in rows and genes in columns.
+
 - `genes_modules`: a data frame containing gene identifiers, module
   labels, and module colors.
 
 - `MEs`: the ordered module eigengene matrix.
 
-- Network construction parameters, including the soft-thresholding power
-  and network types.
+- Network construction parameters, including gene selection,
+  soft-thresholding power, network type, TOM type, correlation method,
+  block size, module detection settings, and label configuration.
 
 - The number and identifiers of retained genes and samples.
 
@@ -185,32 +188,30 @@ If `save = FALSE`, invisibly returns an object of class
 ## Input data
 
 The expression matrix must be numeric, with genes in rows and samples in
-columns. Gene identifiers and sample identifiers must be unique.
+columns. Gene and sample identifiers must be unique.
 
-The metadata must identify samples through a `Sample` column or through
-its row names. Sample identifiers are matched to the expression matrix
-column names; metadata must contain an entry for every expression
-sample.
+Sample metadata must identify samples through a `Sample` column or row
+names. Identifiers are matched to the expression matrix column names,
+and metadata must contain an entry for every expression sample.
 
-Genes with non-finite or zero variance are excluded before the most
-variable genes are selected. WGCNA quality control is then applied to
-identify and remove additional problematic samples or genes.
+Genes with non-finite or zero variance are excluded before gene
+selection. WGCNA quality control is subsequently applied to identify and
+remove additional problematic samples or genes.
 
 ## Network construction
 
-The network is constructed using the adjacency function and topological
-overlap matrix defined by `network_type` and `tom_type`, respectively.
-The soft-thresholding power specified by `power` is applied to the
-adjacency calculation.
+The adjacency matrix is calculated using the specified `network_type`,
+correlation method, and soft-thresholding power. Topological overlap is
+subsequently calculated according to `tom_type`.
 
-When the number of selected genes exceeds `max_block_size`, WGCNA may
-divide the data into multiple blocks. Module detection is performed
-independently within each block, and the resulting module assignments
-are returned in a unified result object.
+When the number of selected genes exceeds `max_block_size`, WGCNA
+divides the data into multiple blocks. Module detection is performed
+within each block, followed by the integration of module assignments and
+merging of closely related modules according to `merge_cut_height`.
 
 Modules are identified through hierarchical clustering and dynamic tree
-cutting. Closely related modules may subsequently be merged according to
-`merge_cut_height`.
+cutting, with their detection sensitivity controlled by `deep_split` and
+their minimum size by `min_module_size`.
 
 ## Module eigengenes
 
@@ -220,35 +221,28 @@ expression profiles of genes assigned to each module and provide a
 summarized representation of module-level expression patterns.
 
 The returned eigengene matrix is ordered using
-[`orderMEs`](https://rdrr.io/pkg/WGCNA/man/orderMEs.html). Additional
-analyses, such as module membership (kME) estimation and associations
-between module eigengenes and sample-level phenotypes, can be performed
-in subsequent steps.
+[`orderMEs`](https://rdrr.io/pkg/WGCNA/man/orderMEs.html). These
+eigengenes can be used in subsequent analyses, including module
+membership (kME) estimation and associations with sample-level
+phenotypes.
 
-## Interpretation
+## Interpretation and scope
 
 Identified modules represent groups of genes with similar expression
-patterns across the samples included in the analysis. Module detection
+patterns across the samples included in the analysis. Their structure
 depends on the selected soft-thresholding power, network type, TOM
 definition, and module detection parameters.
 
-Module colors are arbitrary identifiers assigned by WGCNA and do not
-have intrinsic biological meaning. Biological interpretation requires
+Module colors are arbitrary identifiers assigned by WGCNA and have no
+intrinsic biological meaning. Biological interpretation requires
 additional analyses, such as functional enrichment, module membership
 evaluation, and associations with relevant phenotypes.
 
-The resulting modules describe co-expression relationships across the
-samples supplied in the project as a whole. They do not directly
-represent differential co-expression between experimental groups or
-establish causal relationships between genes.
-
-## Scope of the analysis
-
 This function constructs a single co-expression network using all
-retained samples. It does not perform differential co-expression
-analysis, consensus network construction, module preservation analysis,
-or phenotype association testing. These analyses require additional
-steps.
+retained samples. It does not assess differential co-expression between
+experimental groups, construct consensus networks, evaluate module
+preservation, or test associations with phenotypes. Co-expression
+relationships also do not establish causal relationships between genes.
 
 ## References
 
